@@ -6,6 +6,7 @@ import type {
   CharacterForUI,
   CharacterGacha,
   CharacterObtain,
+  CharacterOtherCategory,
 } from "@/app/page";
 import TierRow from "./TierRow";
 import PoolRow from "./PoolRow";
@@ -44,6 +45,8 @@ type Props = {
   onToggleObtain: (obtain: CharacterObtain) => void;
   selectedGachas: Set<CharacterGacha>;
   onToggleGacha: (gacha: CharacterGacha) => void;
+  selectedOtherCategories: Set<CharacterOtherCategory>;
+  onToggleOtherCategory: (category: CharacterOtherCategory) => void;
   onRenameTier: (tierId: string, nextName: string) => void;
   activeCharacter: CharacterForUI | null;
 };
@@ -71,6 +74,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onToggleObtain,
     selectedGachas,
     onToggleGacha,
+    selectedOtherCategories,
+    onToggleOtherCategory,
     onRenameTier,
     activeCharacter,
   },
@@ -80,6 +85,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
   const obtainOrder: CharacterObtain[] = ["ガチャ", "その他"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
+  const otherCategoryOrder: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "コラボ", "その他"];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
     火: { src: iconFire.src, alt: "火属性" },
     水: { src: iconWater.src, alt: "水属性" },
@@ -240,6 +246,25 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                           onClick={() => onToggleGacha(g)}
                         >
                           {g}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {selectedObtains.has("その他") ? (
+                  <div className="otherCategoryRow">
+                    {otherCategoryOrder.map((category) => {
+                      const selected = selectedOtherCategories.has(category);
+                      return (
+                        <button
+                          key={category}
+                          type="button"
+                          className="otherCategoryBtn"
+                          data-selected={selected ? "1" : "0"}
+                          onClick={() => onToggleOtherCategory(category)}
+                        >
+                          {category}
                         </button>
                       );
                     })}
@@ -461,14 +486,16 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         }
 
         .obtainRow,
-        .gachaRow {
+        .gachaRow,
+        .otherCategoryRow {
           width: 100%;
           display: flex;
           gap: 8px;
           flex-wrap: wrap;
         }
 
-        .gachaRow {
+        .gachaRow,
+        .otherCategoryRow {
           width: auto;
           margin-left: 64px;
         }
@@ -479,7 +506,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         }
 
         .obtainBtn,
-        .gachaBtn {
+        .gachaBtn,
+        .otherCategoryBtn {
           min-width: 64px;
           border: 1px solid #9ca3af;
           background: #ffffff;
@@ -491,7 +519,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         }
 
         .obtainBtn[data-selected="1"],
-        .gachaBtn[data-selected="1"] {
+        .gachaBtn[data-selected="1"],
+        .otherCategoryBtn[data-selected="1"] {
           background: #dbeafe;
           border-color: #2563eb;
         }

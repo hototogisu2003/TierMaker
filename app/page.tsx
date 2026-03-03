@@ -9,6 +9,7 @@ type CharacterRow = {
   element?: string | null;
   obtain?: string | null;
   gacha?: string | null;
+  quest?: string | null;
   number?: number | string | null;
   icon_path: string;
 };
@@ -16,6 +17,7 @@ type CharacterRow = {
 export type CharacterElement = "火" | "水" | "木" | "光" | "闇";
 export type CharacterObtain = "ガチャ" | "その他";
 export type CharacterGacha = "限定" | "α" | "恒常" | "コラボ";
+export type CharacterOtherCategory = "黎絶" | "轟絶" | "爆絶" | "コラボ" | "その他";
 
 export type CharacterForUI = {
   id: string;
@@ -24,6 +26,7 @@ export type CharacterForUI = {
   element: CharacterElement | "";
   obtain: CharacterObtain | "";
   gachaType: CharacterGacha | "";
+  otherCategory: CharacterOtherCategory | "";
   sortNumber: number;
   iconPath: string;
   iconUrl: string;
@@ -76,6 +79,16 @@ function normalizeGacha(raw: string | null | undefined): CharacterGacha | "" {
   return "";
 }
 
+function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherCategory | "" {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (v === "黎絶") return "黎絶";
+  if (v === "轟絶") return "轟絶";
+  if (v === "爆絶") return "爆絶";
+  if (v === "コラボ" || v === "collab") return "コラボ";
+  if (v === "その他" || v === "other") return "その他";
+  return "";
+}
+
 export default async function Page() {
   const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseAnonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
@@ -89,7 +102,7 @@ export default async function Page() {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select("id,name,name_kana,element,obtain,gacha,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,quest,number,icon_path")
     .abortSignal(AbortSignal.timeout(8000))
     .order("number", { ascending: true })
     .order("id", { ascending: true })
@@ -121,6 +134,7 @@ export default async function Page() {
         element: normalizeElement(r.element),
         obtain: normalizeObtain(r.obtain),
         gachaType: normalizeGacha(r.gacha),
+        otherCategory: normalizeOtherCategory(r.quest),
         sortNumber: toSortableNumber(r.number),
         iconPath,
         iconUrl,

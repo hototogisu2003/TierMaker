@@ -1,7 +1,13 @@
 ﻿"use client";
 
 import React from "react";
-import type { CharacterElement, CharacterForUI, CharacterGacha, CharacterObtain } from "@/app/page";
+import type {
+  CharacterElement,
+  CharacterForUI,
+  CharacterGacha,
+  CharacterObtain,
+  CharacterOtherCategory,
+} from "@/app/page";
 import TierBoard from "./TierBoard";
 import BoardControls from "./controls/BoardControls";
 
@@ -38,6 +44,7 @@ type Props = {
 const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
 const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "その他"];
 const GACHA_OPTIONS: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
+const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "コラボ", "その他"];
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 
 function implementationYearFromNumber(n: number): number | null {
@@ -95,6 +102,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [selectedGachas, setSelectedGachas] = React.useState<Set<CharacterGacha>>(
     () => new Set<CharacterGacha>(["限定"])
   );
+  const [selectedOtherCategories, setSelectedOtherCategories] = React.useState<
+    Set<CharacterOtherCategory>
+  >(() => new Set(OTHER_CATEGORY_OPTIONS));
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -114,12 +124,16 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     const isAllElementsSelected = ELEMENT_OPTIONS.every((el) => selectedElements.has(el));
     const isAllObtainsSelected = OBTAIN_OPTIONS.every((o) => selectedObtains.has(o));
     const isAllGachasSelected = GACHA_OPTIONS.every((g) => selectedGachas.has(g));
+    const isAllOtherCategoriesSelected = OTHER_CATEGORY_OPTIONS.every((o) =>
+      selectedOtherCategories.has(o)
+    );
     const isYearUnselected = yearFrom === "" && yearTo === "";
     if (
       !normalizedFilter &&
       isAllElementsSelected &&
       isAllObtainsSelected &&
       isAllGachasSelected &&
+      isAllOtherCategoriesSelected &&
       isYearUnselected
     ) {
       return null;
@@ -133,8 +147,12 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         !normalizedFilter || name.includes(normalizedFilter) || nameKana.includes(normalizedFilter);
       const isElementMatched = !!c.element && selectedElements.has(c.element);
       const isObtainMatched = !!c.obtain && selectedObtains.has(c.obtain);
-      const isGachaMatched =
-        c.obtain !== "ガチャ" || (!!c.gachaType && selectedGachas.has(c.gachaType));
+      const isSubtypeMatched =
+        c.obtain === "ガチャ"
+          ? !!c.gachaType && selectedGachas.has(c.gachaType)
+          : c.obtain === "その他"
+            ? !!c.otherCategory && selectedOtherCategories.has(c.otherCategory)
+            : true;
       const implYear = implementationYearFromNumber(c.sortNumber);
       const minYear = yearFrom === "" ? Number.NEGATIVE_INFINITY : yearFrom;
       const maxYear = yearTo === "" ? Number.POSITIVE_INFINITY : yearTo;
@@ -142,12 +160,21 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         (yearFrom === "" && yearTo === "") ||
         (implYear !== null && implYear >= minYear && implYear <= maxYear);
 
-      if (isNameMatched && isElementMatched && isObtainMatched && isGachaMatched && isYearMatched) {
+      if (isNameMatched && isElementMatched && isObtainMatched && isSubtypeMatched && isYearMatched) {
         ids.add(c.id);
       }
     }
     return ids;
-  }, [characters, normalizedFilter, selectedElements, selectedObtains, selectedGachas, yearFrom, yearTo]);
+  }, [
+    characters,
+    normalizedFilter,
+    selectedElements,
+    selectedObtains,
+    selectedGachas,
+    selectedOtherCategories,
+    yearFrom,
+    yearTo,
+  ]);
 
   function toggleElementFilter(element: CharacterElement) {
     setSelectedElements((prev) => {
@@ -180,6 +207,18 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         next.delete(gacha);
       } else {
         next.add(gacha);
+      }
+      return next;
+    });
+  }
+
+  function toggleOtherCategoryFilter(category: CharacterOtherCategory) {
+    setSelectedOtherCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
       }
       return next;
     });
@@ -319,6 +358,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onToggleObtain={toggleObtainFilter}
           selectedGachas={selectedGachas}
           onToggleGacha={toggleGachaFilter}
+          selectedOtherCategories={selectedOtherCategories}
+          onToggleOtherCategory={toggleOtherCategoryFilter}
           onRenameTier={renameTier}
           activeCharacter={activeCharacter}
         />
