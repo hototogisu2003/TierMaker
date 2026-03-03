@@ -104,7 +104,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   );
   const [selectedOtherCategories, setSelectedOtherCategories] = React.useState<
     Set<CharacterOtherCategory>
-  >(() => new Set(OTHER_CATEGORY_OPTIONS));
+  >(() => new Set<CharacterOtherCategory>(["黎絶"]));
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -195,6 +195,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         next.delete(obtain);
       } else {
         next.add(obtain);
+        if (obtain === "その他") {
+          setSelectedOtherCategories(new Set<CharacterOtherCategory>(["黎絶"]));
+        }
       }
       return next;
     });
