@@ -38,7 +38,7 @@ export default function DraggableIcon({ id, character }: Props) {
       {...listeners}
     >
       {/* next/image にすると remotePatterns 設定が必要なので、まずは img で */}
-      <img className="iconImg" src={character.iconUrl} alt={character.name} />
+      <img className="iconImg" src={character.iconUrl} alt={character.name} draggable={false} />
       <style jsx>{`
         .iconCard {
           width: 48px;
@@ -57,6 +57,7 @@ export default function DraggableIcon({ id, character }: Props) {
           object-fit: cover;
           user-select: none;
           -webkit-user-drag: none;
+          pointer-events: none;
         }
       `}</style>
     </div>
