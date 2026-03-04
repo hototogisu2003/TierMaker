@@ -186,9 +186,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       } else {
         next.add(element);
       }
+      setIsAllElementsMode(next.size === 0);
       return next;
     });
-    setIsAllElementsMode(false);
   }
 
   function selectAllElements() {
