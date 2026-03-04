@@ -337,6 +337,7 @@ a {
 }
 
 .poolBottomScrollbar {
+  display: none;
   margin-top: 4px;
   width: 100%;
   max-width: 100%;
@@ -348,6 +349,11 @@ a {
 
 .poolBottomScrollbarInner {
   height: 1px;
+}
+
+.poolScrollIndicator,
+.poolScrollHint {
+  display: none;
 }
 
 .elementRow {
@@ -571,7 +577,35 @@ a {
 
 @media (max-width: 768px) {
   .poolBottomScrollbar {
+    display: block;
+  }
+
+  .poolBottomScrollbar {
     height: 30px;
+  }
+
+  .poolScrollIndicator {
+    display: block;
+    width: 100%;
+    height: 6px;
+    background: #d1d5db;
+    border-radius: 999px;
+    margin-top: 3px;
+    overflow: hidden;
+  }
+
+  .poolScrollIndicatorThumb {
+    height: 100%;
+    background: #6b7280;
+    border-radius: 999px;
+  }
+
+  .poolScrollHint {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #4b5563;
+    line-height: 1.2;
   }
 
   .filterColumns {

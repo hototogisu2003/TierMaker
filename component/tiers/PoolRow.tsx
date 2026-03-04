@@ -97,6 +97,22 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
     return groupedRows.reduce((max, row) => Math.max(max, row.length * ICON_SIZE), 0);
   }, [groupByElement, groupedRows]);
 
+  const scrollIndicator = React.useMemo(() => {
+    const view = Math.max(viewportWidth, 0);
+    const full = Math.max(maxRowWidth, view);
+    const canScroll = full > view + 1;
+    if (!canScroll || view <= 0) {
+      return { thumbWidth: view, thumbLeft: 0 };
+    }
+
+    const rawThumbWidth = (view / full) * view;
+    const thumbWidth = Math.max(40, Math.min(view, rawThumbWidth));
+    const maxScrollLeft = Math.max(full - view, 1);
+    const maxThumbLeft = Math.max(view - thumbWidth, 0);
+    const thumbLeft = (Math.min(Math.max(scrollLeft, 0), maxScrollLeft) / maxScrollLeft) * maxThumbLeft;
+    return { thumbWidth, thumbLeft };
+  }, [maxRowWidth, viewportWidth, scrollLeft]);
+
   return (
     <div ref={setNodeRef} className="poolRow" data-over={isOver ? "1" : "0"}>
       {groupByElement ? (
@@ -141,6 +157,17 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
               style={{ width: Math.max(maxRowWidth, viewportWidth) }}
             />
           </div>
+
+          <div className="poolScrollIndicator" aria-hidden="true">
+            <div
+              className="poolScrollIndicatorThumb"
+              style={{
+                width: Math.max(scrollIndicator.thumbWidth, 0),
+                transform: `translateX(${Math.max(scrollIndicator.thumbLeft, 0)}px)`,
+              }}
+            />
+          </div>
+          <div className="poolScrollHint" aria-hidden="true">左右にスワイプでスクロール</div>
         </>
       ) : (
         <div className="poolItems">{renderItems}</div>
@@ -188,6 +215,7 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
         }
 
         .poolBottomScrollbar {
+          display: none;
           margin-top: 4px;
           width: 100%;
           max-width: 100%;
@@ -201,9 +229,42 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
           height: 1px;
         }
 
+        .poolScrollIndicator,
+        .poolScrollHint {
+          display: none;
+        }
+
         @media (max-width: 768px) {
           .poolBottomScrollbar {
+            display: block;
+          }
+
+          .poolBottomScrollbar {
             height: 30px;
+          }
+
+          .poolScrollIndicator {
+            display: block;
+            width: 100%;
+            height: 6px;
+            background: #d1d5db;
+            border-radius: 999px;
+            margin-top: 3px;
+            overflow: hidden;
+          }
+
+          .poolScrollIndicatorThumb {
+            height: 100%;
+            background: #6b7280;
+            border-radius: 999px;
+          }
+
+          .poolScrollHint {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #4b5563;
+            line-height: 1.2;
           }
         }
 
