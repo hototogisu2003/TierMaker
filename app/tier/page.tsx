@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { unstable_noStore as noStore } from "next/cache";
 import TierMaker from "@/component/tiers/TierMaker";
 import type {
   CharacterElement,
@@ -81,6 +82,8 @@ function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherC
 }
 
 export default async function TierPage() {
+  noStore();
+
   const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseAnonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
