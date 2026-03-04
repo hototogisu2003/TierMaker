@@ -7,7 +7,7 @@ import type {
   CharacterGacha,
   CharacterObtain,
   CharacterOtherCategory,
-} from "@/app/page";
+} from "@/app/tier/types";
 import TierRow from "./TierRow";
 import PoolRow from "./PoolRow";
 import DragOverlayPreview from "./DragOverlayPreview";
@@ -89,7 +89,14 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
   const obtainOrder: CharacterObtain[] = ["ガチャ", "その他"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
-  const otherCategoryOrder: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "コラボ", "その他"];
+  const otherCategoryOrder: CharacterOtherCategory[] = [
+    "黎絶",
+    "轟絶",
+    "爆絶",
+    "超絶",
+    "コラボ",
+    "その他",
+  ];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
     火: { src: iconFire.src, alt: "火属性" },
     水: { src: iconWater.src, alt: "水属性" },
@@ -327,6 +334,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                 </div>
 
                 <div className="sortRow">
+                  <span className="filterLabel">並び順</span>
                   <button
                     type="button"
                     className="sortBtn"
@@ -335,6 +343,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                   >
                     属性順
                   </button>
+                  <span className="sortSpacer" aria-hidden="true" />
                   <button
                     type="button"
                     className="sortBtn"
@@ -455,10 +464,17 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .sortRow {
           width: auto;
-          margin-left: 64px;
+          margin-left: 0;
           display: flex;
+          align-items: center;
           gap: 8px;
           flex-wrap: wrap;
+        }
+
+        .sortSpacer {
+          width: 14px;
+          height: 1px;
+          display: inline-block;
         }
 
         .yearRow {

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { CharacterForUI } from "@/app/page";
+import type { CharacterForUI } from "@/app/tier/types";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 

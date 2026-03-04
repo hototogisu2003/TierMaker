@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { CharacterForUI } from "@/app/page";
+import type { CharacterForUI } from "@/app/tier/types";
 
 export default function DragOverlayPreview({ character }: { character: CharacterForUI }) {
   return (

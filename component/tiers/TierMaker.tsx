@@ -7,7 +7,7 @@ import type {
   CharacterGacha,
   CharacterObtain,
   CharacterOtherCategory,
-} from "@/app/page";
+} from "@/app/tier/types";
 import TierBoard from "./TierBoard";
 import BoardControls from "./controls/BoardControls";
 
@@ -44,7 +44,14 @@ type Props = {
 const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
 const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "その他"];
 const GACHA_OPTIONS: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
-const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "コラボ", "その他"];
+const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
+  "黎絶",
+  "轟絶",
+  "爆絶",
+  "超絶",
+  "コラボ",
+  "その他",
+];
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 
 function implementationYearFromNumber(n: number): number | null {
