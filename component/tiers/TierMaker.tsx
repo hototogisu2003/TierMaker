@@ -105,9 +105,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [yearTo, setYearTo] = React.useState<YearValue>("");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
   const [isElementOrderEnabled, setIsElementOrderEnabled] = React.useState(true);
-  const [isAllElementsMode, setIsAllElementsMode] = React.useState(true);
+  const [isAllElementsMode, setIsAllElementsMode] = React.useState(false);
   const [selectedElements, setSelectedElements] = React.useState<Set<CharacterElement>>(
-    () => new Set<CharacterElement>()
+    () => new Set<CharacterElement>(["火"])
   );
   const [selectedObtains, setSelectedObtains] = React.useState<Set<CharacterObtain>>(
     () => new Set<CharacterObtain>(["ガチャ"])
@@ -123,9 +123,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [appliedYearTo, setAppliedYearTo] = React.useState<YearValue>("");
   const [appliedSortOrder, setAppliedSortOrder] = React.useState<SortOrder>("desc");
   const [appliedIsElementOrderEnabled, setAppliedIsElementOrderEnabled] = React.useState(true);
-  const [appliedIsAllElementsMode, setAppliedIsAllElementsMode] = React.useState(true);
+  const [appliedIsAllElementsMode, setAppliedIsAllElementsMode] = React.useState(false);
   const [appliedSelectedElements, setAppliedSelectedElements] = React.useState<Set<CharacterElement>>(
-    () => new Set<CharacterElement>()
+    () => new Set<CharacterElement>(["火"])
   );
   const [appliedSelectedObtains, setAppliedSelectedObtains] = React.useState<Set<CharacterObtain>>(
     () => new Set<CharacterObtain>(["ガチャ"])
