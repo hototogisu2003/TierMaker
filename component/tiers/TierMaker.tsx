@@ -34,7 +34,7 @@ type ContainerId = "pool" | TierId;
 type SortOrder = "asc" | "desc";
 type YearValue = number | "";
 
-type TierMeta = { id: TierId; name: string };
+type TierMeta = { id: TierId; name: string; color: string };
 
 type Props = {
   characters: CharacterForUI[];
@@ -53,6 +53,7 @@ const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
   "その他",
 ];
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
+const DEFAULT_TIER_COLORS = ["#ef4444", "#f97316", "#facc15", "#22c55e", "#3b82f6", "#a855f7"];
 
 function implementationYearFromNumber(n: number): number | null {
   if (n >= 8927) return 2026;
@@ -68,7 +69,11 @@ function implementationYearFromNumber(n: number): number | null {
 }
 
 function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[]) {
-  const tierMeta: TierMeta[] = initialTiers.map((t) => ({ id: t, name: t }));
+  const tierMeta: TierMeta[] = initialTiers.map((t, idx) => ({
+    id: t,
+    name: t,
+    color: DEFAULT_TIER_COLORS[idx] ?? "#9ca3af",
+  }));
   const pool = characters.map((c) => c.id);
 
   const containers: Record<ContainerId, string[]> = {
@@ -303,6 +308,37 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     }));
   }
 
+  function setTierColor(tierId: TierId, nextColor: string) {
+    setState((prev) => ({
+      ...prev,
+      tierMeta: prev.tierMeta.map((t) => (t.id === tierId ? { ...t, color: nextColor } : t)),
+    }));
+  }
+
+  function addTierBelow(tierId: TierId) {
+    setState((prev) => {
+      const next = structuredClone(prev);
+      const index = next.tierMeta.findIndex((t: TierMeta) => t.id === tierId);
+      if (index === -1) return prev;
+      const newTierId = `tier-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      next.tierMeta.splice(index + 1, 0, { id: newTierId, name: "新規", color: "#ffffff" });
+      next.containers[newTierId] = [];
+      return next;
+    });
+  }
+
+  function deleteTier(tierId: TierId) {
+    setState((prev) => {
+      if (prev.tierMeta.length <= 1) return prev;
+      const next = structuredClone(prev);
+      const tierItems: string[] = next.containers[tierId] ?? [];
+      next.tierMeta = next.tierMeta.filter((t: TierMeta) => t.id !== tierId);
+      delete next.containers[tierId];
+      next.containers.pool = [...next.containers.pool, ...tierItems];
+      return next;
+    });
+  }
+
   function handleDragStart(e: DragStartEvent) {
     const id = String(e.active.id);
     setActiveId(id);
@@ -424,6 +460,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onToggleOtherCategory={toggleOtherCategoryFilter}
           onApplyFilters={applyFilters}
           onRenameTier={renameTier}
+          onSetTierColor={setTierColor}
+          onAddTierBelow={addTierBelow}
+          onDeleteTier={deleteTier}
           activeCharacter={activeCharacter}
         />
       </DndContext>

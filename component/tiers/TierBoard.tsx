@@ -21,7 +21,7 @@ import iconDark from "@/icon/icon_闇.png";
 import { DragOverlay } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 
-type TierMeta = { id: string; name: string };
+type TierMeta = { id: string; name: string; color: string };
 type YearValue = number | "";
 type Props = {
   tierMeta: TierMeta[];
@@ -53,6 +53,9 @@ type Props = {
   onToggleOtherCategory: (category: CharacterOtherCategory) => void;
   onApplyFilters: () => void;
   onRenameTier: (tierId: string, nextName: string) => void;
+  onSetTierColor: (tierId: string, nextColor: string) => void;
+  onAddTierBelow: (tierId: string) => void;
+  onDeleteTier: (tierId: string) => void;
   activeCharacter: CharacterForUI | null;
 };
 
@@ -87,6 +90,9 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onToggleOtherCategory,
     onApplyFilters,
     onRenameTier,
+    onSetTierColor,
+    onAddTierBelow,
+    onDeleteTier,
     activeCharacter,
   },
   ref
@@ -170,9 +176,14 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                   tierId={tier.id}
                   tierName={tier.name}
                   tierIndex={index}
+                  tierColor={tier.color}
                   itemIds={tierItems}
                   charactersById={charactersById}
                   onRename={(next) => onRenameTier(tier.id, next)}
+                  onSetColor={(nextColor) => onSetTierColor(tier.id, nextColor)}
+                  onAddBelow={() => onAddTierBelow(tier.id)}
+                  onDelete={() => onDeleteTier(tier.id)}
+                  canDelete={tierMeta.length > 1}
                 />
               </SortableContext>
             );
