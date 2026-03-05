@@ -83,68 +83,66 @@ export default function TierRow({
         })}
       </div>
 
-      <div className="tierRight">
-        <div className="tierMenuWrap" ref={menuWrapRef}>
-          <button
-            type="button"
-            className="tierMenuBtn"
-            aria-label={`Tier ${tierIndex + 1} settings`}
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-          >
-            ⚙
-          </button>
+      <div className="tierMenuWrap no-export" ref={menuWrapRef}>
+        <button
+          type="button"
+          className="tierMenuBtn"
+          aria-label={`Tier ${tierIndex + 1} settings`}
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+        >
+          ⚙
+        </button>
 
-          {isMenuOpen ? (
-            <div className="tierMenuPanel">
-              <button
-                type="button"
-                className="tierMenuAction"
-                onClick={() => {
-                  onAddBelow();
-                  setIsMenuOpen(false);
-                }}
-              >
-                下に行を追加
-              </button>
-              <button
-                type="button"
-                className="tierMenuAction"
-                onClick={() => {
-                  onDelete();
-                  setIsMenuOpen(false);
-                }}
-                disabled={!canDelete}
-              >
-                行を削除
-              </button>
+        {isMenuOpen ? (
+          <div className="tierMenuPanel">
+            <button
+              type="button"
+              className="tierMenuAction"
+              onClick={() => {
+                onAddBelow();
+                setIsMenuOpen(false);
+              }}
+            >
+              下に行を追加
+            </button>
+            <button
+              type="button"
+              className="tierMenuAction"
+              onClick={() => {
+                onDelete();
+                setIsMenuOpen(false);
+              }}
+              disabled={!canDelete}
+            >
+              行を削除
+            </button>
 
-              <div className="tierMenuLabel">色</div>
-              <div className="tierColorGrid">
-                {COLOR_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className="tierColorBtn"
-                    style={{ backgroundColor: opt.value }}
-                    aria-label={opt.label}
-                    title={opt.label}
-                    data-selected={tierColor === opt.value ? "1" : "0"}
-                    onClick={() => {
-                      onSetColor(opt.value);
-                      setIsMenuOpen(false);
-                    }}
-                  />
-                ))}
-              </div>
+            <div className="tierMenuLabel">色</div>
+            <div className="tierColorGrid">
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className="tierColorBtn"
+                  style={{ backgroundColor: opt.value }}
+                  aria-label={opt.label}
+                  title={opt.label}
+                  data-selected={tierColor === opt.value ? "1" : "0"}
+                  onClick={() => {
+                    onSetColor(opt.value);
+                    setIsMenuOpen(false);
+                  }}
+                />
+              ))}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <style jsx>{`
         .tierRow {
           display: grid;
-          grid-template-columns: 80px 1fr 24px;
+          grid-template-columns: 80px 1fr;
           margin: 0;
           gap: 0;
           align-items: stretch;
@@ -152,6 +150,7 @@ export default function TierRow({
           border: 1px solid #000000;
           border-radius: 0;
           background: var(--panel);
+          position: relative;
         }
 
         .tierRow[data-over="1"] {
@@ -186,16 +185,11 @@ export default function TierRow({
           background: rgba(255, 255, 255, 0.35);
         }
 
-        .tierRight {
-          display: flex;
-          align-items: flex-start;
-          justify-content: flex-end;
-          position: relative;
-        }
-
         .tierMenuWrap {
-          position: relative;
-          z-index: 5;
+          position: absolute;
+          top: 2px;
+          right: -26px;
+          z-index: 12;
         }
 
         .tierMenuBtn {
@@ -275,6 +269,12 @@ export default function TierRow({
           gap: 0;
           min-height: 48px;
           align-content: flex-start;
+        }
+
+        @media (max-width: 768px) {
+          .tierMenuWrap {
+            right: -22px;
+          }
         }
       `}</style>
     </div>

@@ -100,6 +100,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   ref
 ) {
   const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(false);
+  const [isMobileViewport, setIsMobileViewport] = React.useState(false);
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
   const obtainOrder: CharacterObtain[] = ["ガチャ", "その他"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
@@ -154,9 +155,18 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const estimatedRowHeight = 78;
   const tiersHeightPx = Math.max(estimatedRowHeight * tierMeta.length, 420);
   const tiersWidthPx = Math.round((tiersHeightPx * 16) / 9);
+  React.useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth <= 768);
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
   const tiersFrameStyle: React.CSSProperties = {
-    width: `min(100%, ${tiersWidthPx}px)`,
-    margin: "0 auto",
+    width: isMobileViewport
+      ? `min(90%, ${tiersWidthPx}px)`
+      : `min(100%, ${tiersWidthPx}px)`,
+    margin: isMobileViewport ? "0 auto 0 0" : "0 auto",
     height: "auto",
   };
 

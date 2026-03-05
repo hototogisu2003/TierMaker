@@ -24,8 +24,12 @@ export default function ExportButton({ targetRef }: Props) {
 
       const dataUrl = await toPng(el, {
         cacheBust: true,
-        pixelRatio: 1,
+        pixelRatio: 2,
         backgroundColor: "#ffffff",
+        filter: (node) => {
+          if (!(node instanceof Element)) return true;
+          return !node.classList.contains("no-export");
+        },
       });
 
       const a = document.createElement("a");
