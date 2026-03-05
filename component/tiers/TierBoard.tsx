@@ -56,6 +56,7 @@ type Props = {
   onSetTierColor: (tierId: string, nextColor: string) => void;
   onAddTierBelow: (tierId: string) => void;
   onDeleteTier: (tierId: string) => void;
+  activeItemId: string | null;
   activeCharacter: CharacterForUI | null;
 };
 
@@ -93,6 +94,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onSetTierColor,
     onAddTierBelow,
     onDeleteTier,
+    activeItemId,
     activeCharacter,
   },
   ref
@@ -395,6 +397,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
             itemIds={sortedPoolItems}
             charactersById={charactersById}
             groupByElement={effectiveElementOrderEnabled}
+            activeItemId={activeItemId}
           />
         </SortableContext>
       </div>

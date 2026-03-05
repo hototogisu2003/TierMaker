@@ -9,6 +9,7 @@ type Props = {
   itemIds: string[];
   charactersById: Map<string, CharacterForUI>;
   groupByElement?: boolean;
+  activeItemId?: string | null;
 };
 
 const ICON_SIZE = 48;
@@ -19,7 +20,12 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
-export default function PoolRow({ itemIds, charactersById, groupByElement = false }: Props) {
+export default function PoolRow({
+  itemIds,
+  charactersById,
+  groupByElement = false,
+  activeItemId = null,
+}: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: "pool" });
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const bottomScrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -174,12 +180,26 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
       0,
       Math.max(0, totalRows - 1)
     );
-    const startRow = clamp(
+    let startRow = clamp(
       anchorRow - Math.floor(rowsToRender / 2),
       0,
       Math.max(0, totalRows - rowsToRender)
     );
-    const endRow = Math.min(totalRows, startRow + rowsToRender);
+    let endRow = Math.min(totalRows, startRow + rowsToRender);
+    if (activeItemId) {
+      const activeIndex = flatIds.indexOf(activeItemId);
+      if (activeIndex >= 0) {
+        const activeRow = Math.floor(activeIndex / columns);
+        if (activeRow < startRow || activeRow >= endRow) {
+          startRow = clamp(
+            activeRow - Math.floor(rowsToRender / 2),
+            0,
+            Math.max(0, totalRows - rowsToRender)
+          );
+          endRow = Math.min(totalRows, startRow + rowsToRender);
+        }
+      }
+    }
     const startIndex = startRow * columns;
     const endIndex = Math.min(total, endRow * columns);
 
@@ -188,7 +208,7 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
       topSpacer: startRow * ICON_SIZE,
       bottomSpacer: Math.max(0, (totalRows - endRow) * ICON_SIZE),
     };
-  }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount]);
+  }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount, activeItemId]);
 
   return (
     <div ref={setNodeRef} className="poolRow" data-over={isOver ? "1" : "0"}>
@@ -200,8 +220,19 @@ export default function PoolRow({ itemIds, charactersById, groupByElement = fals
                 const perRowCount = Math.max(1, Math.ceil(maxRenderCount / Math.max(groupedRows.length, 1)));
                 const centerIndex = Math.floor(scrollLeft / ICON_SIZE);
                 const rawStart = centerIndex - Math.floor(perRowCount / 2);
-                const startIndex = clamp(rawStart, 0, Math.max(0, row.length - perRowCount));
-                const endIndex = Math.min(row.length, startIndex + perRowCount);
+                let startIndex = clamp(rawStart, 0, Math.max(0, row.length - perRowCount));
+                let endIndex = Math.min(row.length, startIndex + perRowCount);
+                if (activeItemId) {
+                  const activeIndex = row.indexOf(activeItemId);
+                  if (activeIndex >= 0 && (activeIndex < startIndex || activeIndex >= endIndex)) {
+                    startIndex = clamp(
+                      activeIndex - Math.floor(perRowCount / 2),
+                      0,
+                      Math.max(0, row.length - perRowCount)
+                    );
+                    endIndex = Math.min(row.length, startIndex + perRowCount);
+                  }
+                }
                 const visibleIds = row.slice(startIndex, endIndex);
 
                 return (

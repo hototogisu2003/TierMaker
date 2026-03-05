@@ -463,6 +463,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onSetTierColor={setTierColor}
           onAddTierBelow={addTierBelow}
           onDeleteTier={deleteTier}
+          activeItemId={activeId}
           activeCharacter={activeCharacter}
         />
       </DndContext>
