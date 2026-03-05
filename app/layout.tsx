@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tier Maker",
-  description: "Drag and drop characters into tiers.",
+  title: "MSオプティマイズ",
+  description: "MSオプティマイズのツール一覧ページです。",
   icons: {
     icon: "/icon/icon_HP_2.png",
     shortcut: "/icon/icon_HP_2.png",

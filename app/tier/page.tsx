@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { unstable_noStore as noStore } from "next/cache";
+import type { Metadata } from "next";
 import TierMaker from "@/component/tiers/TierMaker";
 import type {
   CharacterElement,
@@ -10,6 +11,10 @@ import type {
 } from "./types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "モンストTierメーカー",
+};
 
 type CharacterRow = {
   id: string | number;
