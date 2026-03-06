@@ -52,6 +52,7 @@ type Props = {
   selectedOtherCategories: Set<CharacterOtherCategory>;
   onToggleOtherCategory: (category: CharacterOtherCategory) => void;
   onApplyFilters: () => void;
+  onResetFilters: () => void;
   onRenameTier: (tierId: string, nextName: string) => void;
   onSetTierColor: (tierId: string, nextColor: string) => void;
   onAddTierBelow: (tierId: string) => void;
@@ -90,6 +91,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     selectedOtherCategories,
     onToggleOtherCategory,
     onApplyFilters,
+    onResetFilters,
     onRenameTier,
     onSetTierColor,
     onAddTierBelow,
@@ -101,18 +103,13 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 ) {
   const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+  const isGachaObtainEnabled = selectedObtains.has("ガチャ");
+  const isOtherObtainEnabled = selectedObtains.has("その他");
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
   const obtainOrder: CharacterObtain[] = ["ガチャ", "その他"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
-  const otherCategoryOrder: CharacterOtherCategory[] = [
-    "黎絶",
-    "轟絶",
-    "爆絶",
-    "超究極",
-    "超絶",
-    "コラボ",
-    "その他",
-  ];
+  const otherCategoryRow1: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "超絶"];
+  const otherCategoryRow2: CharacterOtherCategory[] = ["超究極", "コラボ", "その他"];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
     火: { src: iconFire.src, alt: "火属性" },
     水: { src: iconWater.src, alt: "水属性" },
@@ -166,150 +163,154 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const tiersFrameStyle: React.CSSProperties = {
     width: isMobileViewport
       ? `min(90%, ${tiersWidthPx}px)`
-      : `min(100%, ${tiersWidthPx}px)`,
-    margin: isMobileViewport ? "0 auto 0 0" : "0 auto",
+      : "100%",
+    margin: isMobileViewport ? "0 auto 0 0" : "0",
+    height: "auto",
+  };
+  const poolAreaStyle: React.CSSProperties = {
+    width: isMobileViewport ? `min(90%, ${tiersWidthPx}px)` : "calc((100% - 16px) * 0.7)",
+    margin: isMobileViewport ? "0 auto 0 0" : "0",
     height: "auto",
   };
 
   return (
     <div className="tierBoardRoot">
       <div className="tierBoardInner">
-        <div ref={ref} className="tiersFrame" style={tiersFrameStyle}>
-          {tierMeta.map((tier, index) => {
-            const tierItems = containers[tier.id] ?? [];
+        <div className="topLayout">
+          <div ref={ref} className="tiersFrame" style={tiersFrameStyle}>
+            {tierMeta.map((tier, index) => {
+              const tierItems = containers[tier.id] ?? [];
 
-            return (
-              <SortableContext
-                key={tier.id}
-                id={tier.id}
-                items={tierItems}
-                strategy={rectSortingStrategy}
-              >
-                <TierRow
-                  tierId={tier.id}
-                  tierName={tier.name}
-                  tierIndex={index}
-                  tierColor={tier.color}
-                  itemIds={tierItems}
-                  charactersById={charactersById}
-                  onRename={(next) => onRenameTier(tier.id, next)}
-                  onSetColor={(nextColor) => onSetTierColor(tier.id, nextColor)}
-                  onAddBelow={() => onAddTierBelow(tier.id)}
-                  onDelete={() => onDeleteTier(tier.id)}
-                  canDelete={tierMeta.length > 1}
-                />
-              </SortableContext>
-            );
-          })}
-        </div>
-
-        <div className="filterArea" style={tiersFrameStyle}>
-          <div className="betweenTiersAndFilter" />
-
-          <div className="filterRow">
-            <Input
-              placeholder="キャラクターを検索"
-              value={nameFilter}
-              onChange={(e) => onNameFilterChange(e.target.value)}
-              aria-label="キャラクターを検索"
-            />
-
-            <button
-              type="button"
-              className="filterIconBtn"
-              aria-label="属性フィルター"
-              onClick={() => setIsElementFilterOpen((prev) => !prev)}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden focusable="false">
-                <path d="M3 5h18l-7 8v6l-4-2v-4L3 5z" fill="currentColor" />
-              </svg>
-            </button>
-            <button type="button" className="searchBtn" onClick={onApplyFilters}>
-              検索
-            </button>
+              return (
+                <SortableContext
+                  key={tier.id}
+                  id={tier.id}
+                  items={tierItems}
+                  strategy={rectSortingStrategy}
+                >
+                  <TierRow
+                    tierId={tier.id}
+                    tierName={tier.name}
+                    tierIndex={index}
+                    tierColor={tier.color}
+                    itemIds={tierItems}
+                    charactersById={charactersById}
+                    onRename={(next) => onRenameTier(tier.id, next)}
+                    onSetColor={(nextColor) => onSetTierColor(tier.id, nextColor)}
+                    onAddBelow={() => onAddTierBelow(tier.id)}
+                    onDelete={() => onDeleteTier(tier.id)}
+                    canDelete={tierMeta.length > 1}
+                  />
+                </SortableContext>
+              );
+            })}
           </div>
 
-          {isElementFilterOpen ? (
-            <div className="elementFilterPanel">
-            <div className="filterColumns">
-              <div className="filterLeftCol">
-                <div className="labelRow">
-                  <span className="filterLabel">属性</span>
-                    <div className="inlineBtns">
-                      <button
-                        type="button"
-                        className="elementBtn"
-                        data-selected={isAllElementsMode ? "1" : "0"}
-                        onClick={onSelectAllElements}
-                        aria-label="全属性"
-                      >
-                        <img className="elementBtnIcon" src="/icon/icon_全.avif" alt="全属性" />
-                      </button>
+          <div className="filterArea">
+            <div className="betweenTiersAndFilter" />
 
-                      {elementOrder.map((el) => {
-                        const selected = selectedElements.has(el);
-                      return (
+            <div className="filterRow">
+              <Input
+                placeholder="キャラクターを検索"
+                value={nameFilter}
+                onChange={(e) => onNameFilterChange(e.target.value)}
+                aria-label="キャラクターを検索"
+              />
+
+              <button
+                type="button"
+                className="filterIconBtn"
+                aria-label="属性フィルター"
+                onClick={() => setIsElementFilterOpen((prev) => !prev)}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden focusable="false">
+                  <path d="M3 5h18l-7 8v6l-4-2v-4L3 5z" fill="currentColor" />
+                </svg>
+              </button>
+              <button type="button" className="searchBtn" onClick={onApplyFilters}>
+                検索
+              </button>
+            </div>
+
+            {isElementFilterOpen ? (
+              <div className="elementFilterPanel">
+                <div className="filterColumns">
+                  <div className="filterLeftCol">
+                    <div className="labelRow attributeRow">
+                      <span className="filterLabel">属性</span>
+                      <div className="inlineBtns">
                         <button
-                          key={el}
                           type="button"
                           className="elementBtn"
-                          data-selected={selected ? "1" : "0"}
-                          onClick={() => onToggleElement(el)}
-                          aria-label={`${el}属性`}
+                          data-selected={isAllElementsMode ? "1" : "0"}
+                          onClick={onSelectAllElements}
+                          aria-label="全属性"
                         >
-                          <img
-                            className="elementBtnIcon"
-                            src={elementIconMap[el].src}
-                            alt={elementIconMap[el].alt}
-                          />
+                          <img className="elementBtnIcon" src="/icon/icon_全.avif" alt="全属性" />
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="labelRow">
-                  <span className="filterLabel">入手方法</span>
-                  <div className="inlineBtns obtainRow">
-                    {obtainOrder.map((ob) => {
-                      const selected = selectedObtains.has(ob);
-                      return (
-                        <button
-                          key={ob}
-                          type="button"
-                          className="obtainBtn"
-                          data-selected={selected ? "1" : "0"}
-                          onClick={() => onToggleObtain(ob)}
-                        >
-                          {ob}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                        {elementOrder.map((el) => {
+                          const selected = selectedElements.has(el);
+                          return (
+                            <button
+                              key={el}
+                              type="button"
+                              className="elementBtn"
+                              data-selected={selected ? "1" : "0"}
+                              onClick={() => onToggleElement(el)}
+                              aria-label={`${el}属性`}
+                            >
+                              <img
+                                className="elementBtnIcon"
+                                src={elementIconMap[el].src}
+                                alt={elementIconMap[el].alt}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {selectedObtains.has("ガチャ") ? (
-                  <div className="gachaRow">
-                    {gachaOrder.map((g) => {
-                      const selected = selectedGachas.has(g);
-                      return (
-                        <button
-                          key={g}
-                          type="button"
-                          className="gachaBtn"
-                          data-selected={selected ? "1" : "0"}
-                          onClick={() => onToggleGacha(g)}
-                        >
-                          {g}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                    <div className="labelRow">
+                      <span className="filterLabel">入手方法</span>
+                      <div className="inlineBtns obtainRow">
+                        {obtainOrder.map((ob) => {
+                          const selected = selectedObtains.has(ob);
+                          return (
+                            <button
+                              key={ob}
+                              type="button"
+                              className="obtainBtn"
+                              data-selected={selected ? "1" : "0"}
+                              onClick={() => onToggleObtain(ob)}
+                            >
+                              {ob}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {selectedObtains.has("その他") ? (
-                  <div className="otherCategoryRow">
-                    {otherCategoryOrder.map((category) => {
+                    <div className="gachaRow" data-enabled={isGachaObtainEnabled ? "1" : "0"}>
+                        {gachaOrder.map((g) => {
+                          const selected = selectedGachas.has(g);
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              className="gachaBtn"
+                              data-selected={selected ? "1" : "0"}
+                              disabled={!isGachaObtainEnabled}
+                              onClick={() => onToggleGacha(g)}
+                            >
+                              {g}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                <div className="otherCategoryRow" data-enabled={isOtherObtainEnabled ? "1" : "0"}>
+                    {otherCategoryRow1.map((category) => {
                       const selected = selectedOtherCategories.has(category);
                       return (
                         <button
@@ -317,93 +318,118 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                           type="button"
                           className="otherCategoryBtn"
                           data-selected={selected ? "1" : "0"}
+                          disabled={!isOtherObtainEnabled}
                           onClick={() => onToggleOtherCategory(category)}
                         >
                           {category}
                         </button>
                       );
                     })}
+                    <div className="otherCategorySubRow">
+                      {otherCategoryRow2.map((category) => {
+                        const selected = selectedOtherCategories.has(category);
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            className="otherCategoryBtn"
+                            data-selected={selected ? "1" : "0"}
+                            disabled={!isOtherObtainEnabled}
+                            onClick={() => onToggleOtherCategory(category)}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                ) : null}
-              </div>
+                  </div>
 
-              <div className="filterRightCol">
-                <div className="labelRow">
-                  <span className="filterLabel">実装年</span>
-                  <div className="yearRow">
-                    <select
-                      className="yearSelect"
-                      value={yearFrom === "" ? "" : String(yearFrom)}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onYearFromChange(v === "" ? "" : Number(v));
-                      }}
-                    >
-                      <option value="">開始年</option>
-                      {yearOptions.map((y) => (
-                        <option key={`from-${y}`} value={String(y)}>
-                          {y}年
-                        </option>
-                      ))}
-                    </select>
+                  <div className="filterRightCol">
+                    <div className="labelRow">
+                      <span className="filterLabel">実装年</span>
+                      <div className="yearRow">
+                        <select
+                          className="yearSelect"
+                          value={yearFrom === "" ? "" : String(yearFrom)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            onYearFromChange(v === "" ? "" : Number(v));
+                          }}
+                        >
+                          <option value="">開始年</option>
+                          {yearOptions.map((y) => (
+                            <option key={`from-${y}`} value={String(y)}>
+                              {y === 2018 ? "2018年以前" : `${y}年`}
+                            </option>
+                          ))}
+                        </select>
 
-                    <span className="yearSep">〜</span>
+                        <span className="yearSep">〜</span>
 
-                    <select
-                      className="yearSelect"
-                      value={yearTo === "" ? "" : String(yearTo)}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onYearToChange(v === "" ? "" : Number(v));
-                      }}
-                    >
-                      <option value="">終了年</option>
-                      {yearOptions.map((y) => (
-                        <option key={`to-${y}`} value={String(y)}>
-                          {y}年
-                        </option>
-                      ))}
-                    </select>
+                        <select
+                          className="yearSelect"
+                          value={yearTo === "" ? "" : String(yearTo)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            onYearToChange(v === "" ? "" : Number(v));
+                          }}
+                        >
+                          <option value="">終了年</option>
+                          {yearOptions.map((y) => (
+                            <option key={`to-${y}`} value={String(y)}>
+                              {y === 2018 ? "2018年以前" : `${y}年`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="sortRow">
+                      <span className="filterLabel">並び順</span>
+                      <button
+                        type="button"
+                        className="sortBtn"
+                        data-selected={isElementOrderEnabled ? "1" : "0"}
+                        onClick={() => onElementOrderChange(!isElementOrderEnabled)}
+                      >
+                        属性順
+                      </button>
+                      <span className="sortSpacer" aria-hidden="true" />
+                      <button
+                        type="button"
+                        className="sortBtn"
+                        data-selected={sortOrder === "asc" ? "1" : "0"}
+                        onClick={() => onSortOrderChange("asc")}
+                      >
+                        昇順
+                      </button>
+                      <button
+                        type="button"
+                        className="sortBtn"
+                        data-selected={sortOrder === "desc" ? "1" : "0"}
+                        onClick={() => onSortOrderChange("desc")}
+                      >
+                        降順
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="sortRow">
-                  <span className="filterLabel">並び順</span>
-                  <button
-                    type="button"
-                    className="sortBtn"
-                    data-selected={isElementOrderEnabled ? "1" : "0"}
-                    onClick={() => onElementOrderChange(!isElementOrderEnabled)}
-                  >
-                    属性順
-                  </button>
-                  <span className="sortSpacer" aria-hidden="true" />
-                  <button
-                    type="button"
-                    className="sortBtn"
-                    data-selected={sortOrder === "asc" ? "1" : "0"}
-                    onClick={() => onSortOrderChange("asc")}
-                  >
-                    昇順
-                  </button>
-                  <button
-                    type="button"
-                    className="sortBtn"
-                    data-selected={sortOrder === "desc" ? "1" : "0"}
-                    onClick={() => onSortOrderChange("desc")}
-                  >
-                    降順
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="resetFiltersBtn"
+                  onClick={onResetFilters}
+                >
+                  絞り込みをリセット
+                </button>
               </div>
-            </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          <div className="betweenFilterAndPool" />
+            <div className="betweenFilterAndPool" />
+          </div>
         </div>
 
-        <div className="poolArea" style={tiersFrameStyle}>
+        <div className="poolArea" style={poolAreaStyle}>
           <PoolRow
             itemIds={sortedPoolItems}
             charactersById={charactersById}
@@ -426,15 +452,27 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .tierBoardInner {
           display: grid;
-          gap: 0;
+          gap: 8px;
           min-width: 0;
           width: 100%;
           max-width: 100%;
           overflow-x: hidden;
         }
 
-        .filterArea {
+        .topLayout {
+          width: 100%;
           max-width: 100%;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 8px;
+          align-items: start;
+        }
+
+        .filterArea {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .poolArea {
@@ -453,6 +491,14 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           display: flex;
           align-items: center;
           gap: 8px;
+          padding-right: 12px;
+          box-sizing: border-box;
+        }
+
+        .filterRow :global(.uiInput) {
+          flex: 0 1 260px;
+          max-width: 260px;
+          min-width: 0;
         }
 
         .filterIconBtn {
@@ -503,11 +549,27 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           overflow-x: hidden;
         }
 
+        .resetFiltersBtn {
+          align-self: flex-start;
+          border: none;
+          background: transparent;
+          color: #2563eb;
+          font-size: 13px;
+          font-weight: 700;
+          padding: 0;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+
+        .resetFiltersBtn:hover {
+          color: #1d4ed8;
+        }
+
         .filterColumns {
           width: 100%;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-          gap: 12px 20px;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
           align-items: start;
         }
 
@@ -535,6 +597,10 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           display: flex;
           gap: 8px;
           flex-wrap: wrap;
+        }
+
+        .attributeRow .inlineBtns {
+          flex-wrap: nowrap;
         }
 
         .sortRow {
@@ -592,17 +658,22 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainRow,
         .gachaRow,
-        .otherCategoryRow {
+        .otherCategoryRow,
+        .otherCategorySubRow {
           width: 100%;
           display: flex;
+          align-items: flex-start;
           gap: 8px;
           flex-wrap: wrap;
         }
 
         .gachaRow,
         .otherCategoryRow {
-          width: auto;
           margin-left: 64px;
+        }
+
+        .otherCategorySubRow {
+          flex-basis: 100%;
         }
 
         .labelRow .obtainRow,
@@ -628,6 +699,20 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         .otherCategoryBtn[data-selected="1"] {
           background: #dbeafe;
           border-color: #2563eb;
+        }
+
+        .otherCategoryRow[data-enabled="0"] .otherCategoryBtn {
+          background: #f3f4f6;
+          color: #9ca3af;
+          border-color: #d1d5db;
+          cursor: not-allowed;
+        }
+
+        .gachaRow[data-enabled="0"] .gachaBtn {
+          background: #f3f4f6;
+          color: #9ca3af;
+          border-color: #d1d5db;
+          cursor: not-allowed;
         }
 
         .elementBtn {
@@ -662,18 +747,71 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           height: 0;
         }
 
-        @media (max-width: 768px) {
-          .filterColumns {
-            grid-template-columns: 1fr;
-            gap: 10px;
+        @media (min-width: 1024px) {
+          .topLayout {
+            grid-template-columns: minmax(0, 7fr) minmax(320px, 3fr);
+            gap: 16px;
+            align-items: start;
           }
 
-          .gachaRow,
-          .otherCategoryRow {
-            margin-left: 0;
+          .filterArea {
+            position: relative;
+            padding-top: 2px;
+            padding-left: 12px;
+            max-width: none;
+            box-sizing: border-box;
+            overflow: visible;
+          }
+
+          .filterRow {
+            max-width: 100%;
+          }
+
+          .elementFilterPanel {
+            position: absolute;
+            top: 46px;
+            left: 12px;
+            right: 0;
+            z-index: 25;
+            margin-top: 0;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            max-height: min(62vh, 560px);
+            overflow-y: auto;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .topLayout {
+            display: contents;
+          }
+
+          .tiersFrame {
+            order: 1;
+          }
+
+          .poolArea {
+            order: 2;
+          }
+
+          .filterArea {
+            order: 3;
+          }
+
+          .gachaRow {
+            margin-left: 64px;
             flex-wrap: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+          }
+
+          .otherCategoryRow {
+            margin-left: 64px;
+            flex-wrap: wrap;
+            overflow: visible;
           }
         }
       `}</style>

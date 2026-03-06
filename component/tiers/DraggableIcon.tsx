@@ -104,8 +104,8 @@ export default function DraggableIcon({ id, character }: Props) {
       <style jsx>{`
         .iconCard {
           position: relative;
-          width: 48px;
-          height: 48px;
+          width: clamp(48px, 3.5vw, 72px);
+          height: clamp(48px, 3.5vw, 72px);
           border-radius: 0;
           border: 1px solid var(--border);
           background: rgba(255, 255, 255, 0.05);
@@ -144,6 +144,11 @@ export default function DraggableIcon({ id, character }: Props) {
         }
 
         @media (max-width: 768px) {
+          .iconCard {
+            width: clamp(40px, 11vw, 56px);
+            height: clamp(40px, 11vw, 56px);
+          }
+
           .mobileNameHint {
             display: block;
           }

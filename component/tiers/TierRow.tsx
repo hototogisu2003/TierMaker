@@ -267,11 +267,15 @@ export default function TierRow({
           display: flex;
           flex-wrap: wrap;
           gap: 0;
-          min-height: 48px;
+          min-height: clamp(48px, 3.5vw, 72px);
           align-content: flex-start;
         }
 
         @media (max-width: 768px) {
+          .tierItems {
+            min-height: clamp(40px, 11vw, 56px);
+          }
+
           .tierMenuWrap {
             right: -22px;
           }

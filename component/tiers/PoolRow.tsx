@@ -13,7 +13,10 @@ type Props = {
   activeItemId?: string | null;
 };
 
-const ICON_SIZE = 48;
+const MIN_ICON_SIZE_MOBILE = 40;
+const MAX_ICON_SIZE_MOBILE = 56;
+const MIN_ICON_SIZE_PC = 48;
+const MAX_ICON_SIZE_PC = 72;
 const MOBILE_RENDER_COUNT = 80;
 const PC_RENDER_COUNT = 200;
 
@@ -38,6 +41,20 @@ export default function PoolRow({
   const [windowScrollY, setWindowScrollY] = React.useState(0);
   const [gridTopAbs, setGridTopAbs] = React.useState(0);
   const [gridWidth, setGridWidth] = React.useState(0);
+  const [iconSize, setIconSize] = React.useState(MIN_ICON_SIZE_PC);
+
+  React.useEffect(() => {
+    const updateIconSize = () => {
+      const isMobile = window.innerWidth <= 768;
+      const raw = Math.round(window.innerWidth * (isMobile ? 0.11 : 0.035));
+      const min = isMobile ? MIN_ICON_SIZE_MOBILE : MIN_ICON_SIZE_PC;
+      const max = isMobile ? MAX_ICON_SIZE_MOBILE : MAX_ICON_SIZE_PC;
+      setIconSize(clamp(raw, min, max));
+    };
+    updateIconSize();
+    window.addEventListener("resize", updateIconSize);
+    return () => window.removeEventListener("resize", updateIconSize);
+  }, []);
 
   const maxRenderCount = React.useMemo(() => {
     if (typeof window === "undefined") return PC_RENDER_COUNT;
@@ -143,8 +160,8 @@ export default function PoolRow({
 
   const maxRowWidth = React.useMemo(() => {
     if (!groupByElement || groupedRows.length === 0) return 0;
-    return groupedRows.reduce((max, row) => Math.max(max, row.length * ICON_SIZE), 0);
-  }, [groupByElement, groupedRows]);
+    return groupedRows.reduce((max, row) => Math.max(max, row.length * iconSize), 0);
+  }, [groupByElement, groupedRows, iconSize]);
 
   const scrollIndicator = React.useMemo(() => {
     const view = Math.max(viewportWidth, 0);
@@ -170,14 +187,14 @@ export default function PoolRow({
   }, [itemIds, charactersById]);
 
   const nonGroupWindow = React.useMemo(() => {
-    const columns = Math.max(1, Math.floor(Math.max(gridWidth, ICON_SIZE) / ICON_SIZE));
+    const columns = Math.max(1, Math.floor(Math.max(gridWidth, iconSize) / iconSize));
     const total = flatIds.length;
     const totalRows = Math.max(1, Math.ceil(total / columns));
     const rowsToRender = Math.max(1, Math.ceil(maxRenderCount / columns));
 
     const viewportCenterY = windowScrollY + viewportHeight * 0.5;
     const anchorRow = clamp(
-      Math.floor((viewportCenterY - gridTopAbs) / ICON_SIZE),
+      Math.floor((viewportCenterY - gridTopAbs) / iconSize),
       0,
       Math.max(0, totalRows - 1)
     );
@@ -206,17 +223,17 @@ export default function PoolRow({
 
     return {
       visibleIds: flatIds.slice(startIndex, endIndex),
-      topSpacer: startRow * ICON_SIZE,
-      bottomSpacer: Math.max(0, (totalRows - endRow) * ICON_SIZE),
+      topSpacer: startRow * iconSize,
+      bottomSpacer: Math.max(0, (totalRows - endRow) * iconSize),
     };
-  }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount, activeItemId]);
+  }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount, activeItemId, iconSize]);
 
   const visibleIdsForSortable = React.useMemo(() => {
     if (!groupByElement) return nonGroupWindow.visibleIds;
     const ids: string[] = [];
     for (const row of groupedRows) {
       const perRowCount = Math.max(1, Math.ceil(maxRenderCount / Math.max(groupedRows.length, 1)));
-      const centerIndex = Math.floor(scrollLeft / ICON_SIZE);
+      const centerIndex = Math.floor(scrollLeft / iconSize);
       const rawStart = centerIndex - Math.floor(perRowCount / 2);
       let startIndex = clamp(rawStart, 0, Math.max(0, row.length - perRowCount));
       let endIndex = Math.min(row.length, startIndex + perRowCount);
@@ -234,7 +251,7 @@ export default function PoolRow({
       ids.push(...row.slice(startIndex, endIndex));
     }
     return ids;
-  }, [groupByElement, nonGroupWindow.visibleIds, groupedRows, maxRenderCount, scrollLeft, activeItemId]);
+  }, [groupByElement, nonGroupWindow.visibleIds, groupedRows, maxRenderCount, scrollLeft, activeItemId, iconSize]);
 
   return (
     <SortableContext id="pool" items={visibleIdsForSortable} strategy={rectSortingStrategy}>
@@ -245,7 +262,7 @@ export default function PoolRow({
             <div className="poolElementRowsInner">
               {groupedRows.map((row, rowIdx) => {
                 const perRowCount = Math.max(1, Math.ceil(maxRenderCount / Math.max(groupedRows.length, 1)));
-                const centerIndex = Math.floor(scrollLeft / ICON_SIZE);
+                const centerIndex = Math.floor(scrollLeft / iconSize);
                 const rawStart = centerIndex - Math.floor(perRowCount / 2);
                 let startIndex = clamp(rawStart, 0, Math.max(0, row.length - perRowCount));
                 let endIndex = Math.min(row.length, startIndex + perRowCount);
@@ -264,7 +281,7 @@ export default function PoolRow({
 
                 return (
                   <div key={`row-${rowIdx}`} className="elementRow">
-                    <div className="elementItems" style={{ width: row.length * ICON_SIZE }}>
+                    <div className="elementItems" style={{ width: row.length * iconSize }}>
                       {visibleIds.map((id, visibleIndex) => {
                         const c = charactersById.get(id);
                         if (!c) return null;
@@ -273,7 +290,7 @@ export default function PoolRow({
                           <div
                             key={id}
                             className="virtualItem"
-                            style={{ left: absoluteIndex * ICON_SIZE }}
+                            style={{ left: absoluteIndex * iconSize }}
                           >
                             <DraggableIcon id={id} character={c} />
                           </div>
@@ -338,11 +355,11 @@ export default function PoolRow({
 
         .poolItems {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(${ICON_SIZE}px, ${ICON_SIZE}px));
-          grid-auto-rows: ${ICON_SIZE}px;
+          grid-template-columns: repeat(auto-fill, minmax(${iconSize}px, ${iconSize}px));
+          grid-auto-rows: ${iconSize}px;
           justify-content: start;
           gap: 0;
-          min-height: 72px;
+          min-height: ${Math.max(72, iconSize)}px;
         }
 
         .gridSpacer {
@@ -424,7 +441,7 @@ export default function PoolRow({
 
         .elementItems {
           position: relative;
-          height: ${ICON_SIZE}px;
+          height: ${iconSize}px;
           min-width: max-content;
         }
 

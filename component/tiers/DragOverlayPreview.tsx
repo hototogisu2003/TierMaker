@@ -9,8 +9,8 @@ export default function DragOverlayPreview({ character }: { character: Character
       <img className="overlayImg" src={character.iconUrl} alt="" />
       <style jsx>{`
         .overlayCard {
-          width: 56px;
-          height: 56px;
+          width: clamp(48px, 3.5vw, 72px);
+          height: clamp(48px, 3.5vw, 72px);
           border-radius: 0;
           border: 1px solid var(--border);
           background: rgba(255, 255, 255, 0.10);
@@ -22,6 +22,13 @@ export default function DragOverlayPreview({ character }: { character: Character
           object-fit: cover;
           user-select: none;
           -webkit-user-drag: none;
+        }
+
+        @media (max-width: 768px) {
+          .overlayCard {
+            width: clamp(40px, 11vw, 56px);
+            height: clamp(40px, 11vw, 56px);
+          }
         }
       `}</style>
     </div>

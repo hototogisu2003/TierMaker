@@ -41,6 +41,16 @@ type Props = {
   initialTiers: TierId[]; // ["S","A","B","C"]
 };
 
+const DEFAULT_NAME_FILTER = "";
+const DEFAULT_YEAR: YearValue = "";
+const DEFAULT_SORT_ORDER: SortOrder = "desc";
+const DEFAULT_ELEMENT_ORDER_ENABLED = true;
+const DEFAULT_IS_ALL_ELEMENTS_MODE = false;
+const DEFAULT_SELECTED_ELEMENTS = new Set<CharacterElement>(["火"]);
+const DEFAULT_SELECTED_OBTAINS = new Set<CharacterObtain>(["ガチャ"]);
+const DEFAULT_SELECTED_GACHAS = new Set<CharacterGacha>(["限定"]);
+const DEFAULT_SELECTED_OTHER_CATEGORIES = new Set<CharacterOtherCategory>();
+
 const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
 const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "その他"];
 const GACHA_OPTIONS: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
@@ -48,8 +58,8 @@ const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
   "黎絶",
   "轟絶",
   "爆絶",
-  "超究極",
   "超絶",
+  "超究極",
   "コラボ",
   "その他",
 ];
@@ -64,8 +74,8 @@ function implementationYearFromNumber(n: number): number | null {
   if (n >= 5989) return 2022;
   if (n >= 5255) return 2021;
   if (n >= 4511) return 2020;
-  if (n >= 3811) return 2019;
-  if (n >= 3086) return 2018;
+  if (n >= 3809) return 2019;
+  if (n >= 1) return 2018;
   return null;
 }
 
@@ -108,42 +118,48 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   // Active dragging item id
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [nameFilter, setNameFilter] = React.useState("");
-  const [yearFrom, setYearFrom] = React.useState<YearValue>("");
-  const [yearTo, setYearTo] = React.useState<YearValue>("");
-  const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
-  const [isElementOrderEnabled, setIsElementOrderEnabled] = React.useState(true);
-  const [isAllElementsMode, setIsAllElementsMode] = React.useState(false);
+  const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [yearFrom, setYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
+  const [yearTo, setYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
+  const [isElementOrderEnabled, setIsElementOrderEnabled] = React.useState(
+    DEFAULT_ELEMENT_ORDER_ENABLED
+  );
+  const [isAllElementsMode, setIsAllElementsMode] = React.useState(DEFAULT_IS_ALL_ELEMENTS_MODE);
   const [selectedElements, setSelectedElements] = React.useState<Set<CharacterElement>>(
-    () => new Set<CharacterElement>(["火"])
+    () => new Set<CharacterElement>(DEFAULT_SELECTED_ELEMENTS)
   );
   const [selectedObtains, setSelectedObtains] = React.useState<Set<CharacterObtain>>(
-    () => new Set<CharacterObtain>(["ガチャ"])
+    () => new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS)
   );
   const [selectedGachas, setSelectedGachas] = React.useState<Set<CharacterGacha>>(
-    () => new Set<CharacterGacha>(["限定"])
+    () => new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS)
   );
   const [selectedOtherCategories, setSelectedOtherCategories] = React.useState<
     Set<CharacterOtherCategory>
-  >(() => new Set<CharacterOtherCategory>(["黎絶"]));
-  const [appliedNameFilter, setAppliedNameFilter] = React.useState("");
-  const [appliedYearFrom, setAppliedYearFrom] = React.useState<YearValue>("");
-  const [appliedYearTo, setAppliedYearTo] = React.useState<YearValue>("");
-  const [appliedSortOrder, setAppliedSortOrder] = React.useState<SortOrder>("desc");
-  const [appliedIsElementOrderEnabled, setAppliedIsElementOrderEnabled] = React.useState(true);
-  const [appliedIsAllElementsMode, setAppliedIsAllElementsMode] = React.useState(false);
+  >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
+  const [appliedNameFilter, setAppliedNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [appliedYearFrom, setAppliedYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
+  const [appliedYearTo, setAppliedYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
+  const [appliedSortOrder, setAppliedSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
+  const [appliedIsElementOrderEnabled, setAppliedIsElementOrderEnabled] = React.useState(
+    DEFAULT_ELEMENT_ORDER_ENABLED
+  );
+  const [appliedIsAllElementsMode, setAppliedIsAllElementsMode] = React.useState(
+    DEFAULT_IS_ALL_ELEMENTS_MODE
+  );
   const [appliedSelectedElements, setAppliedSelectedElements] = React.useState<Set<CharacterElement>>(
-    () => new Set<CharacterElement>(["火"])
+    () => new Set<CharacterElement>(DEFAULT_SELECTED_ELEMENTS)
   );
   const [appliedSelectedObtains, setAppliedSelectedObtains] = React.useState<Set<CharacterObtain>>(
-    () => new Set<CharacterObtain>(["ガチャ"])
+    () => new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS)
   );
   const [appliedSelectedGachas, setAppliedSelectedGachas] = React.useState<Set<CharacterGacha>>(
-    () => new Set<CharacterGacha>(["限定"])
+    () => new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS)
   );
   const [appliedSelectedOtherCategories, setAppliedSelectedOtherCategories] = React.useState<
     Set<CharacterOtherCategory>
-  >(() => new Set<CharacterOtherCategory>(["黎絶"]));
+  >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -248,8 +264,17 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       const next = new Set(prev);
       if (next.has(obtain)) {
         next.delete(obtain);
+        if (obtain === "ガチャ") {
+          setSelectedGachas(new Set<CharacterGacha>());
+        }
+        if (obtain === "その他") {
+          setSelectedOtherCategories(new Set<CharacterOtherCategory>());
+        }
       } else {
         next.add(obtain);
+        if (obtain === "ガチャ") {
+          setSelectedGachas(new Set<CharacterGacha>(["限定"]));
+        }
         if (obtain === "その他") {
           setSelectedOtherCategories(new Set<CharacterOtherCategory>(["黎絶"]));
         }
@@ -291,8 +316,40 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     setAppliedIsAllElementsMode(isAllElementsMode);
     setAppliedSelectedElements(new Set(selectedElements));
     setAppliedSelectedObtains(new Set(selectedObtains));
-    setAppliedSelectedGachas(new Set(selectedGachas));
-    setAppliedSelectedOtherCategories(new Set(selectedOtherCategories));
+    setAppliedSelectedGachas(
+      selectedObtains.has("ガチャ")
+        ? new Set(selectedGachas)
+        : new Set<CharacterGacha>()
+    );
+    setAppliedSelectedOtherCategories(
+      selectedObtains.has("その他")
+        ? new Set(selectedOtherCategories)
+        : new Set<CharacterOtherCategory>()
+    );
+  }
+
+  function resetFilters() {
+    setNameFilter(DEFAULT_NAME_FILTER);
+    setYearFrom(DEFAULT_YEAR);
+    setYearTo(DEFAULT_YEAR);
+    setSortOrder(DEFAULT_SORT_ORDER);
+    setIsElementOrderEnabled(DEFAULT_ELEMENT_ORDER_ENABLED);
+    setIsAllElementsMode(DEFAULT_IS_ALL_ELEMENTS_MODE);
+    setSelectedElements(new Set<CharacterElement>(DEFAULT_SELECTED_ELEMENTS));
+    setSelectedObtains(new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS));
+    setSelectedGachas(new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS));
+    setSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
+
+    setAppliedNameFilter(DEFAULT_NAME_FILTER);
+    setAppliedYearFrom(DEFAULT_YEAR);
+    setAppliedYearTo(DEFAULT_YEAR);
+    setAppliedSortOrder(DEFAULT_SORT_ORDER);
+    setAppliedIsElementOrderEnabled(DEFAULT_ELEMENT_ORDER_ENABLED);
+    setAppliedIsAllElementsMode(DEFAULT_IS_ALL_ELEMENTS_MODE);
+    setAppliedSelectedElements(new Set<CharacterElement>(DEFAULT_SELECTED_ELEMENTS));
+    setAppliedSelectedObtains(new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS));
+    setAppliedSelectedGachas(new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS));
+    setAppliedSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
   }
 
   const containerIds: ContainerId[] = React.useMemo(() => {
@@ -467,6 +524,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           selectedOtherCategories={selectedOtherCategories}
           onToggleOtherCategory={toggleOtherCategoryFilter}
           onApplyFilters={applyFilters}
+          onResetFilters={resetFilters}
           onRenameTier={renameTier}
           onSetTierColor={setTierColor}
           onAddTierBelow={addTierBelow}
