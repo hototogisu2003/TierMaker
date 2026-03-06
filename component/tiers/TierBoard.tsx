@@ -108,6 +108,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     "黎絶",
     "轟絶",
     "爆絶",
+    "超究極",
     "超絶",
     "コラボ",
     "その他",

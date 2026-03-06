@@ -48,6 +48,7 @@ const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
   "黎絶",
   "轟絶",
   "爆絶",
+  "超究極",
   "超絶",
   "コラボ",
   "その他",
@@ -66,6 +67,13 @@ function implementationYearFromNumber(n: number): number | null {
   if (n >= 3811) return 2019;
   if (n >= 3086) return 2018;
   return null;
+}
+
+function implementationYearFromCharacter(character: CharacterForUI): number | null {
+  if (character.catalogNumber !== null) {
+    return implementationYearFromNumber(character.catalogNumber);
+  }
+  return character.releaseYear;
 }
 
 function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[]) {
@@ -193,7 +201,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           : c.obtain === "その他"
             ? !!c.otherCategory && appliedSelectedOtherCategories.has(c.otherCategory)
             : true;
-      const implYear = implementationYearFromNumber(c.sortNumber);
+      const implYear = implementationYearFromCharacter(c);
       const minYear = appliedYearFrom === "" ? Number.NEGATIVE_INFINITY : appliedYearFrom;
       const maxYear = appliedYearTo === "" ? Number.POSITIVE_INFINITY : appliedYearTo;
       const isYearMatched =

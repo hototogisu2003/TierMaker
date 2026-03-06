@@ -25,6 +25,7 @@ type CharacterRow = {
   gacha?: string | null;
   quest?: string | null;
   number?: number | string | null;
+  release_year?: number | string | null;
   icon_path: string;
 };
 
@@ -61,6 +62,15 @@ function toSortableNumber(v: number | string | null | undefined): number {
   return Number.POSITIVE_INFINITY;
 }
 
+function toNullableNumber(v: number | string | null | undefined): number | null {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function normalizeElement(raw: string | null | undefined): CharacterElement | "" {
   const v = (raw ?? "").trim().toLowerCase();
   if (v === "火" || v === "fire") return "火";
@@ -92,6 +102,7 @@ function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherC
   if (v === "黎絶") return "黎絶";
   if (v === "轟絶") return "轟絶";
   if (v === "爆絶") return "爆絶";
+  if (v === "超究極") return "超究極";
   if (v === "超絶") return "超絶";
   if (v === "コラボ" || v === "collab") return "コラボ";
   if (v === "その他" || v === "other") return "その他";
@@ -114,7 +125,7 @@ export default async function TierPage() {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select("id,name,name_kana,element,obtain,gacha,quest,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,quest,number,release_year,icon_path")
     .abortSignal(AbortSignal.timeout(8000))
     .order("number", { ascending: true })
     .order("id", { ascending: true })
@@ -154,6 +165,8 @@ export default async function TierPage() {
         obtain: normalizeObtain(r.obtain),
         gachaType: normalizeGacha(r.gacha),
         otherCategory: normalizeOtherCategory(r.quest),
+        catalogNumber: toNullableNumber(r.number),
+        releaseYear: toNullableNumber(r.release_year),
         sortNumber: toSortableNumber(r.number),
         iconPath,
         iconUrl,
