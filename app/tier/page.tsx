@@ -84,6 +84,7 @@ function normalizeElement(raw: string | null | undefined): CharacterElement | ""
 function normalizeObtain(raw: string | null | undefined): CharacterObtain | "" {
   const v = (raw ?? "").trim().toLowerCase();
   if (v === "ガチャ" || v === "gacha") return "ガチャ";
+  if (v === "降臨") return "その他";
   if (v === "その他" || v === "other") return "その他";
   return "";
 }
