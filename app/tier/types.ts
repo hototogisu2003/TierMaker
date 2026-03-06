@@ -1,5 +1,5 @@
 export type CharacterElement = "火" | "水" | "木" | "光" | "闇";
-export type CharacterObtain = "ガチャ" | "その他";
+export type CharacterObtain = "ガチャ" | "降臨" | "コラボパック";
 export type CharacterGacha = "限定" | "α" | "恒常" | "コラボ";
 export type CharacterOtherCategory =
   | "黎絶"

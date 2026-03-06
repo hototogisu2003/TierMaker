@@ -52,7 +52,7 @@ const DEFAULT_SELECTED_GACHAS = new Set<CharacterGacha>(["限定"]);
 const DEFAULT_SELECTED_OTHER_CATEGORIES = new Set<CharacterOtherCategory>();
 
 const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
-const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "その他"];
+const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "降臨", "コラボパック"];
 const GACHA_OPTIONS: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
 const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
   "黎絶",
@@ -214,7 +214,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       const isSubtypeMatched =
         c.obtain === "ガチャ"
           ? !!c.gachaType && appliedSelectedGachas.has(c.gachaType)
-          : c.obtain === "その他"
+          : c.obtain === "降臨"
             ? !!c.otherCategory && appliedSelectedOtherCategories.has(c.otherCategory)
             : true;
       const implYear = implementationYearFromCharacter(c);
@@ -267,7 +267,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         if (obtain === "ガチャ") {
           setSelectedGachas(new Set<CharacterGacha>());
         }
-        if (obtain === "その他") {
+        if (obtain === "降臨") {
           setSelectedOtherCategories(new Set<CharacterOtherCategory>());
         }
       } else {
@@ -275,7 +275,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         if (obtain === "ガチャ") {
           setSelectedGachas(new Set<CharacterGacha>(["限定"]));
         }
-        if (obtain === "その他") {
+        if (obtain === "降臨") {
           setSelectedOtherCategories(new Set<CharacterOtherCategory>(["黎絶"]));
         }
       }
@@ -322,7 +322,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         : new Set<CharacterGacha>()
     );
     setAppliedSelectedOtherCategories(
-      selectedObtains.has("その他")
+      selectedObtains.has("降臨")
         ? new Set(selectedOtherCategories)
         : new Set<CharacterOtherCategory>()
     );
