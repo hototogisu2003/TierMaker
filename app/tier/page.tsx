@@ -28,6 +28,18 @@ type CharacterRow = {
   icon_path: string;
 };
 
+function normalizeBaseUrl(v: string | undefined): string {
+  return (v ?? "").trim().replace(/\/+$/, "");
+}
+
+function isAbsoluteUrl(v: string): boolean {
+  return /^https?:\/\//i.test(v);
+}
+
+function joinUrl(base: string, path: string): string {
+  return `${base}/${path.replace(/^\/+/, "")}`;
+}
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) {
@@ -94,6 +106,7 @@ export default async function TierPage() {
 
   const tableName = process.env.NEXT_PUBLIC_CHARACTERS_TABLE ?? "characters";
   const bucketName = process.env.NEXT_PUBLIC_ICON_BUCKET ?? "characters";
+  const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
@@ -123,8 +136,15 @@ export default async function TierPage() {
     .filter((r) => typeof r.icon_path === "string" && r.icon_path.length > 0)
     .map((r) => {
       const iconPath = r.icon_path;
-      const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(iconPath);
-      const iconUrl = urlData?.publicUrl ?? iconPath;
+      let iconUrl = iconPath;
+      if (isAbsoluteUrl(iconPath)) {
+        iconUrl = iconPath;
+      } else if (r2BaseUrl) {
+        iconUrl = joinUrl(r2BaseUrl, iconPath);
+      } else {
+        const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(iconPath);
+        iconUrl = urlData?.publicUrl ?? iconPath;
+      }
 
       return {
         id: toStringId(r.id),
