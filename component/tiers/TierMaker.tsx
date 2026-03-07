@@ -117,6 +117,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   // Active dragging item id
   const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [rankColWidth, setRankColWidth] = React.useState(80);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [yearFrom, setYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
   const [yearTo, setYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
@@ -528,6 +529,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onSetTierColor={setTierColor}
           onAddTierBelow={addTierBelow}
           onDeleteTier={deleteTier}
+          rankColWidth={rankColWidth}
+          onRankColWidthChange={setRankColWidth}
           activeItemId={activeId}
           activeCharacter={activeCharacter}
         />

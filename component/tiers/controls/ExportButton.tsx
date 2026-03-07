@@ -10,6 +10,84 @@ export default function ExportButton({ targetRef }: Props) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  function sleep(ms: number) {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitForImages(container: HTMLElement, timeoutMs = 10000) {
+    const imgs = Array.from(container.querySelectorAll("img"));
+    if (imgs.length === 0) return;
+
+    await Promise.race([
+      Promise.all(
+        imgs.map(async (img) => {
+          if (img.complete && img.naturalWidth > 0) {
+            try {
+              if ("decode" in img) {
+                await img.decode();
+              }
+            } catch {
+              // Ignore decode errors and continue.
+            }
+            return;
+          }
+
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              img.removeEventListener("load", done);
+              img.removeEventListener("error", done);
+              resolve();
+            };
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+          });
+        })
+      ),
+      sleep(timeoutMs),
+    ]);
+  }
+
+  async function stabilizeForCapture(container: HTMLElement) {
+    await waitForImages(container, 10000);
+    if ("fonts" in document) {
+      try {
+        await (document as Document & { fonts: { ready: Promise<unknown> } }).fonts.ready;
+      } catch {
+        // Ignore font readiness errors.
+      }
+    }
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  async function captureWithRetry(el: HTMLElement) {
+    const mod = await import("html-to-image");
+    const toPng = mod.toPng;
+    const attempts = 3;
+    let lastError: unknown = null;
+
+    for (let i = 0; i < attempts; i += 1) {
+      try {
+        await stabilizeForCapture(el);
+        const dataUrl = await toPng(el, {
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: "#ffffff",
+          filter: (node) => {
+            if (!(node instanceof Element)) return true;
+            return !node.classList.contains("no-export");
+          },
+        });
+        return dataUrl;
+      } catch (e) {
+        lastError = e;
+        await sleep(250 * (i + 1));
+      }
+    }
+
+    throw lastError ?? new Error("画像出力に失敗しました");
+  }
+
   async function exportPng() {
     const el = targetRef.current;
     if (!el) return;
@@ -18,26 +96,14 @@ export default function ExportButton({ targetRef }: Props) {
     setError(null);
 
     try {
-      // Dynamic import to avoid bundling issues
-      const mod = await import("html-to-image");
-      const toPng = mod.toPng;
-
-      const dataUrl = await toPng(el, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        filter: (node) => {
-          if (!(node instanceof Element)) return true;
-          return !node.classList.contains("no-export");
-        },
-      });
+      const dataUrl = await captureWithRetry(el);
 
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `tier-maker-${Date.now()}.png`;
       a.click();
     } catch (e: any) {
-      setError(e?.message ?? "画像出力に失敗しました");
+      setError(e?.message ?? "画像出力に失敗しました。画像読み込み完了後に再試行してください。");
     } finally {
       setBusy(false);
     }

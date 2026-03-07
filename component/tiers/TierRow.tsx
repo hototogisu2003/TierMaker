@@ -17,6 +17,8 @@ type Props = {
   onAddBelow: () => void;
   onDelete: () => void;
   canDelete: boolean;
+  rankColWidth: number;
+  onRankColWidthChange: (next: number) => void;
 };
 
 const COLOR_OPTIONS = [
@@ -43,11 +45,16 @@ export default function TierRow({
   onAddBelow,
   onDelete,
   canDelete,
+  rankColWidth,
+  onRankColWidthChange,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: tierId });
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuWrapRef = React.useRef<HTMLDivElement | null>(null);
-  const rowStyle: React.CSSProperties = { width: "100%" };
+  const rowStyle: React.CSSProperties = {
+    width: "100%",
+    ["--rank-col-width" as string]: `${rankColWidth}px`,
+  };
 
   React.useEffect(() => {
     if (!isMenuOpen) return;
@@ -64,8 +71,39 @@ export default function TierRow({
     };
   }, [isMenuOpen]);
 
+  const handleResizeStart = React.useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startWidth = rankColWidth;
+
+      const onMove = (ev: PointerEvent) => {
+        const delta = ev.clientX - startX;
+        const next = Math.max(56, Math.min(180, startWidth + delta));
+        onRankColWidthChange(next);
+      };
+
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [rankColWidth, onRankColWidthChange]
+  );
+
   return (
-    <div ref={setNodeRef} style={rowStyle} className="tierRow" data-over={isOver ? "1" : "0"}>
+    <div
+      ref={(node) => {
+        setNodeRef(node);
+      }}
+      style={rowStyle}
+      className="tierRow"
+      data-over={isOver ? "1" : "0"}
+    >
       <div className="tierLeft" style={{ backgroundColor: tierColor }}>
         <input
           className="tierNameInput"
@@ -74,6 +112,14 @@ export default function TierRow({
           aria-label={`Rename tier ${tierId}`}
         />
       </div>
+
+      <div
+        className="rankResizeHandle no-export"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="ランク列の幅を調整"
+        onPointerDown={handleResizeStart}
+      />
 
       <div className="tierItems">
         {itemIds.map((id) => {
@@ -142,7 +188,7 @@ export default function TierRow({
       <style jsx>{`
         .tierRow {
           display: grid;
-          grid-template-columns: 80px 1fr;
+          grid-template-columns: var(--rank-col-width) 1fr;
           margin: 0;
           gap: 0;
           align-items: stretch;
@@ -165,6 +211,17 @@ export default function TierRow({
           height: 100%;
           min-height: 100%;
           padding: 0;
+        }
+
+        .rankResizeHandle {
+          position: absolute;
+          top: 0;
+          left: calc(var(--rank-col-width) - 4px);
+          width: 8px;
+          height: 100%;
+          cursor: col-resize;
+          z-index: 8;
+          touch-action: none;
         }
 
         .tierNameInput {
@@ -280,6 +337,7 @@ export default function TierRow({
             right: -22px;
           }
         }
+
       `}</style>
     </div>
   );

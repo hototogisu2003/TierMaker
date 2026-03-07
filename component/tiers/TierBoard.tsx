@@ -57,6 +57,8 @@ type Props = {
   onSetTierColor: (tierId: string, nextColor: string) => void;
   onAddTierBelow: (tierId: string) => void;
   onDeleteTier: (tierId: string) => void;
+  rankColWidth: number;
+  onRankColWidthChange: (next: number) => void;
   activeItemId: string | null;
   activeCharacter: CharacterForUI | null;
 };
@@ -96,6 +98,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onSetTierColor,
     onAddTierBelow,
     onDeleteTier,
+    rankColWidth,
+    onRankColWidthChange,
     activeItemId,
     activeCharacter,
   },
@@ -196,13 +200,15 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                     itemIds={tierItems}
                     charactersById={charactersById}
                     onRename={(next) => onRenameTier(tier.id, next)}
-                    onSetColor={(nextColor) => onSetTierColor(tier.id, nextColor)}
-                    onAddBelow={() => onAddTierBelow(tier.id)}
-                    onDelete={() => onDeleteTier(tier.id)}
-                    canDelete={tierMeta.length > 1}
-                  />
-                </SortableContext>
-              );
+                  onSetColor={(nextColor) => onSetTierColor(tier.id, nextColor)}
+                  onAddBelow={() => onAddTierBelow(tier.id)}
+                  onDelete={() => onDeleteTier(tier.id)}
+                  canDelete={tierMeta.length > 1}
+                  rankColWidth={rankColWidth}
+                  onRankColWidthChange={onRankColWidthChange}
+                />
+              </SortableContext>
+            );
             })}
           </div>
 
