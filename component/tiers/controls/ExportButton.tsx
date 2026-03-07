@@ -124,16 +124,26 @@ export default function ExportButton({ targetRef }: Props) {
       img.onload = () => resolve();
       img.onerror = () => reject(new Error("プレビュー画像の読み込みに失敗しました"));
     });
-    const titleHeight = 64;
     const canvas = document.createElement("canvas");
     canvas.width = img.width;
-    canvas.height = img.height + titleHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return baseUrl;
+
+    // Mobileでも見えるように大きめ基準で開始し、はみ出すときだけ縮小する。
+    let fontSize = Math.min(56, Math.max(28, Math.round(canvas.width * 0.055)));
+    const maxTextWidth = Math.max(0, canvas.width - 24);
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    while (ctx.measureText(title).width > maxTextWidth && fontSize > 20) {
+      fontSize -= 1;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+    }
+
+    const titleHeight = Math.max(56, fontSize + 16);
+    canvas.height = img.height + titleHeight;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#111827";
-    ctx.font = `bold ${Math.max(16, Math.round(canvas.width * 0.025))}px sans-serif`;
+    ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(title, 12, titleHeight / 2);
