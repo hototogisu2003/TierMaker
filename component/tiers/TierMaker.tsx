@@ -276,7 +276,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           setSelectedGachas(new Set<CharacterGacha>(["限定"]));
         }
         if (obtain === "降臨") {
-          setSelectedOtherCategories(new Set<CharacterOtherCategory>(["黎絶"]));
+          setSelectedOtherCategories(new Set<CharacterOtherCategory>());
         }
       }
       return next;

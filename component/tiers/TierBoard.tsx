@@ -277,7 +277,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                       </div>
                     </div>
 
-                    <div className="labelRow">
+                    <div className="blockRow">
                       <span className="filterLabel">入手方法</span>
                       <div className="inlineBtns obtainRow">
                         {obtainOrder.map((ob) => {
@@ -593,6 +593,12 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           flex-wrap: wrap;
         }
 
+        .blockRow {
+          width: 100%;
+          display: grid;
+          gap: 6px;
+        }
+
         .filterLabel {
           min-width: 56px;
           color: #111111;
@@ -675,7 +681,12 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .gachaRow,
         .otherCategoryRow {
-          margin-left: 64px;
+          margin-left: 0;
+        }
+
+        .obtainRow {
+          padding-bottom: 6px;
+          border-bottom: 1px solid #d1d5db;
         }
 
         .otherCategorySubRow {
@@ -808,14 +819,14 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           }
 
           .gachaRow {
-            margin-left: 64px;
+            margin-left: 0;
             flex-wrap: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
           }
 
           .otherCategoryRow {
-            margin-left: 64px;
+            margin-left: 0;
             flex-wrap: wrap;
             overflow: visible;
           }
