@@ -46,6 +46,7 @@ const DEFAULT_YEAR: YearValue = "";
 const DEFAULT_SORT_ORDER: SortOrder = "desc";
 const DEFAULT_ELEMENT_ORDER_ENABLED = true;
 const DEFAULT_IS_ALL_ELEMENTS_MODE = false;
+const DEFAULT_INCLUDE_UNOBTAINABLE = false;
 const DEFAULT_SELECTED_ELEMENTS = new Set<CharacterElement>(["火"]);
 const DEFAULT_SELECTED_OBTAINS = new Set<CharacterObtain>(["ガチャ"]);
 const DEFAULT_SELECTED_GACHAS = new Set<CharacterGacha>(["限定"]);
@@ -119,6 +120,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [rankColWidth, setRankColWidth] = React.useState(80);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
+    DEFAULT_INCLUDE_UNOBTAINABLE
+  );
   const [yearFrom, setYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
   const [yearTo, setYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
   const [sortOrder, setSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
@@ -139,6 +143,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     Set<CharacterOtherCategory>
   >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
   const [appliedNameFilter, setAppliedNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [appliedIncludeUnobtainable, setAppliedIncludeUnobtainable] = React.useState(
+    DEFAULT_INCLUDE_UNOBTAINABLE
+  );
   const [appliedYearFrom, setAppliedYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
   const [appliedYearTo, setAppliedYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
   const [appliedSortOrder, setAppliedSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
@@ -179,6 +186,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     if (normalizedFilter) {
       const ids = new Set<string>();
       for (const c of characters) {
+        if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
         const name = c.name.trim().toLowerCase();
         const nameKana = c.nameKana.trim().toLowerCase();
         if (name.includes(normalizedFilter) || nameKana.includes(normalizedFilter)) {
@@ -208,6 +216,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
     const ids = new Set<string>();
     for (const c of characters) {
+      if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
       const isElementMatched =
         appliedIsAllElementsMode || (!!c.element && appliedSelectedElements.has(c.element));
       const isObtainMatched = !!c.obtain && appliedSelectedObtains.has(c.obtain);
@@ -232,6 +241,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   }, [
     characters,
     normalizedFilter,
+    appliedIncludeUnobtainable,
     appliedSelectedElements,
     appliedIsAllElementsMode,
     appliedSelectedObtains,
@@ -309,6 +319,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   function applyFilters() {
     setAppliedNameFilter(nameFilter);
+    setAppliedIncludeUnobtainable(includeUnobtainable);
     setAppliedYearFrom(yearFrom);
     setAppliedYearTo(yearTo);
     setAppliedSortOrder(sortOrder);
@@ -330,6 +341,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   function resetFilters() {
     setNameFilter(DEFAULT_NAME_FILTER);
+    setIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setYearFrom(DEFAULT_YEAR);
     setYearTo(DEFAULT_YEAR);
     setSortOrder(DEFAULT_SORT_ORDER);
@@ -341,6 +353,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     setSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
 
     setAppliedNameFilter(DEFAULT_NAME_FILTER);
+    setAppliedIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setAppliedYearFrom(DEFAULT_YEAR);
     setAppliedYearTo(DEFAULT_YEAR);
     setAppliedSortOrder(DEFAULT_SORT_ORDER);
@@ -502,6 +515,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           visibleCharacterIds={visibleCharacterIds}
           nameFilter={nameFilter}
           onNameFilterChange={setNameFilter}
+          includeUnobtainable={includeUnobtainable}
+          onIncludeUnobtainableChange={setIncludeUnobtainable}
           yearFrom={yearFrom}
           yearTo={yearTo}
           yearOptions={YEAR_OPTIONS}

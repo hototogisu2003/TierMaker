@@ -18,6 +18,7 @@ export type CharacterForUI = {
   obtain: CharacterObtain | "";
   gachaType: CharacterGacha | "";
   otherCategory: CharacterOtherCategory | "";
+  isObtainable: boolean;
   sortNumber: number;
   iconPath: string;
   iconUrl: string;

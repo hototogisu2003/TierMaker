@@ -24,6 +24,7 @@ type CharacterRow = {
   obtain?: string | null;
   gacha?: string | null;
   quest?: string | null;
+  get?: number | string | null;
   number?: number | string | null;
   icon_path: string;
 };
@@ -59,6 +60,15 @@ function toSortableNumber(v: number | string | null | undefined): number {
     return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
   }
   return Number.POSITIVE_INFINITY;
+}
+
+function isObtainableFromGet(v: number | string | null | undefined): boolean {
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n !== 0 : true;
+  }
+  return true;
 }
 
 function normalizeElement(raw: string | null | undefined): CharacterElement | "" {
@@ -117,7 +127,7 @@ export default async function TierPage() {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select("id,name,name_kana,element,obtain,gacha,quest,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,quest,get,number,icon_path")
     .abortSignal(AbortSignal.timeout(8000))
     .order("number", { ascending: true })
     .order("id", { ascending: true })
@@ -157,6 +167,7 @@ export default async function TierPage() {
         obtain: normalizeObtain(r.obtain),
         gachaType: normalizeGacha(r.gacha),
         otherCategory: normalizeOtherCategory(r.quest),
+        isObtainable: isObtainableFromGet(r.get),
         sortNumber: toSortableNumber(r.number),
         iconPath,
         iconUrl,
