@@ -3,6 +3,7 @@
 import React from "react";
 import type {
   CharacterElement,
+  CharacterForm,
   CharacterForUI,
   CharacterGacha,
   CharacterObtain,
@@ -51,6 +52,8 @@ type Props = {
   onToggleObtain: (obtain: CharacterObtain) => void;
   selectedGachas: Set<CharacterGacha>;
   onToggleGacha: (gacha: CharacterGacha) => void;
+  selectedForms: Set<CharacterForm>;
+  onToggleForm: (form: CharacterForm) => void;
   selectedOtherCategories: Set<CharacterOtherCategory>;
   onToggleOtherCategory: (category: CharacterOtherCategory) => void;
   onApplyFilters: () => void;
@@ -94,6 +97,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onToggleObtain,
     selectedGachas,
     onToggleGacha,
+    selectedForms,
+    onToggleForm,
     selectedOtherCategories,
     onToggleOtherCategory,
     onApplyFilters,
@@ -116,6 +121,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
   const obtainOrder: CharacterObtain[] = ["ガチャ", "降臨", "コラボパック"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
+  const formOrder: CharacterForm[] = ["進化/神化", "獣神化", "獣神化改", "真獣神化"];
   const otherCategoryRow1: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "超絶"];
   const otherCategoryRow2: CharacterOtherCategory[] = ["超究極", "コラボ", "その他"];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
@@ -353,6 +359,26 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                       })}
                     </div>
                   </div>
+
+                    <div className="blockRow">
+                      <span className="filterLabel">形態</span>
+                      <div className="formRow">
+                        {formOrder.map((form) => {
+                          const selected = selectedForms.has(form);
+                          return (
+                            <button
+                              key={form}
+                              type="button"
+                              className="formBtn"
+                              data-selected={selected ? "1" : "0"}
+                              onClick={() => onToggleForm(form)}
+                            >
+                              {form}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="filterRightCol">
@@ -696,6 +722,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainRow,
         .gachaRow,
+        .formRow,
         .otherCategoryRow,
         .otherCategorySubRow {
           width: 100%;
@@ -726,6 +753,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainBtn,
         .gachaBtn,
+        .formBtn,
         .otherCategoryBtn {
           min-width: 64px;
           border: 1px solid #9ca3af;
@@ -739,6 +767,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainBtn[data-selected="1"],
         .gachaBtn[data-selected="1"],
+        .formBtn[data-selected="1"],
         .otherCategoryBtn[data-selected="1"] {
           background: #dbeafe;
           border-color: #2563eb;

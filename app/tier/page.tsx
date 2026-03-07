@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import TierMaker from "@/component/tiers/TierMaker";
 import type {
   CharacterElement,
+  CharacterForm,
   CharacterForUI,
   CharacterGacha,
   CharacterObtain,
@@ -23,6 +24,7 @@ type CharacterRow = {
   element?: string | null;
   obtain?: string | null;
   gacha?: string | null;
+  form?: string | null;
   quest?: string | null;
   get?: number | string | null;
   number?: number | string | null;
@@ -99,6 +101,15 @@ function normalizeGacha(raw: string | null | undefined): CharacterGacha | "" {
   return "";
 }
 
+function normalizeForm(raw: string | null | undefined): CharacterForm | "" {
+  const v = (raw ?? "").trim();
+  if (v === "進化/神化") return "進化/神化";
+  if (v === "獣神化") return "獣神化";
+  if (v === "獣神化改") return "獣神化改";
+  if (v === "真獣神化") return "真獣神化";
+  return "";
+}
+
 function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherCategory | "" {
   const v = (raw ?? "").trim().toLowerCase();
   if (v === "黎絶") return "黎絶";
@@ -127,7 +138,7 @@ export default async function TierPage() {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select("id,name,name_kana,element,obtain,gacha,quest,get,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,form,quest,get,number,icon_path")
     .abortSignal(AbortSignal.timeout(8000))
     .order("number", { ascending: true })
     .order("id", { ascending: true })
@@ -166,6 +177,7 @@ export default async function TierPage() {
         element: normalizeElement(r.element),
         obtain: normalizeObtain(r.obtain),
         gachaType: normalizeGacha(r.gacha),
+        formType: normalizeForm(r.form),
         otherCategory: normalizeOtherCategory(r.quest),
         isObtainable: isObtainableFromGet(r.get),
         sortNumber: toSortableNumber(r.number),
