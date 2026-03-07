@@ -124,8 +124,8 @@ export default function ExportButton({ targetRef }: Props) {
         }
 
         .btnPrimary {
-          border: 1px solid #1d4ed8;
-          background: #3b82f6;
+          border: 1px solid #15803d;
+          background: #22c55e;
           color: #ffffff;
           padding: 6px 10px;
           border-radius: 10px;
@@ -141,7 +141,7 @@ export default function ExportButton({ targetRef }: Props) {
         }
 
         .btnPrimary:hover:not(:disabled) {
-          background: #2563eb;
+          background: #16a34a;
         }
 
         .error {
