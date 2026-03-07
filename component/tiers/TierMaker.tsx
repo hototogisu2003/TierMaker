@@ -80,10 +80,9 @@ function implementationYearFromNumber(n: number): number | null {
 }
 
 function implementationYearFromCharacter(character: CharacterForUI): number | null {
-  if (character.catalogNumber !== null) {
-    return implementationYearFromNumber(character.catalogNumber);
-  }
-  return character.releaseYear;
+  return Number.isFinite(character.sortNumber)
+    ? implementationYearFromNumber(character.sortNumber)
+    : null;
 }
 
 function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[]) {
