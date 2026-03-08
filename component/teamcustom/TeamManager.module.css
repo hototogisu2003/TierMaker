@@ -575,6 +575,75 @@
   gap: 6px;
 }
 
+.arrangeRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.arrangeTitle {
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.arrangeTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.arrangeGearBtn {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.arrangeBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.arrangeVisualRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.arrangeActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: flex-start;
+  gap: 4px;
+  flex-wrap: nowrap;
+  margin-left: 4px;
+  flex: 0 0 auto;
+}
+
+.arrangeMoveRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.arrangeMiniBtn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .questMetaIcon,
 .questMetaBlank {
   width: 40px;
@@ -602,6 +671,7 @@
 }
 
 .arrangeIcons {
+  grid-template-columns: repeat(4, 48px);
   gap: 0;
 }
 
@@ -610,6 +680,27 @@
   height: 48px;
   border: 1px dashed #b6c1d0;
   border-radius: 4px;
+}
+
+.arrangeOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.arrangeDialog {
+  width: min(420px, 100%);
+  border: 1px solid #d0d7e2;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
 }
 
 .mobileEditorOverlay {
@@ -731,6 +822,18 @@
 
   .arrangeBoard {
     grid-template-columns: 1fr;
+  }
+
+  .arrangeBottomRow {
+    align-items: flex-start;
+  }
+
+  .arrangeVisualRow {
+    overflow-x: auto;
+  }
+
+  .arrangeActions {
+    margin-left: 2px;
   }
 }
 
@@ -889,6 +992,60 @@
     padding: 6px 4px;
     justify-content: center;
     text-align: center;
+  }
+
+  .arrangeRow {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .arrangeTitleRow {
+    gap: 4px;
+  }
+
+  .arrangeTitle {
+    font-size: 12px;
+    line-height: 1.1;
+  }
+
+  .arrangeBottomRow {
+    gap: 4px;
+    align-items: center;
+  }
+
+  .arrangeVisualRow {
+    gap: 4px;
+  }
+
+  .arrangeGearBtn {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 5px;
+  }
+
+  .arrangeGearBtn svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  .arrangeMiniBtn {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    font-size: 10px;
+  }
+
+  .questMetaIcon,
+  .questMetaBlank,
+  .compareIcon,
+  .blankIcon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .arrangeIcons {
+    grid-template-columns: repeat(4, 36px);
   }
 }
 

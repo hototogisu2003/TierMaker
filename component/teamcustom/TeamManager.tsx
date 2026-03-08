@@ -149,6 +149,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [mobileEditSlotIndex, setMobileEditSlotIndex] = useState<number | null>(null);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
   const [arrangeCandidateId, setArrangeCandidateId] = useState("");
+  const [arrangeRemoveId, setArrangeRemoveId] = useState("");
+  const [isArrangeAddOpen, setIsArrangeAddOpen] = useState(false);
+  const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
@@ -231,6 +234,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   );
   const fruitOrderMap = useMemo(
     () => new Map(FRUIT_OPTIONS.map((option) => [option.name, option.id])),
+    []
+  );
+  const crestOrderMap = useMemo<Map<string, number>>(
+    () => new Map<string, number>(CREST_OPTIONS.map((option, index) => [option, index + 1])),
     []
   );
 
@@ -417,6 +424,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         const next = [...current, value];
         if (kind === "fruits") {
           next.sort((a, b) => (fruitOrderMap.get(a) ?? Number.POSITIVE_INFINITY) - (fruitOrderMap.get(b) ?? Number.POSITIVE_INFINITY));
+        } else {
+          next.sort((a, b) => (crestOrderMap.get(a) ?? Number.POSITIVE_INFINITY) - (crestOrderMap.get(b) ?? Number.POSITIVE_INFINITY));
         }
         return { ...slot, [kind]: next };
       })
@@ -538,9 +547,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       return [...prev, arrangeCandidateId];
     });
     setArrangeCandidateId("");
+    setIsArrangeAddOpen(false);
   }
   function removeArrangeRecord(id: string) {
+    if (!id) return;
     setArrangeIds((prev) => prev.filter((v) => v !== id));
+    setArrangeRemoveId((prev) => (prev === id ? "" : prev));
+    setIsArrangeRemoveOpen(false);
   }
 
   function openMobileEditor(slotIndex: number) {
@@ -1070,63 +1083,109 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         <div className={styles.card} style={{ display: "grid", gap: 10 }}>
           <div className={styles.label}>並べる画面 (最大15件)</div>
           <div className={styles.row}>
-            <select className={styles.select} value={arrangeCandidateId} onChange={(e) => setArrangeCandidateId(e.target.value)} style={{ minWidth: 260 }}>
-              <option value="">追加する編成を選択</option>
-              {availableArrangeRecords.map((record) => (
-                <option key={record.id} value={record.id}>{record.title}</option>
-              ))}
-            </select>
-            <button className={styles.btn} type="button" onClick={addArrangeRecord} disabled={!arrangeCandidateId || arrangeIds.length >= 15}>
+            <button className={styles.btn} type="button" onClick={() => setIsArrangeAddOpen(true)} disabled={arrangeIds.length >= 15 || availableArrangeRecords.length === 0}>
               追加
+            </button>
+            <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(true)} disabled={arrangedRecords.length === 0}>
+              削除
             </button>
             <span className={styles.helper}>{arrangeIds.length}/15件</span>
           </div>
           <div className={`${styles.compareBoard} ${styles.arrangeBoard}`}>
             {arrangedRecords.map((record, idx) => (
-              <div key={record.id} className={styles.compareRow}>
-                <div className={styles.arrangeMeta}>
-                  {record.targetQuestIconUrl ? (
-                    <img className={styles.questMetaIcon} src={record.targetQuestIconUrl} alt={record.targetQuestName || "対象クエスト"} />
-                  ) : (
-                    <div className={styles.questMetaBlank} />
-                  )}
-                  <div style={{ fontWeight: 800 }}>{record.title}</div>
+              <div key={record.id} className={`${styles.compareRow} ${styles.arrangeRow}`}>
+                <div className={styles.arrangeTitleRow}>
+                  <div className={styles.arrangeTitle}>{record.title}</div>
+                  <button
+                    className={`${styles.iconBtn} ${styles.arrangeGearBtn}`}
+                    type="button"
+                    aria-label="編成を編集"
+                    title="編成を編集"
+                    onClick={() => router.push(`/TeamBuild/team?edit=${record.id}`)}
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                      <path
+                        d="M19.14 12.94c.04-.31.06-.62.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.14 7.14 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.57.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.51.4 1.06.71 1.63.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.57-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                <div className={styles.row} style={{ justifyContent: "space-between", width: "100%", flexWrap: "nowrap" }}>
-                  <div className={`${styles.compareIcons} ${styles.arrangeIcons}`}>
-                    {[0, 1, 2, 3].map((slotIndex) => {
-                      const slot = record.slots.find((s) => s.slotIndex === slotIndex);
-                      return slot?.iconUrl ? (
-                        <img key={slotIndex} className={styles.compareIcon} src={slot.iconUrl} alt={slot.characterName} title={slot.characterName} />
-                      ) : (
-                        <div key={slotIndex} className={styles.blankIcon} />
-                      );
-                    })}
+                <div className={styles.arrangeBottomRow}>
+                  <div className={styles.arrangeVisualRow}>
+                    {record.targetQuestIconUrl ? (
+                      <img className={styles.questMetaIcon} src={record.targetQuestIconUrl} alt={record.targetQuestName || "対象クエスト"} />
+                    ) : (
+                      <div className={styles.questMetaBlank} />
+                    )}
+                    <div className={`${styles.compareIcons} ${styles.arrangeIcons}`}>
+                      {[0, 1, 2, 3].map((slotIndex) => {
+                        const slot = record.slots.find((s) => s.slotIndex === slotIndex);
+                        return slot?.iconUrl ? (
+                          <img key={slotIndex} className={styles.compareIcon} src={slot.iconUrl} alt={slot.characterName} title={slot.characterName} />
+                        ) : (
+                          <div key={slotIndex} className={styles.blankIcon} />
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className={styles.row} style={{ flexWrap: "nowrap", marginLeft: 8 }}>
-                    <button
-                      className={styles.btn}
-                      disabled={idx === 0}
-                      onClick={() => setArrangeIds((prev) => moveItem(prev, idx, idx - 1))}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      className={styles.btn}
-                      disabled={idx === arrangedRecords.length - 1}
-                      onClick={() => setArrangeIds((prev) => moveItem(prev, idx, idx + 1))}
-                    >
-                      ↓
-                    </button>
-                    <button className={styles.btn} type="button" onClick={() => removeArrangeRecord(record.id)}>
-                      削除
-                    </button>
+                  <div className={styles.arrangeActions}>
+                    <div className={styles.arrangeMoveRow}>
+                      <button
+                        className={`${styles.btn} ${styles.arrangeMiniBtn}`}
+                        disabled={idx === 0}
+                        onClick={() => setArrangeIds((prev) => moveItem(prev, idx, idx - 1))}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className={`${styles.btn} ${styles.arrangeMiniBtn}`}
+                        disabled={idx === arrangedRecords.length - 1}
+                        onClick={() => setArrangeIds((prev) => moveItem(prev, idx, idx + 1))}
+                      >
+                        ↓
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
           {arrangedRecords.length === 0 ? <div className={styles.helper}>追加ボタンで編成を並べてください</div> : null}
+          {isArrangeAddOpen ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsArrangeAddOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>追加する編成を選択</div>
+                <select className={styles.select} value={arrangeCandidateId} onChange={(e) => setArrangeCandidateId(e.target.value)}>
+                  <option value="">選択してください</option>
+                  {availableArrangeRecords.map((record) => (
+                    <option key={record.id} value={record.id}>{record.title}</option>
+                  ))}
+                </select>
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsArrangeAddOpen(false)}>閉じる</button>
+                  <button className={styles.btn} type="button" onClick={addArrangeRecord} disabled={!arrangeCandidateId || arrangeIds.length >= 15}>追加</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {isArrangeRemoveOpen ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsArrangeRemoveOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>削除する編成を選択</div>
+                <select className={styles.select} value={arrangeRemoveId} onChange={(e) => setArrangeRemoveId(e.target.value)}>
+                  <option value="">選択してください</option>
+                  {arrangedRecords.map((record) => (
+                    <option key={record.id} value={record.id}>{record.title}</option>
+                  ))}
+                </select>
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(false)}>閉じる</button>
+                  <button className={styles.btn} type="button" onClick={() => removeArrangeRecord(arrangeRemoveId)} disabled={!arrangeRemoveId}>削除</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
