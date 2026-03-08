@@ -224,11 +224,19 @@
   gap: 3px;
 }
 
+.teamRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 6px;
+}
+
 .teamBlock {
   border: 1px solid #8f8f8f;
   background: #ffffff;
   cursor: pointer;
   font-family: "BIZ UDPGothic", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+  width: 100%;
 }
 
 .teamBlock[data-active="1"] {
@@ -361,6 +369,30 @@
 
 .tableCellEmpty {
   color: transparent;
+}
+
+.slotMoveBtns {
+  display: grid;
+  gap: 4px;
+}
+
+.slotMoveBtn {
+  width: 26px;
+  height: 24px;
+  border: 1px solid #2f4056;
+  border-radius: 6px;
+  background: #f8fbff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.slotMoveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .elementBtn {
@@ -932,6 +964,11 @@
     gap: 2px;
   }
 
+  .teamRow {
+    grid-template-columns: minmax(0, 1fr) 22px;
+    gap: 4px;
+  }
+
   .teamHeader {
     grid-template-columns: 42px 1fr;
   }
@@ -962,6 +999,17 @@
 
   .sheetSelectText {
     font-size: 10px;
+  }
+
+  .slotMoveBtns {
+    gap: 2px;
+  }
+
+  .slotMoveBtn {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    border-radius: 5px;
   }
 
   .tableHead {

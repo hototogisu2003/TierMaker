@@ -413,6 +413,25 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setSlots((prev) => prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, ...patch } : slot)));
   }
 
+  function moveDraftSlot(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex > 3) return;
+    setSlots((prev) => {
+      const from = prev.find((s) => s.slotIndex === fromIndex);
+      const to = prev.find((s) => s.slotIndex === toIndex);
+      if (!from || !to) return prev;
+      return prev.map((slot) => {
+        if (slot.slotIndex === fromIndex) {
+          return { ...slot, characterId: to.characterId, fruits: [...to.fruits], crests: [...to.crests] };
+        }
+        if (slot.slotIndex === toIndex) {
+          return { ...slot, characterId: from.characterId, fruits: [...from.fruits], crests: [...from.crests] };
+        }
+        return slot;
+      });
+    });
+    setActiveSlotIndex(toIndex);
+  }
+
   function toggleOption(slotIndex: number, kind: "fruits" | "crests", value: string, max: number) {
     setSlots((prev) =>
       prev.map((slot) => {
@@ -934,57 +953,78 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
 
                   return (
-                    <button
-                      key={slot.slotIndex}
-                      type="button"
-                      className={styles.teamBlock}
-                      data-active={activeSlotIndex === slot.slotIndex ? "1" : "0"}
-                      onClick={() => setActiveSlotIndex(slot.slotIndex)}
-                    >
-                      <div className={styles.teamHeader} style={{ backgroundColor: ELEMENT_HEADER_COLOR[c?.element ?? ""] }}>
-                        <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
-                        <div className={styles.teamNameWrap}>
-                          <div className={styles.teamName}>{c?.name || ""}</div>
-                          <span
-                            className={styles.mobileEditBtn}
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openMobileEditor(slot.slotIndex);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
+                    <div key={slot.slotIndex} className={styles.teamRow}>
+                      <button
+                        type="button"
+                        className={styles.teamBlock}
+                        data-active={activeSlotIndex === slot.slotIndex ? "1" : "0"}
+                        onClick={() => setActiveSlotIndex(slot.slotIndex)}
+                      >
+                        <div className={styles.teamHeader} style={{ backgroundColor: ELEMENT_HEADER_COLOR[c?.element ?? ""] }}>
+                          <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
+                          <div className={styles.teamNameWrap}>
+                            <div className={styles.teamName}>{c?.name || ""}</div>
+                            <span
+                              className={styles.mobileEditBtn}
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 openMobileEditor(slot.slotIndex);
-                              }
-                            }}
-                          >
-                            編集
-                          </span>
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openMobileEditor(slot.slotIndex);
+                                }
+                              }}
+                            >
+                              編集
+                            </span>
+                          </div>
                         </div>
+                        <div className={styles.teamBody}>
+                          <div className={styles.iconCell}>
+                            {c?.iconUrl ? (
+                              <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
+                            ) : (
+                              <span className={styles.sheetSelectText}>選択</span>
+                            )}
+                          </div>
+                          <div className={styles.detailTable}>
+                            <div className={styles.tableHead}>わくわくの実</div>
+                            <div className={styles.tableHead}>紋章</div>
+                            {fruitRows.map((fruit, idx) => (
+                              <Fragment key={`${slot.slotIndex}-row-${idx}`}>
+                                <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>{fruit || "　"}</div>
+                                <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>{crestRows[idx] || "　"}</div>
+                              </Fragment>
+                            ))}
+                          </div>
+                        </div>
+                      </button>
+                      <div className={styles.slotMoveBtns}>
+                        <button
+                          className={styles.slotMoveBtn}
+                          type="button"
+                          onClick={() => moveDraftSlot(slot.slotIndex, slot.slotIndex - 1)}
+                          disabled={slot.slotIndex === 0}
+                          aria-label={`${SLOT_LABELS[slot.slotIndex]}を上へ移動`}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className={styles.slotMoveBtn}
+                          type="button"
+                          onClick={() => moveDraftSlot(slot.slotIndex, slot.slotIndex + 1)}
+                          disabled={slot.slotIndex === 3}
+                          aria-label={`${SLOT_LABELS[slot.slotIndex]}を下へ移動`}
+                        >
+                          ↓
+                        </button>
                       </div>
-                      <div className={styles.teamBody}>
-                        <div className={styles.iconCell}>
-                          {c?.iconUrl ? (
-                            <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
-                          ) : (
-                            <span className={styles.sheetSelectText}>選択</span>
-                          )}
-                        </div>
-                        <div className={styles.detailTable}>
-                          <div className={styles.tableHead}>わくわくの実</div>
-                          <div className={styles.tableHead}>紋章</div>
-                          {fruitRows.map((fruit, idx) => (
-                            <Fragment key={`${slot.slotIndex}-row-${idx}`}>
-                              <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>{fruit || "　"}</div>
-                              <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>{crestRows[idx] || "　"}</div>
-                            </Fragment>
-                          ))}
-                        </div>
-                      </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
