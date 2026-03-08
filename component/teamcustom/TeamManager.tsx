@@ -563,12 +563,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   const editorSlotIndex = mobileEditSlotIndex ?? activeSlotIndex;
   const editorSlot = slots[editorSlotIndex] ?? slots[0];
+  const editorCharacter = editorSlot.characterId ? charMap.get(editorSlot.characterId) ?? null : null;
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
   const isQuestObtainEnabled = selectedObtains.has("降臨");
 
   const renderEditorPane = (className: string) => (
     <div className={className}>
       <div className={`${styles.label} ${styles.editorHeader}`}>{editorSlotIndex + 1}体目を編集</div>
+      {editorCharacter ? (
+        <div className={styles.editorSelectedChar}>
+          <img className={styles.editorSelectedCharImg} src={editorCharacter.iconUrl} alt={editorCharacter.name} />
+          <span>{editorCharacter.name}</span>
+        </div>
+      ) : null}
 
       <div className={styles.row}>
         <input
@@ -603,7 +610,15 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       {hasSearched ? (
         <div className={styles.pickList}>
           {filteredCharacters.map((c) => (
-            <button key={c.id} type="button" className={styles.pickItem} onClick={() => updateSlot(editorSlotIndex, { characterId: c.id })}>
+            <button
+              key={c.id}
+              type="button"
+              className={styles.pickItem}
+              onClick={() => {
+                updateSlot(editorSlotIndex, { characterId: c.id });
+                setHasSearched(false);
+              }}
+            >
               <img className={styles.pickItemImg} src={c.iconUrl} alt={c.name} />
               <span>{c.name}</span>
             </button>
