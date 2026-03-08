@@ -758,6 +758,41 @@
   gap: 10px;
 }
 
+.shugojuList {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  padding: 6px;
+  background: #ffffff;
+}
+
+.shugojuItem {
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+
+.shugojuIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: contain;
+  border: 1px solid #b6c1d0;
+  background: #ffffff;
+  flex: 0 0 auto;
+}
+
 .mobileEditorOverlay {
   position: fixed;
   inset: 0;
@@ -818,6 +853,13 @@
   gap: 10px;
 }
 
+.exportTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .exportTitle {
   font-size: 20px;
   font-weight: 800;
@@ -826,6 +868,16 @@
 }
 
 .exportQuestIcon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #b6c1d0;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #ffffff;
+  flex: 0 0 auto;
+}
+
+.exportShugojuIcon {
   width: 48px;
   height: 48px;
   border: 1px solid #b6c1d0;

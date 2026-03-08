@@ -7,7 +7,7 @@ import styles from "./TeamManager.module.css";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
 import { CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, QuestItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import type { CharacterItem, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -105,6 +105,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [autoEditAppliedId, setAutoEditAppliedId] = useState<string | null>(null);
   const [characters, setCharacters] = useState<CharacterItem[]>([]);
   const [quests, setQuests] = useState<QuestItem[]>([]);
+  const [shugojus, setShugojus] = useState<ShugojuItem[]>([]);
   const [records, setRecords] = useState<TeamRecord[]>([]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
 
@@ -113,6 +114,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [questId, setQuestId] = useState("");
   const [questKeyword, setQuestKeyword] = useState("");
   const [hasQuestSearched, setHasQuestSearched] = useState(false);
+  const [shugojuId, setShugojuId] = useState("");
+  const [shugojuKeyword, setShugojuKeyword] = useState("");
+  const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
   const [memoText, setMemoText] = useState("");
   const [slots, setSlots] = useState<DraftSlot[]>(emptySlots());
   const [message, setMessage] = useState("");
@@ -159,8 +163,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       .then((res) => {
         setCharacters(res.characters);
         setQuests(res.quests);
+        setShugojus(res.shugojus);
         if (res.questLoadError) {
           setMessage(`対象クエストの読み込みに失敗しました: ${res.questLoadError}`);
+        }
+        if (res.shugojuLoadError) {
+          setMessage(`守護獣の読み込みに失敗しました: ${res.shugojuLoadError}`);
         }
       })
       .catch((error) => {
@@ -213,6 +221,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }, [characters]);
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
+  const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
     const keyword = questKeyword.trim().toLowerCase();
@@ -221,6 +230,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       : quests;
     return list.slice(0, 100);
   }, [quests, questKeyword, hasQuestSearched]);
+  const filteredShugojus = useMemo(() => {
+    const keyword = shugojuKeyword.trim().toLowerCase();
+    const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword)) : shugojus;
+    return list.slice(0, 200);
+  }, [shugojus, shugojuKeyword]);
   const arrangedRecords = useMemo(
     () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, 50),
     [arrangeIds, records]
@@ -455,6 +469,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setQuestId("");
     setQuestKeyword("");
     setHasQuestSearched(false);
+    setShugojuId("");
+    setShugojuKeyword("");
+    setIsShugojuModalOpen(false);
     setMemoText("");
     setSlots(emptySlots());
     setActiveSlotIndex(0);
@@ -466,6 +483,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setQuestId(record.targetQuestId ?? "");
     setQuestKeyword(record.targetQuestName ?? "");
     setHasQuestSearched(false);
+    setShugojuId(record.shugojuId ?? "");
+    setShugojuKeyword(record.shugojuName ?? "");
+    setIsShugojuModalOpen(false);
     setMemoText(record.memoText ?? "");
     setSlots(
       [0, 1, 2, 3].map((slotIndex) => {
@@ -517,6 +537,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       targetQuestId: selectedQuest?.id ?? null,
       targetQuestName: selectedQuest?.name ?? null,
       targetQuestIconUrl: selectedQuest?.iconUrl || null,
+      shugojuId: selectedShugoju?.id ?? null,
+      shugojuName: selectedShugoju?.name ?? null,
+      shugojuIconUrl: selectedShugoju?.iconUrl ?? null,
       slots: finalSlots,
       memoText,
       createdAt: currentEditing?.createdAt ?? nowText(),
@@ -807,6 +830,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           ))}
         </div>
       </div>
+
     </div>
   );
 
@@ -1014,6 +1038,18 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             {renderEditorPane(styles.rightPane)}
           </div>
           <div>
+            <div className={styles.helper} style={{ marginBottom: 6 }}>守護獣</div>
+            <div className={styles.row}>
+              <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(true)}>
+                守護獣を選択
+              </button>
+              {selectedShugoju?.iconUrl ? (
+                <img className={styles.icon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} style={{ width: 32, height: 32 }} />
+              ) : null}
+              <span className={styles.helper}>{selectedShugoju?.name || "未選択"}</span>
+            </div>
+          </div>
+          <div>
             <textarea
               className={styles.memoTextarea}
               value={memoText}
@@ -1034,12 +1070,62 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               </div>
             </div>
           ) : null}
+          {isShugojuModalOpen ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsShugojuModalOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>守護獣を選択</div>
+                <input
+                  className={styles.input}
+                  value={shugojuKeyword}
+                  onChange={(e) => setShugojuKeyword(e.target.value)}
+                  placeholder="守護獣名検索"
+                />
+                <div className={styles.shugojuList}>
+                  {filteredShugojus.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={styles.shugojuItem}
+                      onClick={() => {
+                        setShugojuId(s.id);
+                        setShugojuKeyword(s.name);
+                        setIsShugojuModalOpen(false);
+                      }}
+                    >
+                      {s.iconUrl ? <img className={styles.shugojuIcon} src={s.iconUrl} alt={s.name} /> : null}
+                      <span>{s.name}</span>
+                    </button>
+                  ))}
+                  {filteredShugojus.length === 0 ? <div className={styles.helper}>該当する守護獣がありません</div> : null}
+                </div>
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(false)}>閉じる</button>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => {
+                      setShugojuId("");
+                      setShugojuKeyword("");
+                      setIsShugojuModalOpen(false);
+                    }}
+                  >
+                    未設定
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className={styles.exportCapture} aria-hidden="true">
             <div ref={exportRef} className={styles.exportSheet}>
               <div className={styles.exportHeader}>
-                <div className={styles.exportTitle}>{title.trim() || "編成"}</div>
-                {selectedQuest?.iconUrl ? (
-                  <img className={styles.exportQuestIcon} src={selectedQuest.iconUrl} alt={selectedQuest.name} />
+                <div className={styles.exportTitleGroup}>
+                  {selectedQuest?.iconUrl ? (
+                    <img className={styles.exportQuestIcon} src={selectedQuest.iconUrl} alt={selectedQuest.name} />
+                  ) : null}
+                  <div className={styles.exportTitle}>{title.trim() || "編成"}</div>
+                </div>
+                {selectedShugoju?.iconUrl ? (
+                  <img className={styles.exportShugojuIcon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} />
                 ) : null}
               </div>
               <div className={styles.exportTeamSheet}>

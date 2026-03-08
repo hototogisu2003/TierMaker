@@ -1,5 +1,5 @@
 ﻿import { createClient } from "@supabase/supabase-js";
-import type { CharacterItem, QuestItem } from "@/lib/teamcustom/types";
+import type { CharacterItem, QuestItem, ShugojuItem } from "@/lib/teamcustom/types";
 
 type GenericRow = Record<string, unknown>;
 
@@ -98,12 +98,19 @@ function normalizeOtherCategory(raw: string): CharacterItem["otherCategory"] {
   return "";
 }
 
-export async function fetchCharactersAndQuests(): Promise<{ characters: CharacterItem[]; quests: QuestItem[]; questLoadError: string | null }> {
+export async function fetchCharactersAndQuests(): Promise<{
+  characters: CharacterItem[];
+  quests: QuestItem[];
+  shugojus: ShugojuItem[];
+  questLoadError: string | null;
+  shugojuLoadError: string | null;
+}> {
   const supabase = createClient(must("NEXT_PUBLIC_SUPABASE_URL"), must("NEXT_PUBLIC_SUPABASE_ANON_KEY"), {
     auth: { persistSession: false },
   });
 
   const charactersTable = process.env.NEXT_PUBLIC_CHARACTERS_TABLE ?? "characters";
+  const shugojuTable = process.env.NEXT_PUBLIC_SHUGOJU_TABLE ?? "shugoju";
   const characterBucket = process.env.NEXT_PUBLIC_ICON_BUCKET ?? "characters";
   const r2Base = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
 
@@ -163,5 +170,34 @@ export async function fetchCharactersAndQuests(): Promise<{ characters: Characte
     })
     .filter((x): x is QuestItem => Boolean(x));
 
-  return { characters, quests, questLoadError: null };
+  let shugojus: ShugojuItem[] = [];
+  let shugojuLoadError: string | null = null;
+  const { data: shugojuData, error: shugojuError } = await supabase
+    .from(shugojuTable)
+    .select("id,name,icon_path")
+    .order("id", { ascending: true })
+    .limit(5000);
+
+  if (shugojuError) {
+    shugojuLoadError = shugojuError.message;
+  } else {
+    shugojus = (shugojuData ?? [])
+      .map((row) => {
+        const r = row as GenericRow;
+        const id = toText(r.id).trim();
+        const name = toText(r.name).trim() || id;
+        const iconPath = toText(r.icon_path).trim();
+        if (!id || !name) return null;
+        const fallback = iconPath ? supabase.storage.from(characterBucket).getPublicUrl(iconPath).data.publicUrl : "";
+        return {
+          id,
+          name,
+          iconPath,
+          iconUrl: iconPath ? buildPublicUrl(iconPath, r2Base, fallback) : "",
+        } satisfies ShugojuItem;
+      })
+      .filter((x): x is ShugojuItem => Boolean(x));
+  }
+
+  return { characters, quests, shugojus, questLoadError: null, shugojuLoadError };
 }

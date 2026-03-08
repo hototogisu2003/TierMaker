@@ -21,6 +21,13 @@ export type QuestItem = {
   iconUrl: string;
 };
 
+export type ShugojuItem = {
+  id: string;
+  name: string;
+  iconPath: string;
+  iconUrl: string;
+};
+
 export type TeamSlot = {
   slotIndex: number;
   characterId: string;
@@ -36,6 +43,9 @@ export type TeamRecord = {
   targetQuestId: string | null;
   targetQuestName: string | null;
   targetQuestIconUrl: string | null;
+  shugojuId?: string | null;
+  shugojuName?: string | null;
+  shugojuIconUrl?: string | null;
   slots: TeamSlot[];
   memoText?: string;
   createdAt: string;
