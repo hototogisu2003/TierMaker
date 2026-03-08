@@ -23,6 +23,13 @@ const nextConfig = {
       }
     })(),
   },
+  webpack: (config, { dev }) => {
+    // Avoid intermittent corrupted filesystem cache during local dev on Windows.
+    if (dev) {
+      config.cache = { type: "memory" };
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;

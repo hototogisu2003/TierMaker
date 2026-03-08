@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
     "dev": "next dev",
+    "dev:clean": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }; npm run dev -- -p 3000\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
