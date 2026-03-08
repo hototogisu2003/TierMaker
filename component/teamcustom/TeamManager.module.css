@@ -388,6 +388,9 @@
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .slotMoveBtn:disabled {
@@ -691,6 +694,9 @@
   border-radius: 6px;
   font-size: 12px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .questMetaIcon,
