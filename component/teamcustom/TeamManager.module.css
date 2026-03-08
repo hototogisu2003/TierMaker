@@ -737,6 +737,17 @@
   border-radius: 4px;
 }
 
+.arrangeShugojuIcon {
+  width: 44px;
+  height: 44px;
+  margin-left: 10px;
+  border: 1px solid #b6c1d0;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #ffffff;
+  flex: 0 0 auto;
+}
+
 .arrangeOverlay {
   position: fixed;
   inset: 0;
@@ -1169,6 +1180,13 @@
 
   .arrangeIcons {
     grid-template-columns: repeat(4, 36px);
+  }
+
+  .arrangeShugojuIcon {
+    width: 34px;
+    height: 34px;
+    margin-left: 8px;
+    border-radius: 5px;
   }
 }
 

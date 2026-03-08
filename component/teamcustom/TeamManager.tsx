@@ -1219,6 +1219,14 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         );
                       })}
                     </div>
+                    {record.shugojuIconUrl ? (
+                      <img
+                        className={styles.arrangeShugojuIcon}
+                        src={record.shugojuIconUrl}
+                        alt={record.shugojuName || "守護獣"}
+                        title={record.shugojuName || "守護獣"}
+                      />
+                    ) : null}
                   </div>
                   <div className={styles.arrangeActions}>
                     <div className={styles.arrangeMoveRow}>
