@@ -32,6 +32,9 @@ const QUEST_FILTER_OPTIONS = ["破界の星墓", "天魔の孤城", "禁忌の�
 const QUEST_GRID_COLS = 3;
 const QUEST_ROW_HEIGHT = 86;
 const QUEST_VISIBLE_ROWS = 5;
+const SHUGOJU_GRID_COLS = 3;
+const SHUGOJU_ROW_HEIGHT = 90;
+const SHUGOJU_VISIBLE_ROWS = 5;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const SLOT_LABELS = ["1st", "2nd", "3rd", "4th"] as const;
 const ELEMENT_HEADER_COLOR: Record<NonNullable<CharacterItem["element"]>, string> = {
@@ -128,6 +131,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [shugojuId, setShugojuId] = useState("");
   const [shugojuKeyword, setShugojuKeyword] = useState("");
   const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
+  const [shugojuListScrollTop, setShugojuListScrollTop] = useState(0);
   const [memoText, setMemoText] = useState("");
   const [slots, setSlots] = useState<DraftSlot[]>(emptySlots());
   const [message, setMessage] = useState("");
@@ -169,9 +173,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [arrangeRemoveId, setArrangeRemoveId] = useState("");
   const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
   const questListRef = useRef<HTMLDivElement>(null);
+  const shugojuListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCharactersAndQuests()
@@ -228,6 +234,17 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!isArrangeLoaded) return;
     persistArrangeIds(arrangeIds).catch(() => setMessage("並べる画面の設定保存に失敗しました"));
   }, [arrangeIds, isArrangeLoaded]);
+  useEffect(() => {
+    if (!isShugojuModalOpen) return;
+    setShugojuListScrollTop(0);
+    if (shugojuListRef.current) shugojuListRef.current.scrollTop = 0;
+  }, [isShugojuModalOpen]);
+  useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth <= 768);
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   const charMap = useMemo(() => {
     const map = new Map<string, CharacterItem>();
@@ -271,6 +288,17 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword) || s.nameKana.toLowerCase().includes(keyword)) : shugojus;
     return list.slice(0, 200);
   }, [shugojus, shugojuKeyword]);
+  const shugojuVirtual = useMemo(() => {
+    const totalRows = Math.ceil(filteredShugojus.length / SHUGOJU_GRID_COLS);
+    const startRow = Math.max(0, Math.floor(shugojuListScrollTop / SHUGOJU_ROW_HEIGHT));
+    const endRow = Math.min(totalRows, startRow + SHUGOJU_VISIBLE_ROWS);
+    const startIndex = startRow * SHUGOJU_GRID_COLS;
+    const endIndex = Math.min(filteredShugojus.length, endRow * SHUGOJU_GRID_COLS);
+    const visible = filteredShugojus.slice(startIndex, endIndex);
+    const paddingTop = startRow * SHUGOJU_ROW_HEIGHT;
+    const paddingBottom = Math.max(0, (totalRows - endRow) * SHUGOJU_ROW_HEIGHT);
+    return { visible, paddingTop, paddingBottom };
+  }, [filteredShugojus, shugojuListScrollTop]);
   const arrangedRecords = useMemo(
     () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, 50),
     [arrangeIds, records]
@@ -693,16 +721,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }
 
   function openCharacterModal(slotIndex: number) {
+    if (!isMobileViewport) return;
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCharacterModalOpen(true);
   }
   function openFruitModal(slotIndex: number) {
+    if (!isMobileViewport) return;
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsFruitModalOpen(true);
   }
   function openCrestModal(slotIndex: number) {
+    if (!isMobileViewport) return;
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCrestModalOpen(true);
@@ -894,84 +925,86 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         </div>
       </div>
 
-      <div>
-        <div className={styles.helper} style={{ marginBottom: 6 }}>実 (最大4つ)</div>
-        <div className={styles.row} style={{ marginBottom: 8 }}>
-          <button
-            className={styles.btn}
-            type="button"
-            style={{ background: fruitFilter === "status" ? "#e3f0ff" : "#fff" }}
-            onClick={() => setFruitFilter("status")}
-          >
-            ステータス強化
-          </button>
-          <button
-            className={styles.btn}
-            type="button"
-            style={{ background: fruitFilter === "other" ? "#e3f0ff" : "#fff" }}
-            onClick={() => setFruitFilter("other")}
-          >
-            それ以外
-          </button>
-        </div>
-        <div className={`${styles.row} ${styles.optionGrid}`}>
-          {filteredFruitOptions.map((option) => (
+      <div className={styles.editorTwoCol}>
+        <div className={styles.editorColumn}>
+          <div className={styles.helper} style={{ marginBottom: 6 }}>実 (最大4つ)</div>
+          <div className={styles.row} style={{ marginBottom: 8 }}>
             <button
-              key={option.id}
-              className={`${styles.btn} ${styles.optionBtn}`}
+              className={styles.btn}
               type="button"
-              style={{ background: editorSlot.fruits.includes(option.name) ? "#e3f0ff" : "#fff" }}
-              onClick={() => toggleOption(editorSlotIndex, "fruits", option.name, 4)}
+              style={{ background: fruitFilter === "status" ? "#e3f0ff" : "#fff" }}
+              onClick={() => setFruitFilter("status")}
             >
-              {option.name}
+              ステータス強化
             </button>
-          ))}
-        </div>
-        {editorSlot.fruits.length > 0 ? (
-          <div className={styles.selectedFruitList}>
-            {editorSlot.fruits.map((fruit) => {
-              const grade = fruitGradeOf(editorSlot, fruit);
-              return (
-                <div key={`selected-editor-${editorSlotIndex}-${fruit}`} className={styles.selectedFruitRow}>
-                  <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(grade)} alt={grade} />
-                  <span className={styles.selectedFruitName}>{fruit}</span>
-                  <button
-                    className={`${styles.btn} ${styles.gradeBtn}`}
-                    type="button"
-                    style={{ background: grade === "L" ? "#e3f0ff" : "#fff" }}
-                    onClick={() => setFruitGrade(editorSlotIndex, fruit, "L")}
-                  >
-                    L
-                  </button>
-                  <button
-                    className={`${styles.btn} ${styles.gradeBtn}`}
-                    type="button"
-                    style={{ background: grade === "EL" ? "#e3f0ff" : "#fff" }}
-                    onClick={() => setFruitGrade(editorSlotIndex, fruit, "EL")}
-                  >
-                    EL
-                  </button>
-                </div>
-              );
-            })}
+            <button
+              className={styles.btn}
+              type="button"
+              style={{ background: fruitFilter === "other" ? "#e3f0ff" : "#fff" }}
+              onClick={() => setFruitFilter("other")}
+            >
+              それ以外
+            </button>
           </div>
-        ) : null}
-      </div>
+          <div className={`${styles.row} ${styles.optionGrid}`}>
+            {filteredFruitOptions.map((option) => (
+              <button
+                key={option.id}
+                className={`${styles.btn} ${styles.optionBtn}`}
+                type="button"
+                style={{ background: editorSlot.fruits.includes(option.name) ? "#e3f0ff" : "#fff" }}
+                onClick={() => toggleOption(editorSlotIndex, "fruits", option.name, 4)}
+              >
+                {option.name}
+              </button>
+            ))}
+          </div>
+          {editorSlot.fruits.length > 0 ? (
+            <div className={styles.selectedFruitList}>
+              {editorSlot.fruits.map((fruit) => {
+                const grade = fruitGradeOf(editorSlot, fruit);
+                return (
+                  <div key={`selected-editor-${editorSlotIndex}-${fruit}`} className={styles.selectedFruitRow}>
+                    <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(grade)} alt={grade} />
+                    <span className={styles.selectedFruitName}>{fruit}</span>
+                    <button
+                      className={`${styles.btn} ${styles.gradeBtn}`}
+                      type="button"
+                      style={{ background: grade === "L" ? "#e3f0ff" : "#fff" }}
+                      onClick={() => setFruitGrade(editorSlotIndex, fruit, "L")}
+                    >
+                      L
+                    </button>
+                    <button
+                      className={`${styles.btn} ${styles.gradeBtn}`}
+                      type="button"
+                      style={{ background: grade === "EL" ? "#e3f0ff" : "#fff" }}
+                      onClick={() => setFruitGrade(editorSlotIndex, fruit, "EL")}
+                    >
+                      EL
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
 
-      <div>
-        <div className={styles.helper} style={{ marginBottom: 6 }}>紋章 (最大4つ)</div>
-        <div className={`${styles.row} ${styles.optionGrid}`}>
-          {CREST_OPTIONS.map((value) => (
-            <button
-              key={value}
-              className={`${styles.btn} ${styles.optionBtn}`}
-              type="button"
-              style={{ background: editorSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
-              onClick={() => toggleOption(editorSlotIndex, "crests", value, 4)}
-            >
-              {value}
-            </button>
-          ))}
+        <div className={styles.editorColumn}>
+          <div className={styles.helper} style={{ marginBottom: 6 }}>紋章 (最大4つ)</div>
+          <div className={`${styles.row} ${styles.optionGrid}`}>
+            {CREST_OPTIONS.map((value) => (
+              <button
+                key={value}
+                className={`${styles.btn} ${styles.optionBtn}`}
+                type="button"
+                style={{ background: editorSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
+                onClick={() => toggleOption(editorSlotIndex, "crests", value, 4)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1034,12 +1067,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       {tab === "memo" ? (
         <div className={styles.card} style={{ display: "grid", gap: 14 }}>
           <div className={styles.memoTopForm}>
-            <div className={styles.row}>
+            <div className={`${styles.row} ${styles.titleQuestRow}`}>
               <label className={styles.label}>編成タイトル</label>
-              <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} style={{ minWidth: 320 }} />
-            </div>
-            <div className={styles.row}>
-              <label className={styles.label}>クエスト</label>
+              <input className={`${styles.input} ${styles.titleInput}`} value={title} onChange={(e) => setTitle(e.target.value)} />
               <button
                 className={styles.btn}
                 type="button"
@@ -1110,14 +1140,22 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                             role="button"
                             tabIndex={0}
                             onClick={(e) => {
-                              e.stopPropagation();
-                              openCharacterModal(slot.slotIndex);
+                              if (isMobileViewport) {
+                                e.stopPropagation();
+                                openCharacterModal(slot.slotIndex);
+                              } else {
+                                setActiveSlotIndex(slot.slotIndex);
+                              }
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                e.stopPropagation();
-                                openCharacterModal(slot.slotIndex);
+                                if (isMobileViewport) {
+                                  e.stopPropagation();
+                                  openCharacterModal(slot.slotIndex);
+                                } else {
+                                  setActiveSlotIndex(slot.slotIndex);
+                                }
                               }
                             }}
                           >
@@ -1128,8 +1166,32 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                             )}
                           </div>
                           <div className={styles.detailTable}>
-                            <div className={`${styles.tableHead} ${styles.clickableArea}`} onClick={(e) => { e.stopPropagation(); openFruitModal(slot.slotIndex); }}>わくわくの実</div>
-                            <div className={`${styles.tableHead} ${styles.clickableArea}`} onClick={(e) => { e.stopPropagation(); openCrestModal(slot.slotIndex); }}>紋章</div>
+                            <div
+                              className={`${styles.tableHead} ${styles.clickableArea}`}
+                              onClick={(e) => {
+                                if (isMobileViewport) {
+                                  e.stopPropagation();
+                                  openFruitModal(slot.slotIndex);
+                                } else {
+                                  setActiveSlotIndex(slot.slotIndex);
+                                }
+                              }}
+                            >
+                              わくわくの実
+                            </div>
+                            <div
+                              className={`${styles.tableHead} ${styles.clickableArea}`}
+                              onClick={(e) => {
+                                if (isMobileViewport) {
+                                  e.stopPropagation();
+                                  openCrestModal(slot.slotIndex);
+                                } else {
+                                  setActiveSlotIndex(slot.slotIndex);
+                                }
+                              }}
+                            >
+                              紋章
+                            </div>
                             {fruitRows.map((fruit, idx) => (
                               <Fragment key={`${slot.slotIndex}-row-${idx}`}>
                                 <div
@@ -1137,8 +1199,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                     !fruit && idx === 0 && slot.fruits.length === 0 ? styles.cellPlaceholder : ""
                                   }`}
                                   onClick={(e) => {
-                                    e.stopPropagation();
-                                    openFruitModal(slot.slotIndex);
+                                    if (isMobileViewport) {
+                                      e.stopPropagation();
+                                      openFruitModal(slot.slotIndex);
+                                    } else {
+                                      setActiveSlotIndex(slot.slotIndex);
+                                    }
                                   }}
                                 >
                                   {fruit ? (
@@ -1146,15 +1212,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                       <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, fruit))} alt={fruitGradeOf(slot, fruit)} />
                                       <span>{fruit}</span>
                                     </span>
-                                  ) : idx === 0 && slot.fruits.length === 0 ? "タップして実を選択" : "　"}
+                                  ) : idx === 0 && slot.fruits.length === 0 && isMobileViewport ? "タップして実を選択" : "　"}
                                 </div>
                                 <div
                                   className={`${styles.tableCell} ${styles.clickableArea} ${crestRows[idx] ? "" : styles.tableCellEmpty} ${
                                     !crestRows[idx] && idx === 0 && slot.crests.length === 0 ? styles.cellPlaceholder : ""
                                   }`}
                                   onClick={(e) => {
-                                    e.stopPropagation();
-                                    openCrestModal(slot.slotIndex);
+                                    if (isMobileViewport) {
+                                      e.stopPropagation();
+                                      openCrestModal(slot.slotIndex);
+                                    } else {
+                                      setActiveSlotIndex(slot.slotIndex);
+                                    }
                                   }}
                                 >
                                   {crestRows[idx] ? (
@@ -1162,7 +1232,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                       <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
                                       <span>{crestRows[idx]}</span>
                                     </span>
-                                  ) : idx === 0 && slot.crests.length === 0 ? "タップして紋章を選択" : "　"}
+                                  ) : "　"}
                                 </div>
                               </Fragment>
                             ))}
@@ -1211,8 +1281,15 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </div>
           <div>
             <div className={styles.helper} style={{ marginBottom: 6 }}>守護獣</div>
-            <div className={styles.row}>
-              <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(true)}>
+                <div className={styles.row}>
+              <button
+                className={styles.btn}
+                type="button"
+                onClick={() => {
+                  setShugojuListScrollTop(0);
+                  setIsShugojuModalOpen(true);
+                }}
+              >
                 守護獣を選択
               </button>
               {selectedShugoju?.iconUrl ? (
@@ -1465,22 +1542,30 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   onChange={(e) => setShugojuKeyword(e.target.value)}
                   placeholder="守護獣名検索"
                 />
-                <div className={styles.shugojuList}>
-                  {filteredShugojus.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={styles.shugojuItem}
-                      onClick={() => {
-                        setShugojuId(s.id);
-                        setShugojuKeyword(s.name);
-                        setIsShugojuModalOpen(false);
-                      }}
-                    >
-                      {s.iconUrl ? <img className={styles.shugojuIcon} src={s.iconUrl} alt={s.name} /> : null}
-                      <span>{s.name}</span>
-                    </button>
-                  ))}
+                <div
+                  className={styles.shugojuList}
+                  ref={shugojuListRef}
+                  onScroll={(e) => setShugojuListScrollTop(e.currentTarget.scrollTop)}
+                >
+                  <div style={{ height: shugojuVirtual.paddingTop }} />
+                  <div className={styles.shugojuGrid}>
+                    {shugojuVirtual.visible.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={styles.shugojuItem}
+                        onClick={() => {
+                          setShugojuId(s.id);
+                          setShugojuKeyword(s.name);
+                          setIsShugojuModalOpen(false);
+                        }}
+                      >
+                        {s.iconUrl ? <img className={styles.shugojuIcon} src={s.iconUrl} alt={s.name} /> : null}
+                        <span>{s.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ height: shugojuVirtual.paddingBottom }} />
                   {filteredShugojus.length === 0 ? <div className={styles.helper}>該当する守護獣がありません</div> : null}
                 </div>
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>

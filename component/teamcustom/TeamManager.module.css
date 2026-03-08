@@ -111,6 +111,17 @@
   gap: 8px;
 }
 
+.titleQuestRow {
+  flex-wrap: nowrap;
+}
+
+.titleInput {
+  width: 30%;
+  min-width: 220px;
+  max-width: 420px;
+  flex: 0 0 30%;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -149,7 +160,7 @@
 .optionGrid {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   align-items: stretch;
 }
@@ -217,6 +228,20 @@
   max-height: calc(100vh - 120px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.editorTwoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.editorColumn {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
 }
 
 .teamSheet {
@@ -417,8 +442,8 @@
 }
 
 .crestSkillIcon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   flex: 0 0 auto;
 }
@@ -946,8 +971,7 @@
 }
 
 .shugojuList {
-  display: grid;
-  gap: 6px;
+  display: block;
   max-height: min(30vh, 240px);
   overflow-y: auto;
   border: 1px solid #d0d7e2;
@@ -956,23 +980,31 @@
   background: #ffffff;
 }
 
+.shugojuGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
 .shugojuItem {
   border: 1px solid #d0d7e2;
   border-radius: 8px;
   background: #fff;
   color: #1f2937;
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 6px 4px;
+  min-height: 84px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
   cursor: pointer;
-  text-align: left;
-  font-size: 12px;
+  text-align: center;
+  font-size: 11px;
 }
 
 .shugojuIcon {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 4px;
   object-fit: contain;
   border: 1px solid #b6c1d0;
@@ -1166,6 +1198,15 @@
     gap: 6px;
   }
 
+  .titleQuestRow {
+    flex-wrap: wrap;
+  }
+
+  .titleInput {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
   .row {
     gap: 6px;
   }
@@ -1315,8 +1356,8 @@
   }
 
   .crestSkillIcon {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
   }
 
   .selectedFruitList {
@@ -1371,6 +1412,11 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     align-items: stretch;
+  }
+
+  .editorTwoCol {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .optionGrid .optionBtn {
@@ -1440,6 +1486,17 @@
     height: 34px;
     margin-left: 8px;
     border-radius: 5px;
+  }
+
+  .shugojuItem {
+    min-height: 76px;
+    font-size: 10px;
+    padding: 4px 3px;
+  }
+
+  .shugojuIcon {
+    width: 30px;
+    height: 30px;
   }
 }
 
