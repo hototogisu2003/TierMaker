@@ -116,7 +116,7 @@ export async function fetchCharactersAndQuests(): Promise<{
 
   const { data: charactersData, error: charactersError } = await supabase
     .from(charactersTable)
-    .select("id,name,name_kana,element,obtain,gacha,form,quest,get,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,form,quest,content,get,number,icon_path")
     .order("number", { ascending: true })
     .order("id", { ascending: true })
     .limit(5000);
@@ -164,6 +164,9 @@ export async function fetchCharactersAndQuests(): Promise<{
         id,
         name,
         nameKana,
+        element: normalizeElement(toText(r.element)),
+        questTag: toText(r.quest).trim(),
+        contentTag: toText(r.content).trim(),
         iconPath,
         iconUrl: iconPath ? buildPublicUrl(iconPath, r2Base, fallback) : "",
       } satisfies QuestItem;

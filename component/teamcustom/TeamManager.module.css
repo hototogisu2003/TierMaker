@@ -276,6 +276,19 @@
   white-space: nowrap;
 }
 
+.slotClearBtn {
+  border: 1px solid #8a97aa;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 0 6px;
+  height: 18px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
 .mobileEditBtn {
   display: none;
   border: 1px solid #6b7280;
@@ -302,6 +315,10 @@
   background: #ffffff;
 }
 
+.iconCellEmpty {
+  background: #eceff3;
+}
+
 .sheetIcon {
   width: 55px;
   height: 55px;
@@ -312,13 +329,55 @@
 }
 
 .sheetSelectText {
-  font-size: 13px;
+  font-size: 11px;
   color: #333;
+  text-align: center;
+  line-height: 1.2;
+  padding: 0 4px;
 }
 
 .detailTable {
   display: grid;
   grid-template-columns: 1fr 1fr;
+}
+
+.slotMemoCell {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  border-top: 1px solid #8f8f8f;
+  background: #ffffff;
+}
+
+.slotMemoLabel {
+  border-right: 1px solid #8f8f8f;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  background: #d0d0d0;
+}
+
+.slotMemoInput {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  min-height: 22px;
+}
+
+.slotMemoInput:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px #1f6feb;
+}
+
+.slotMemoText {
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  min-height: 22px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .tableHead {
@@ -340,6 +399,28 @@
   padding: 1px 6px;
   font-size: 11px;
   background: #ffffff;
+  text-align: left;
+}
+
+.fruitCellContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-start;
+}
+
+.fruitGradeIcon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.crestSkillIcon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .editorHeader {
@@ -368,7 +449,61 @@
 }
 
 .tableCellEmpty {
+  background: #eceff3;
   color: transparent;
+}
+
+.cellPlaceholder {
+  color: #5d6b7d;
+  font-size: 10px;
+  letter-spacing: 0;
+}
+
+.selectedFruitList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.modalSelectedFruitList {
+  margin-top: 0;
+  min-height: 132px;
+  max-height: 132px;
+  overflow-y: auto;
+  padding-right: 2px;
+  align-content: start;
+}
+
+.selectedFruitRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 42px 42px;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 4px 6px;
+}
+
+.selectedFruitName {
+  font-size: 12px;
+  color: #1f2937;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gradeBtn {
+  padding: 0 8px;
+  min-height: 24px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.clickableArea {
+  cursor: pointer;
 }
 
 .slotMoveBtns {
@@ -555,9 +690,8 @@
 }
 
 .questPickList {
-  display: grid;
-  gap: 6px;
-  max-height: 180px;
+  display: block;
+  max-height: min(30vh, 240px);
   overflow-y: auto;
   border: 1px solid #d0d7e2;
   border-radius: 8px;
@@ -565,23 +699,55 @@
   background: #ffffff;
 }
 
+.questPickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.questFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.questSearchRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.questSearchInput {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.questSearchBtn {
+  flex: 0 0 auto;
+  min-width: 56px;
+  white-space: nowrap;
+}
+
 .questPickItem {
   border: 1px solid #d0d7e2;
   border-radius: 8px;
   background: #fff;
   color: #1f2937;
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  padding: 6px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   font-size: 12px;
+  min-height: 78px;
 }
 
 .questPickIcon {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: 4px;
   object-fit: contain;
   border: 1px solid #b6c1d0;
@@ -761,18 +927,28 @@
 
 .arrangeDialog {
   width: min(420px, 100%);
+  max-height: 82vh;
   border: 1px solid #d0d7e2;
   border-radius: 10px;
   background: #ffffff;
   padding: 12px;
   display: grid;
   gap: 10px;
+  overflow: hidden;
+}
+
+.fruitDialog {
+  grid-template-rows: auto auto auto minmax(132px, 132px) auto;
+}
+
+.questDialog {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 
 .shugojuList {
   display: grid;
   gap: 6px;
-  max-height: 280px;
+  max-height: min(30vh, 240px);
   overflow-y: auto;
   border: 1px solid #d0d7e2;
   border-radius: 8px;
@@ -802,6 +978,17 @@
   border: 1px solid #b6c1d0;
   background: #ffffff;
   flex: 0 0 auto;
+}
+
+.questPickList::-webkit-scrollbar,
+.shugojuList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.questPickList::-webkit-scrollbar-thumb,
+.shugojuList::-webkit-scrollbar-thumb {
+  background: #b8c4d4;
+  border-radius: 999px;
 }
 
 .mobileEditorOverlay {
@@ -1038,6 +1225,10 @@
     gap: 4px;
   }
 
+  .teamBlock[data-active="1"] {
+    outline: none;
+  }
+
   .teamHeader {
     grid-template-columns: 42px 1fr;
   }
@@ -1046,10 +1237,20 @@
     grid-template-columns: 42px 1fr;
   }
 
+  .slotMemoCell {
+    grid-template-columns: 42px 1fr;
+  }
+
   .teamRank,
   .teamName {
     padding: 1px 4px;
     font-size: 10px;
+  }
+
+  .slotClearBtn {
+    font-size: 9px;
+    height: 16px;
+    padding: 0 4px;
   }
 
   .teamRank {
@@ -1086,10 +1287,62 @@
     padding: 1px 4px;
   }
 
+  .slotMemoLabel {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .slotMemoInput,
+  .slotMemoText {
+    font-size: 10px;
+    padding: 1px 4px;
+    min-height: 18px;
+  }
+
   .tableCell {
     min-height: 12px;
     padding: 0 4px;
     font-size: 10px;
+  }
+
+  .cellPlaceholder {
+    font-size: 9px;
+  }
+
+  .fruitGradeIcon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .crestSkillIcon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .selectedFruitList {
+    margin-top: 6px;
+    gap: 4px;
+  }
+
+  .modalSelectedFruitList {
+    min-height: 108px;
+    max-height: 108px;
+  }
+
+  .selectedFruitRow {
+    grid-template-columns: 14px minmax(0, 1fr) 34px 34px;
+    gap: 4px;
+    padding: 3px 4px;
+  }
+
+  .selectedFruitName {
+    font-size: 10px;
+  }
+
+  .gradeBtn {
+    min-height: 20px;
+    font-size: 10px;
+    padding: 0 4px;
   }
 
   .editorHeader {

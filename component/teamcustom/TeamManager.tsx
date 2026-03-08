@@ -6,8 +6,8 @@ import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
-import { CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import { CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
+import type { CharacterItem, FruitGrade, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -18,7 +18,9 @@ type DraftSlot = {
   slotIndex: number;
   characterId: string;
   fruits: string[];
+  fruitGrades: Record<string, FruitGrade>;
   crests: string[];
+  slotMemo: string;
 };
 
 const ELEMENT_OPTIONS = ["火", "水", "木", "光", "闇"] as const;
@@ -26,6 +28,10 @@ const OBTAIN_OPTIONS = ["ガチャ", "降臨", "コラボパック"] as const;
 const GACHA_OPTIONS = ["限定", "α", "恒常", "コラボ"] as const;
 const FORM_OPTIONS = ["進化/神化", "獣神化", "獣神化改", "真獣神化"] as const;
 const OTHER_CATEGORY_OPTIONS = ["黎絶", "轟絶", "爆絶", "超絶", "超究極", "コラボ", "その他"] as const;
+const QUEST_FILTER_OPTIONS = ["破界の星墓", "天魔の孤城", "禁忌の獄", "黎絶", "轟絶", "爆絶", "超絶"] as const;
+const QUEST_GRID_COLS = 3;
+const QUEST_ROW_HEIGHT = 86;
+const QUEST_VISIBLE_ROWS = 5;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const SLOT_LABELS = ["1st", "2nd", "3rd", "4th"] as const;
 const ELEMENT_HEADER_COLOR: Record<NonNullable<CharacterItem["element"]>, string> = {
@@ -46,7 +52,7 @@ const ELEMENT_ICON_MAP: Record<"all" | (typeof ELEMENT_OPTIONS)[number], { src: 
 };
 
 function emptySlots(): DraftSlot[] {
-  return [0, 1, 2, 3].map((slotIndex) => ({ slotIndex, characterId: "", fruits: [], crests: [] }));
+  return [0, 1, 2, 3].map((slotIndex) => ({ slotIndex, characterId: "", fruits: [], fruitGrades: {}, crests: [], slotMemo: "" }));
 }
 
 function defaultObtains(): Set<CharacterItem["obtain"]> {
@@ -113,7 +119,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [title, setTitle] = useState("");
   const [questId, setQuestId] = useState("");
   const [questKeyword, setQuestKeyword] = useState("");
+  const [questFilter, setQuestFilter] = useState<(typeof QUEST_FILTER_OPTIONS)[number] | "">("");
+  const [appliedQuestKeyword, setAppliedQuestKeyword] = useState("");
+  const [appliedQuestFilter, setAppliedQuestFilter] = useState<(typeof QUEST_FILTER_OPTIONS)[number] | "">("");
+  const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
   const [hasQuestSearched, setHasQuestSearched] = useState(false);
+  const [questListScrollTop, setQuestListScrollTop] = useState(0);
   const [shugojuId, setShugojuId] = useState("");
   const [shugojuKeyword, setShugojuKeyword] = useState("");
   const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
@@ -150,13 +161,17 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [hasSearched, setHasSearched] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [mobileEditSlotIndex, setMobileEditSlotIndex] = useState<number | null>(null);
+  const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
+  const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
+  const [isFruitModalOpen, setIsFruitModalOpen] = useState(false);
+  const [isCrestModalOpen, setIsCrestModalOpen] = useState(false);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
   const [arrangeRemoveId, setArrangeRemoveId] = useState("");
   const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
+  const questListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchCharactersAndQuests()
@@ -222,14 +237,35 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
   const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
+  const fruitGradeIconSrc = (grade: FruitGrade) => (grade === "EL" ? "/calc-legacy/特級EL.png" : "/calc-legacy/特級L.png");
+  const fruitGradeOf = (slot: DraftSlot, fruitName: string): FruitGrade => slot.fruitGrades[fruitName] ?? "L";
+  const crestIconSrc = (crestName: string) => {
+    const id = CREST_ID_BY_NAME[crestName as keyof typeof CREST_ID_BY_NAME];
+    return id ? `/soulskill/skill_${id}.png` : "";
+  };
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
-    const keyword = questKeyword.trim().toLowerCase();
-    const list = keyword
-      ? quests.filter((q) => q.name.toLowerCase().includes(keyword) || q.nameKana.toLowerCase().includes(keyword))
-      : quests;
+    const keyword = appliedQuestKeyword.trim().toLowerCase();
+    const elementIndex = new Map<CharacterItem["element"], number>(ELEMENT_OPTIONS.map((v, i) => [v, i]));
+    const list = quests.filter((q) => {
+      const isKeywordMatched = !keyword || q.name.toLowerCase().includes(keyword) || q.nameKana.toLowerCase().includes(keyword);
+      const isFilterMatched = !appliedQuestFilter || q.questTag === appliedQuestFilter || q.contentTag === appliedQuestFilter;
+      return isKeywordMatched && isFilterMatched;
+    });
+    list.sort((a, b) => (elementIndex.get(a.element) ?? Number.POSITIVE_INFINITY) - (elementIndex.get(b.element) ?? Number.POSITIVE_INFINITY));
     return list.slice(0, 100);
-  }, [quests, questKeyword, hasQuestSearched]);
+  }, [quests, appliedQuestKeyword, appliedQuestFilter, hasQuestSearched]);
+  const questVirtual = useMemo(() => {
+    const totalRows = Math.ceil(filteredQuests.length / QUEST_GRID_COLS);
+    const startRow = Math.max(0, Math.floor(questListScrollTop / QUEST_ROW_HEIGHT) - 1);
+    const endRow = Math.min(totalRows, startRow + QUEST_VISIBLE_ROWS + 2);
+    const startIndex = startRow * QUEST_GRID_COLS;
+    const endIndex = Math.min(filteredQuests.length, endRow * QUEST_GRID_COLS);
+    const visible = filteredQuests.slice(startIndex, endIndex);
+    const paddingTop = startRow * QUEST_ROW_HEIGHT;
+    const paddingBottom = Math.max(0, (totalRows - endRow) * QUEST_ROW_HEIGHT);
+    return { visible, paddingTop, paddingBottom };
+  }, [filteredQuests, questListScrollTop]);
   const filteredShugojus = useMemo(() => {
     const keyword = shugojuKeyword.trim().toLowerCase();
     const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword) || s.nameKana.toLowerCase().includes(keyword)) : shugojus;
@@ -433,15 +469,43 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       if (!from || !to) return prev;
       return prev.map((slot) => {
         if (slot.slotIndex === fromIndex) {
-          return { ...slot, characterId: to.characterId, fruits: [...to.fruits], crests: [...to.crests] };
+          return {
+            ...slot,
+            characterId: to.characterId,
+            fruits: [...to.fruits],
+            fruitGrades: { ...to.fruitGrades },
+            crests: [...to.crests],
+            slotMemo: to.slotMemo,
+          };
         }
         if (slot.slotIndex === toIndex) {
-          return { ...slot, characterId: from.characterId, fruits: [...from.fruits], crests: [...from.crests] };
+          return {
+            ...slot,
+            characterId: from.characterId,
+            fruits: [...from.fruits],
+            fruitGrades: { ...from.fruitGrades },
+            crests: [...from.crests],
+            slotMemo: from.slotMemo,
+          };
         }
         return slot;
       });
     });
     setActiveSlotIndex(toIndex);
+  }
+
+  function clearSlot(slotIndex: number) {
+    setSlots((prev) =>
+      prev.map((slot) =>
+        slot.slotIndex === slotIndex
+          ? { ...slot, characterId: "", fruits: [], fruitGrades: {}, crests: [], slotMemo: "" }
+          : slot
+      )
+    );
+  }
+
+  function setSlotMemo(slotIndex: number, value: string) {
+    setSlots((prev) => prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, slotMemo: value } : slot)));
   }
 
   function toggleOption(slotIndex: number, kind: "fruits" | "crests", value: string, max: number) {
@@ -450,16 +514,30 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         if (slot.slotIndex !== slotIndex) return slot;
         const current = slot[kind];
         const exists = current.includes(value);
-        if (exists) return { ...slot, [kind]: current.filter((v) => v !== value) };
+        if (exists) {
+          if (kind === "fruits") {
+            const nextGrades = { ...slot.fruitGrades };
+            delete nextGrades[value];
+            return { ...slot, [kind]: current.filter((v) => v !== value), fruitGrades: nextGrades };
+          }
+          return { ...slot, [kind]: current.filter((v) => v !== value) };
+        }
         if (current.length >= max) return slot;
         const next = [...current, value];
         if (kind === "fruits") {
           next.sort((a, b) => (fruitOrderMap.get(a) ?? Number.POSITIVE_INFINITY) - (fruitOrderMap.get(b) ?? Number.POSITIVE_INFINITY));
+          return { ...slot, [kind]: next, fruitGrades: { ...slot.fruitGrades, [value]: "L" } };
         } else {
           next.sort((a, b) => (crestOrderMap.get(a) ?? Number.POSITIVE_INFINITY) - (crestOrderMap.get(b) ?? Number.POSITIVE_INFINITY));
+          return { ...slot, [kind]: next };
         }
-        return { ...slot, [kind]: next };
       })
+    );
+  }
+
+  function setFruitGrade(slotIndex: number, fruitName: string, grade: FruitGrade) {
+    setSlots((prev) =>
+      prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, fruitGrades: { ...slot.fruitGrades, [fruitName]: grade } } : slot))
     );
   }
 
@@ -468,6 +546,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setTitle("");
     setQuestId("");
     setQuestKeyword("");
+    setQuestFilter("");
+    setAppliedQuestKeyword("");
+    setAppliedQuestFilter("");
+    setIsQuestModalOpen(false);
     setHasQuestSearched(false);
     setShugojuId("");
     setShugojuKeyword("");
@@ -475,6 +557,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMemoText("");
     setSlots(emptySlots());
     setActiveSlotIndex(0);
+    setModalSlotIndex(null);
+    setIsCharacterModalOpen(false);
+    setIsFruitModalOpen(false);
+    setIsCrestModalOpen(false);
   }
 
   function fillFromRecord(record: TeamRecord) {
@@ -482,6 +568,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setTitle(record.title);
     setQuestId(record.targetQuestId ?? "");
     setQuestKeyword(record.targetQuestName ?? "");
+    setQuestFilter("");
+    setAppliedQuestKeyword("");
+    setAppliedQuestFilter("");
+    setIsQuestModalOpen(false);
     setHasQuestSearched(false);
     setShugojuId(record.shugojuId ?? "");
     setShugojuKeyword(record.shugojuName ?? "");
@@ -494,7 +584,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           slotIndex,
           characterId: found?.characterId ?? "",
           fruits: found?.fruits ?? [],
+          fruitGrades:
+            found?.fruitGrades ??
+            Object.fromEntries(((found?.fruits ?? []) as string[]).map((name) => [name, "L" as FruitGrade])),
           crests: found?.crests ?? [],
+          slotMemo: found?.slotMemo ?? "",
         };
       })
     );
@@ -526,7 +620,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         characterName: c?.name ?? "",
         iconUrl: c?.iconUrl ?? "",
         fruits: slot.fruits.slice(0, 4),
+        fruitGrades: Object.fromEntries(slot.fruits.slice(0, 4).map((name) => [name, slot.fruitGrades[name] ?? "L"])),
         crests: slot.crests.slice(0, 4),
+        slotMemo: slot.slotMemo,
       };
     });
 
@@ -588,14 +684,33 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsArrangeRemoveOpen(false);
     setMessage("保存データを削除しました");
   }
-
-  function openMobileEditor(slotIndex: number) {
-    setActiveSlotIndex(slotIndex);
-    setMobileEditSlotIndex(slotIndex);
+  function applyQuestSearch() {
+    setAppliedQuestKeyword(questKeyword);
+    setAppliedQuestFilter(questFilter);
+    setHasQuestSearched(true);
+    setQuestListScrollTop(0);
+    if (questListRef.current) questListRef.current.scrollTop = 0;
   }
 
-  const editorSlotIndex = mobileEditSlotIndex ?? activeSlotIndex;
+  function openCharacterModal(slotIndex: number) {
+    setActiveSlotIndex(slotIndex);
+    setModalSlotIndex(slotIndex);
+    setIsCharacterModalOpen(true);
+  }
+  function openFruitModal(slotIndex: number) {
+    setActiveSlotIndex(slotIndex);
+    setModalSlotIndex(slotIndex);
+    setIsFruitModalOpen(true);
+  }
+  function openCrestModal(slotIndex: number) {
+    setActiveSlotIndex(slotIndex);
+    setModalSlotIndex(slotIndex);
+    setIsCrestModalOpen(true);
+  }
+
+  const editorSlotIndex = activeSlotIndex;
   const editorSlot = slots[editorSlotIndex] ?? slots[0];
+  const modalSlot = modalSlotIndex !== null ? slots.find((s) => s.slotIndex === modalSlotIndex) ?? null : null;
   const editorCharacter = editorSlot.characterId ? charMap.get(editorSlot.characterId) ?? null : null;
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
   const isQuestObtainEnabled = selectedObtains.has("降臨");
@@ -812,6 +927,35 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             </button>
           ))}
         </div>
+        {editorSlot.fruits.length > 0 ? (
+          <div className={styles.selectedFruitList}>
+            {editorSlot.fruits.map((fruit) => {
+              const grade = fruitGradeOf(editorSlot, fruit);
+              return (
+                <div key={`selected-editor-${editorSlotIndex}-${fruit}`} className={styles.selectedFruitRow}>
+                  <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(grade)} alt={grade} />
+                  <span className={styles.selectedFruitName}>{fruit}</span>
+                  <button
+                    className={`${styles.btn} ${styles.gradeBtn}`}
+                    type="button"
+                    style={{ background: grade === "L" ? "#e3f0ff" : "#fff" }}
+                    onClick={() => setFruitGrade(editorSlotIndex, fruit, "L")}
+                  >
+                    L
+                  </button>
+                  <button
+                    className={`${styles.btn} ${styles.gradeBtn}`}
+                    type="button"
+                    style={{ background: grade === "EL" ? "#e3f0ff" : "#fff" }}
+                    onClick={() => setFruitGrade(editorSlotIndex, fruit, "EL")}
+                  >
+                    EL
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div>
@@ -895,57 +1039,22 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} style={{ minWidth: 320 }} />
             </div>
             <div className={styles.row}>
-              <label className={styles.label}>対象クエスト(任意)</label>
-              <div className={styles.questSearchGroup}>
-                <input
-                  className={styles.input}
-                  value={questKeyword}
-                  onChange={(e) => setQuestKeyword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      setHasQuestSearched(true);
-                    }
-                  }}
-                  placeholder="クエスト名検索"
-                  style={{ minWidth: 220 }}
-                />
-                <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={() => setHasQuestSearched(true)}>検索</button>
-                <button
-                  className={styles.btn}
-                  type="button"
-                  onClick={() => {
-                    setQuestId("");
-                    setQuestKeyword("");
-                    setHasQuestSearched(false);
-                  }}
-                >
-                  未設定
-                </button>
-                {selectedQuest?.iconUrl ? <img className={styles.icon} src={selectedQuest.iconUrl} alt={selectedQuest.name} style={{ width: 40, height: 40 }} /> : null}
-              </div>
+              <label className={styles.label}>クエスト</label>
+              <button
+                className={styles.btn}
+                type="button"
+                onClick={() => {
+                  setHasQuestSearched(false);
+                  setQuestListScrollTop(0);
+                  setIsQuestModalOpen(true);
+                }}
+              >
+                クエストを選択
+              </button>
+              {selectedQuest?.iconUrl ? <img className={styles.icon} src={selectedQuest.iconUrl} alt={selectedQuest.name} style={{ width: 40, height: 40 }} /> : null}
+              <span className={styles.helper}>{selectedQuest?.name || "未設定"}</span>
             </div>
           </div>
-          {hasQuestSearched ? (
-            <div className={styles.questPickList}>
-              {filteredQuests.map((q) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  className={styles.questPickItem}
-                  onClick={() => {
-                    setQuestId(q.id);
-                    setQuestKeyword(q.name);
-                    setHasQuestSearched(false);
-                  }}
-                >
-                  {q.iconUrl ? <img className={styles.questPickIcon} src={q.iconUrl} alt={q.name} /> : null}
-                  <span>{q.name}</span>
-                </button>
-              ))}
-              {filteredQuests.length === 0 ? <div className={styles.helper}>該当クエストがありません</div> : null}
-            </div>
-          ) : null}
 
           <div className={styles.twoCol}>
             <div className={styles.leftPane}>
@@ -958,56 +1067,119 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
                   return (
                     <div key={slot.slotIndex} className={styles.teamRow}>
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         className={styles.teamBlock}
                         data-active={activeSlotIndex === slot.slotIndex ? "1" : "0"}
                         onClick={() => setActiveSlotIndex(slot.slotIndex)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setActiveSlotIndex(slot.slotIndex);
+                          }
+                        }}
                       >
                         <div className={styles.teamHeader} style={{ backgroundColor: ELEMENT_HEADER_COLOR[c?.element ?? ""] }}>
                           <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
                           <div className={styles.teamNameWrap}>
                             <div className={styles.teamName}>{c?.name || ""}</div>
                             <span
-                              className={styles.mobileEditBtn}
                               role="button"
                               tabIndex={0}
+                              className={styles.slotClearBtn}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openMobileEditor(slot.slotIndex);
+                                clearSlot(slot.slotIndex);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  openMobileEditor(slot.slotIndex);
+                                  clearSlot(slot.slotIndex);
                                 }
                               }}
                             >
-                              編集
+                              解除
                             </span>
                           </div>
                         </div>
                         <div className={styles.teamBody}>
-                          <div className={styles.iconCell}>
+                          <div
+                            className={`${styles.iconCell} ${styles.clickableArea} ${c?.iconUrl ? "" : styles.iconCellEmpty}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCharacterModal(slot.slotIndex);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openCharacterModal(slot.slotIndex);
+                              }
+                            }}
+                          >
                             {c?.iconUrl ? (
                               <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
                             ) : (
-                              <span className={styles.sheetSelectText}>選択</span>
+                              <span className={styles.sheetSelectText}>キャラを選択</span>
                             )}
                           </div>
                           <div className={styles.detailTable}>
-                            <div className={styles.tableHead}>わくわくの実</div>
-                            <div className={styles.tableHead}>紋章</div>
+                            <div className={`${styles.tableHead} ${styles.clickableArea}`} onClick={(e) => { e.stopPropagation(); openFruitModal(slot.slotIndex); }}>わくわくの実</div>
+                            <div className={`${styles.tableHead} ${styles.clickableArea}`} onClick={(e) => { e.stopPropagation(); openCrestModal(slot.slotIndex); }}>紋章</div>
                             {fruitRows.map((fruit, idx) => (
                               <Fragment key={`${slot.slotIndex}-row-${idx}`}>
-                                <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>{fruit || "　"}</div>
-                                <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>{crestRows[idx] || "　"}</div>
+                                <div
+                                  className={`${styles.tableCell} ${styles.clickableArea} ${fruit ? "" : styles.tableCellEmpty} ${
+                                    !fruit && idx === 0 && slot.fruits.length === 0 ? styles.cellPlaceholder : ""
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openFruitModal(slot.slotIndex);
+                                  }}
+                                >
+                                  {fruit ? (
+                                    <span className={styles.fruitCellContent}>
+                                      <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, fruit))} alt={fruitGradeOf(slot, fruit)} />
+                                      <span>{fruit}</span>
+                                    </span>
+                                  ) : idx === 0 && slot.fruits.length === 0 ? "タップして実を選択" : "　"}
+                                </div>
+                                <div
+                                  className={`${styles.tableCell} ${styles.clickableArea} ${crestRows[idx] ? "" : styles.tableCellEmpty} ${
+                                    !crestRows[idx] && idx === 0 && slot.crests.length === 0 ? styles.cellPlaceholder : ""
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCrestModal(slot.slotIndex);
+                                  }}
+                                >
+                                  {crestRows[idx] ? (
+                                    <span className={styles.fruitCellContent}>
+                                      <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
+                                      <span>{crestRows[idx]}</span>
+                                    </span>
+                                  ) : idx === 0 && slot.crests.length === 0 ? "タップして紋章を選択" : "　"}
+                                </div>
                               </Fragment>
                             ))}
                           </div>
                         </div>
-                      </button>
+                        <div className={styles.slotMemoCell}>
+                          <div className={styles.slotMemoLabel}>備考</div>
+                          <input
+                            className={`${styles.input} ${styles.slotMemoInput}`}
+                            value={slot.slotMemo}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            onChange={(e) => setSlotMemo(slot.slotIndex, e.target.value)}
+                            placeholder="備考を入力"
+                          />
+                        </div>
+                      </div>
                       <div className={styles.slotMoveBtns}>
                         <button
                           className={styles.slotMoveBtn}
@@ -1057,16 +1229,229 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               placeholder="メモ"
             />
           </div>
-          {mobileEditSlotIndex !== null ? (
-            <div className={styles.mobileEditorOverlay} onClick={() => setMobileEditSlotIndex(null)}>
-              <div className={styles.mobileEditorModal} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.mobileEditorHeader}>
-                  <div className={styles.label}>{mobileEditSlotIndex + 1}体目 編集</div>
-                  <button className={styles.btn} type="button" onClick={() => setMobileEditSlotIndex(null)}>
-                    閉じる
+          {isCharacterModalOpen && modalSlot ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsCharacterModalOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>{modalSlot.slotIndex + 1}体目 キャラ選択</div>
+                <div className={styles.row}>
+                  <input
+                    className={styles.input}
+                    value={nameFilter}
+                    onChange={(e) => setNameFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applyFilters();
+                      }
+                    }}
+                    placeholder="キャラ名検索"
+                  />
+                  <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={applyFilters}>検索</button>
+                  <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
+                </div>
+                {hasSearched ? (
+                  <div className={styles.pickList}>
+                    {filteredCharacters.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={styles.pickItem}
+                        onClick={() => {
+                          updateSlot(modalSlot.slotIndex, { characterId: c.id });
+                          setIsCharacterModalOpen(false);
+                          setHasSearched(false);
+                        }}
+                      >
+                        <img className={styles.pickItemImg} src={c.iconUrl} alt={c.name} />
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                    {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
+                  </div>
+                ) : (
+                  <div className={styles.helper}>検索を押すまで一覧は表示されません</div>
+                )}
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsCharacterModalOpen(false)}>閉じる</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {isFruitModalOpen && modalSlot ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsFruitModalOpen(false)}>
+              <div className={`${styles.arrangeDialog} ${styles.fruitDialog}`} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>{modalSlot.slotIndex + 1}体目 わくわくの実</div>
+                <div className={styles.row}>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    style={{ background: fruitFilter === "status" ? "#e3f0ff" : "#fff" }}
+                    onClick={() => setFruitFilter("status")}
+                  >
+                    ステータス強化
+                  </button>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    style={{ background: fruitFilter === "other" ? "#e3f0ff" : "#fff" }}
+                    onClick={() => setFruitFilter("other")}
+                  >
+                    それ以外
                   </button>
                 </div>
-                {renderEditorPane(styles.rightPaneMobile)}
+                <div className={`${styles.row} ${styles.optionGrid}`}>
+                  {filteredFruitOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      className={`${styles.btn} ${styles.optionBtn}`}
+                      type="button"
+                      style={{ background: modalSlot.fruits.includes(option.name) ? "#e3f0ff" : "#fff" }}
+                      onClick={() => toggleOption(modalSlot.slotIndex, "fruits", option.name, 4)}
+                    >
+                      {option.name}
+                    </button>
+                  ))}
+                </div>
+                <div className={`${styles.selectedFruitList} ${styles.modalSelectedFruitList}`}>
+                  {modalSlot.fruits.map((fruit) => {
+                    const grade = fruitGradeOf(modalSlot, fruit);
+                    return (
+                      <div key={`selected-modal-${modalSlot.slotIndex}-${fruit}`} className={styles.selectedFruitRow}>
+                        <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(grade)} alt={grade} />
+                        <span className={styles.selectedFruitName}>{fruit}</span>
+                        <button
+                          className={`${styles.btn} ${styles.gradeBtn}`}
+                          type="button"
+                          style={{ background: grade === "L" ? "#e3f0ff" : "#fff" }}
+                          onClick={() => setFruitGrade(modalSlot.slotIndex, fruit, "L")}
+                        >
+                          L
+                        </button>
+                        <button
+                          className={`${styles.btn} ${styles.gradeBtn}`}
+                          type="button"
+                          style={{ background: grade === "EL" ? "#e3f0ff" : "#fff" }}
+                          onClick={() => setFruitGrade(modalSlot.slotIndex, fruit, "EL")}
+                        >
+                          EL
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsFruitModalOpen(false)}>閉じる</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {isCrestModalOpen && modalSlot ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsCrestModalOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>{modalSlot.slotIndex + 1}体目 紋章</div>
+                <div className={`${styles.row} ${styles.optionGrid}`}>
+                  {CREST_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      className={`${styles.btn} ${styles.optionBtn}`}
+                      type="button"
+                      style={{ background: modalSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
+                      onClick={() => toggleOption(modalSlot.slotIndex, "crests", value, 4)}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsCrestModalOpen(false)}>閉じる</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {isQuestModalOpen ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsQuestModalOpen(false)}>
+              <div className={`${styles.arrangeDialog} ${styles.questDialog}`} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.label}>クエストを選択</div>
+                <div className={styles.questSearchRow}>
+                  <input
+                    className={`${styles.input} ${styles.questSearchInput}`}
+                    value={questKeyword}
+                    onChange={(e) => setQuestKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applyQuestSearch();
+                      }
+                    }}
+                    placeholder="ボスを検索"
+                  />
+                  <button className={`${styles.btn} ${styles.searchBtn} ${styles.questSearchBtn}`} type="button" onClick={applyQuestSearch}>
+                    検索
+                  </button>
+                </div>
+                <div className={styles.questFilterGrid}>
+                  {QUEST_FILTER_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      className={styles.btn}
+                      type="button"
+                      style={{ background: questFilter === value ? "#e3f0ff" : "#fff" }}
+                      onClick={() => {
+                        setQuestFilter((prev) => (prev === value ? "" : value));
+                      }}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+                {hasQuestSearched ? (
+                  <div
+                    ref={questListRef}
+                    className={styles.questPickList}
+                    onScroll={(e) => setQuestListScrollTop(e.currentTarget.scrollTop)}
+                  >
+                    <div style={{ height: questVirtual.paddingTop }} />
+                    <div className={styles.questPickGrid}>
+                      {questVirtual.visible.map((q) => (
+                        <button
+                          key={q.id}
+                          type="button"
+                          className={styles.questPickItem}
+                          onClick={() => {
+                            setQuestId(q.id);
+                            setQuestKeyword(q.name);
+                            setHasQuestSearched(false);
+                            setQuestListScrollTop(0);
+                            setIsQuestModalOpen(false);
+                          }}
+                        >
+                          {q.iconUrl ? <img className={styles.questPickIcon} src={q.iconUrl} alt={q.name} /> : null}
+                          <span>{q.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ height: questVirtual.paddingBottom }} />
+                    {filteredQuests.length === 0 ? <div className={styles.helper}>該当クエストがありません</div> : null}
+                  </div>
+                ) : (
+                  <div className={styles.helper}>検索を押すまで一覧は表示されません</div>
+                )}
+                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
+                  <button className={styles.btn} type="button" onClick={() => setIsQuestModalOpen(false)}>閉じる</button>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => {
+                      setQuestId("");
+                      setQuestKeyword("");
+                      setQuestFilter("");
+                      setHasQuestSearched(false);
+                      setIsQuestModalOpen(false);
+                    }}
+                  >
+                    未設定
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -1154,12 +1539,32 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                           <div className={styles.tableHead}>紋章</div>
                           {fruitRows.map((fruit, idx) => (
                             <Fragment key={`export-${slot.slotIndex}-row-${idx}`}>
-                              <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>{fruit || "　"}</div>
-                              <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>{crestRows[idx] || "　"}</div>
+                              <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>
+                                {fruit ? (
+                                  <span className={styles.fruitCellContent}>
+                                    <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, fruit))} alt={fruitGradeOf(slot, fruit)} />
+                                    <span>{fruit}</span>
+                                  </span>
+                                ) : "　"}
+                              </div>
+                              <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>
+                                {crestRows[idx] ? (
+                                  <span className={styles.fruitCellContent}>
+                                    <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
+                                    <span>{crestRows[idx]}</span>
+                                  </span>
+                                ) : "　"}
+                              </div>
                             </Fragment>
                           ))}
                         </div>
                       </div>
+                      {slot.slotMemo.trim() ? (
+                        <div className={styles.slotMemoCell}>
+                          <div className={styles.slotMemoLabel}>備考</div>
+                          <div className={styles.slotMemoText}>{slot.slotMemo}</div>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

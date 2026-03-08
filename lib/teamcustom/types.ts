@@ -17,6 +17,9 @@ export type QuestItem = {
   id: string;
   name: string;
   nameKana: string;
+  element: CharacterItem["element"];
+  questTag: string;
+  contentTag: string;
   iconPath: string;
   iconUrl: string;
 };
@@ -29,13 +32,17 @@ export type ShugojuItem = {
   iconUrl: string;
 };
 
+export type FruitGrade = "L" | "EL";
+
 export type TeamSlot = {
   slotIndex: number;
   characterId: string;
   characterName: string;
   iconUrl: string;
   fruits: string[];
+  fruitGrades?: Record<string, FruitGrade>;
   crests: string[];
+  slotMemo?: string;
 };
 
 export type TeamRecord = {
