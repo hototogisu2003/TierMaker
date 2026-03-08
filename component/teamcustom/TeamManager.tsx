@@ -9,7 +9,7 @@ import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persist
 import { CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
 import type { CharacterItem, QuestItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
-type Tab = "memo" | "view" | "arrange";
+type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
 type SortOrder = "asc" | "desc";
 type YearValue = number | "";
@@ -148,9 +148,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mobileEditSlotIndex, setMobileEditSlotIndex] = useState<number | null>(null);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
-  const [arrangeCandidateId, setArrangeCandidateId] = useState("");
   const [arrangeRemoveId, setArrangeRemoveId] = useState("");
-  const [isArrangeAddOpen, setIsArrangeAddOpen] = useState(false);
   const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
 
@@ -185,7 +183,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       .finally(() => setIsArrangeLoaded(true));
   }, []);
   useEffect(() => {
-    setArrangeIds((prev) => prev.filter((id) => records.some((r) => r.id === id)));
+    setArrangeIds((prev) => {
+      const filtered = prev.filter((id) => records.some((r) => r.id === id));
+      const append = records.map((r) => r.id).filter((id) => !filtered.includes(id));
+      return [...filtered, ...append].slice(0, 50);
+    });
   }, [records]);
   useEffect(() => {
     if (tab !== "memo") return;
@@ -220,12 +222,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     return list.slice(0, 100);
   }, [quests, questKeyword, hasQuestSearched]);
   const arrangedRecords = useMemo(
-    () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)),
+    () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, 50),
     [arrangeIds, records]
-  );
-  const availableArrangeRecords = useMemo(
-    () => records.filter((r) => !arrangeIds.includes(r.id)),
-    [records, arrangeIds]
   );
 
   const filteredFruitOptions = useMemo(
@@ -559,20 +557,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMessage("編成を削除しました");
     if (editingId === id) resetDraft();
   }
-  function addArrangeRecord() {
-    if (!arrangeCandidateId) return;
-    setArrangeIds((prev) => {
-      if (prev.includes(arrangeCandidateId) || prev.length >= 15) return prev;
-      return [...prev, arrangeCandidateId];
-    });
-    setArrangeCandidateId("");
-    setIsArrangeAddOpen(false);
-  }
-  function removeArrangeRecord(id: string) {
+  async function removeManagedRecord(id: string) {
     if (!id) return;
-    setArrangeIds((prev) => prev.filter((v) => v !== id));
-    setArrangeRemoveId((prev) => (prev === id ? "" : prev));
+    await deleteTeam(id);
+    await refreshRecords();
+    setArrangeRemoveId("");
     setIsArrangeRemoveOpen(false);
+    setMessage("保存データを削除しました");
   }
 
   function openMobileEditor(slotIndex: number) {
@@ -847,24 +838,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   <button
                     type="button"
                     className={styles.menuItem}
-                    data-active={tab === "view" ? "1" : "0"}
-                    onClick={() => {
-                      router.push("/TeamBuild/view");
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    編成を確認する
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.menuItem}
                     data-active={tab === "arrange" ? "1" : "0"}
                     onClick={() => {
                       router.push("/TeamBuild/list");
                       setIsMenuOpen(false);
                     }}
                   >
-                    編成を並べる
+                    編成を管理する
                   </button>
                 </div>
               ) : null}
@@ -1107,44 +1087,14 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         </div>
       ) : null}
 
-      {tab === "view" ? (
-        <div className={styles.card} style={{ display: "grid", gap: 10 }}>
-          <div className={styles.label}>保存済み編成 ({records.length}件)</div>
-          {records.map((record) => (
-            <div key={record.id} className={styles.compareRow}>
-              <div className={styles.questMeta}>
-                {record.targetQuestIconUrl ? (
-                  <img className={styles.questMetaIcon} src={record.targetQuestIconUrl} alt={record.targetQuestName || "対象クエスト"} />
-                ) : (
-                  <div className={styles.questMetaBlank} />
-                )}
-                <div>
-                  <div style={{ fontWeight: 800 }}>{record.title}</div>
-                  <div className={styles.helper}>{formatDate(record.createdAt)}</div>
-                  <div className={styles.helper}>対象: {record.targetQuestName || "未設定"}</div>
-                </div>
-              </div>
-              <div className={styles.row}>
-                <button className={styles.btn} onClick={() => router.push(`/TeamBuild/team?edit=${record.id}`)}>編集</button>
-                <button className={styles.btn} onClick={() => void removeRecord(record.id)}>削除</button>
-              </div>
-            </div>
-          ))}
-          {records.length === 0 ? <div className={styles.helper}>保存データがありません</div> : null}
-        </div>
-      ) : null}
-
       {tab === "arrange" ? (
         <div className={styles.card} style={{ display: "grid", gap: 10 }}>
-          <div className={styles.label}>並べる画面 (最大15件)</div>
+          <div className={styles.label}>編成を管理する (最大50件)</div>
           <div className={styles.row}>
-            <button className={styles.btn} type="button" onClick={() => setIsArrangeAddOpen(true)} disabled={arrangeIds.length >= 15 || availableArrangeRecords.length === 0}>
-              追加
-            </button>
             <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(true)} disabled={arrangedRecords.length === 0}>
               削除
             </button>
-            <span className={styles.helper}>{arrangeIds.length}/15件</span>
+            <span className={styles.helper}>{arrangedRecords.length}/50件</span>
           </div>
           <div className={`${styles.compareBoard} ${styles.arrangeBoard}`}>
             {arrangedRecords.map((record, idx) => (
@@ -1206,28 +1156,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               </div>
             ))}
           </div>
-          {arrangedRecords.length === 0 ? <div className={styles.helper}>追加ボタンで編成を並べてください</div> : null}
-          {isArrangeAddOpen ? (
-            <div className={styles.arrangeOverlay} onClick={() => setIsArrangeAddOpen(false)}>
-              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>追加する編成を選択</div>
-                <select className={styles.select} value={arrangeCandidateId} onChange={(e) => setArrangeCandidateId(e.target.value)}>
-                  <option value="">選択してください</option>
-                  {availableArrangeRecords.map((record) => (
-                    <option key={record.id} value={record.id}>{record.title}</option>
-                  ))}
-                </select>
-                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
-                  <button className={styles.btn} type="button" onClick={() => setIsArrangeAddOpen(false)}>閉じる</button>
-                  <button className={styles.btn} type="button" onClick={addArrangeRecord} disabled={!arrangeCandidateId || arrangeIds.length >= 15}>追加</button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          {arrangedRecords.length === 0 ? <div className={styles.helper}>保存データがありません</div> : null}
           {isArrangeRemoveOpen ? (
             <div className={styles.arrangeOverlay} onClick={() => setIsArrangeRemoveOpen(false)}>
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>削除する編成を選択</div>
+                <div className={styles.label}>保存データから削除する編成を選択</div>
                 <select className={styles.select} value={arrangeRemoveId} onChange={(e) => setArrangeRemoveId(e.target.value)}>
                   <option value="">選択してください</option>
                   {arrangedRecords.map((record) => (
@@ -1236,7 +1169,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 </select>
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>
                   <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(false)}>閉じる</button>
-                  <button className={styles.btn} type="button" onClick={() => removeArrangeRecord(arrangeRemoveId)} disabled={!arrangeRemoveId}>削除</button>
+                  <button className={styles.btn} type="button" onClick={() => void removeManagedRecord(arrangeRemoveId)} disabled={!arrangeRemoveId}>削除</button>
                 </div>
               </div>
             </div>

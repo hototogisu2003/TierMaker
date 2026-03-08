@@ -1,9 +1,9 @@
-import TeamManager from "@/component/teamcustom/TeamManager";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "TeamBuild - View",
+  title: "TeamBuild - Manage",
 };
 
 export default function TeamBuildViewPage() {
-  return <TeamManager mode="view" />;
+  redirect("/TeamBuild/list");
 }
