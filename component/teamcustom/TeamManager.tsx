@@ -1232,7 +1232,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                       <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
                                       <span>{crestRows[idx]}</span>
                                     </span>
-                                  ) : "　"}
+                                  ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップして紋章を選択" : "　"}
                                 </div>
                               </Fragment>
                             ))}
