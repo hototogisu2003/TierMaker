@@ -174,7 +174,7 @@ export async function fetchCharactersAndQuests(): Promise<{
   let shugojuLoadError: string | null = null;
   const { data: shugojuData, error: shugojuError } = await supabase
     .from(shugojuTable)
-    .select("id,name,icon_path")
+    .select("id,name,name_kana,icon_path")
     .order("id", { ascending: true })
     .limit(5000);
 
@@ -186,12 +186,14 @@ export async function fetchCharactersAndQuests(): Promise<{
         const r = row as GenericRow;
         const id = toText(r.id).trim();
         const name = toText(r.name).trim() || id;
+        const nameKana = toText(r.name_kana).trim();
         const iconPath = toText(r.icon_path).trim();
         if (!id || !name) return null;
         const fallback = iconPath ? supabase.storage.from(characterBucket).getPublicUrl(iconPath).data.publicUrl : "";
         return {
           id,
           name,
+          nameKana,
           iconPath,
           iconUrl: iconPath ? buildPublicUrl(iconPath, r2Base, fallback) : "",
         } satisfies ShugojuItem;

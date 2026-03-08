@@ -232,7 +232,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }, [quests, questKeyword, hasQuestSearched]);
   const filteredShugojus = useMemo(() => {
     const keyword = shugojuKeyword.trim().toLowerCase();
-    const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword)) : shugojus;
+    const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword) || s.nameKana.toLowerCase().includes(keyword)) : shugojus;
     return list.slice(0, 200);
   }, [shugojus, shugojuKeyword]);
   const arrangedRecords = useMemo(

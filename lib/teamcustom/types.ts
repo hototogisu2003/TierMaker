@@ -24,6 +24,7 @@ export type QuestItem = {
 export type ShugojuItem = {
   id: string;
   name: string;
+  nameKana: string;
   iconPath: string;
   iconUrl: string;
 };
