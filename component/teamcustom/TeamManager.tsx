@@ -499,7 +499,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     await putTeam(record);
     await refreshRecords();
     if (!editingId) setEditingId(nextId);
-    setMessage(editingId ? "編成を上書き保存しました" : "編成を保存しました（このまま上書き編集できます）");
+    setMessage(editingId ? "編成を上書き保存しました" : "編成を保存しました");
   }
 
   async function exportCurrentAsPng() {
