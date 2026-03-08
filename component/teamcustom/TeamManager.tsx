@@ -1175,8 +1175,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
       {tab === "arrange" ? (
         <div className={styles.card} style={{ display: "grid", gap: 10 }}>
-          <div className={styles.label}>編成を管理する (最大50件)</div>
           <div className={styles.row}>
+            <div className={styles.label}>編成を管理する (最大50件)</div>
             <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(true)} disabled={arrangedRecords.length === 0}>
               削除
             </button>
