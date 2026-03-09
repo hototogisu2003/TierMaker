@@ -322,6 +322,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
   const questListRef = useRef<HTMLDivElement>(null);
@@ -891,17 +894,67 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         requestAnimationFrame(() => resolve());
       });
       const url = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+      const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
+      const fileName = `${safeTitle}_${filenameDateText(new Date())}.png`;
       const a = document.createElement("a");
       a.href = url;
-      const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
-      a.download = `${safeTitle}_${filenameDateText(new Date())}.png`;
+      a.download = fileName;
+      a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
-      if (a.parentNode) {
-        a.parentNode.removeChild(a);
+      if (a.parentNode) a.parentNode.removeChild(a);
+      // iOS Safari often ignores download attribute on data URLs.
+      if (/iP(hone|ad|od)/.test(navigator.userAgent)) {
+        window.open(url, "_blank", "noopener,noreferrer");
       }
     } catch {
       setMessage("PNG出力に失敗しました。再読み込み後に再試行してください");
+    }
+  }
+
+  async function createExportPngDataUrl(): Promise<string> {
+    if (!exportRef.current) throw new Error("export target missing");
+    const node = exportRef.current;
+    node.style.setProperty("--export-width", "390px");
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+    return toPng(node, { cacheBust: true, pixelRatio: 2 });
+  }
+
+  async function openGenerateModal() {
+    setIsGenerateModalOpen(true);
+    setIsPreviewLoading(true);
+    try {
+      const url = await createExportPngDataUrl();
+      setPreviewImageUrl(url);
+    } catch {
+      setPreviewImageUrl("");
+      setMessage("プレビュー画像の生成に失敗しました");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }
+
+  async function saveImageFromModal() {
+    try {
+      const url = previewImageUrl || (await createExportPngDataUrl());
+      if (!previewImageUrl) setPreviewImageUrl(url);
+      const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
+      const fileName = `${safeTitle}_${filenameDateText(new Date())}.png`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      if (a.parentNode) a.parentNode.removeChild(a);
+      if (/iP(hone|ad|od)/.test(navigator.userAgent)) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+      setMessage("画像保存を開始しました");
+    } catch {
+      setMessage("画像保存に失敗しました。再読み込み後に再試行してください");
     }
   }
 
@@ -1313,9 +1366,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           {tab === "memo" ? (
             <div className={styles.rightGroup}>
               <button className={`${styles.btn} ${styles.primary}`} onClick={() => void saveTeam()}>保存</button>
-              <button className={styles.btn} onClick={exportCurrentAsPng}>PNG出力</button>
+              <button className={`${styles.btn} ${styles.searchBtn}`} onClick={() => void openGenerateModal()}>画像・URL生成</button>
               <button className={styles.btn} onClick={resetDraft}>入力クリア</button>
-              <button className={`${styles.btn} ${styles.searchBtn}`} onClick={() => void copyShareUrl()}>URL共有</button>
             </div>
           ) : null}
         </div>
@@ -1848,6 +1900,28 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   </div>
                   <div style={{ height: shugojuVirtual.paddingBottom }} />
                   {filteredShugojus.length === 0 ? <div className={styles.helper}>該当する守護獣がありません</div> : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {isGenerateModalOpen ? (
+            <div className={styles.arrangeOverlay} onClick={() => setIsGenerateModalOpen(false)}>
+              <div className={`${styles.arrangeDialog} ${styles.generateDialog}`} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.modalTopRow}>
+                  <div className={styles.modalTopActions}>
+                    <button className={styles.btn} type="button" onClick={() => void saveImageFromModal}>画像保存</button>
+                    <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={() => void copyShareUrl()}>URLコピー</button>
+                  </div>
+                  <button className={styles.btn} type="button" onClick={() => setIsGenerateModalOpen(false)}>閉じる</button>
+                </div>
+                <div className={styles.previewWrap}>
+                  {isPreviewLoading ? (
+                    <div className={styles.helper}>プレビュー生成中...</div>
+                  ) : previewImageUrl ? (
+                    <img className={styles.previewImage} src={previewImageUrl} alt="PNGプレビュー" />
+                  ) : (
+                    <div className={styles.helper}>プレビューを表示できませんでした</div>
+                  )}
                 </div>
               </div>
             </div>
