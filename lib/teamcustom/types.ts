@@ -41,6 +41,7 @@ export type TeamSlot = {
   characterName: string;
   iconUrl: string;
   fruits: string[];
+  fruitGradesList?: FruitGrade[];
   fruitGrades?: Record<string, FruitGrade>;
   crests: string[];
   crestGrades?: Record<string, CrestGrade>;
