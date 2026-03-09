@@ -65,6 +65,8 @@ const QUEST_FILTER_OPTIONS = ["破界の星墓", "天魔の孤城", "禁忌の�
 const QUEST_GRID_COLS = 3;
 const QUEST_ROW_HEIGHT = 86;
 const QUEST_VISIBLE_ROWS = 5;
+const CHARACTER_ITEM_WIDTH = 82;
+const CHARACTER_VISIBLE_ITEMS = 12;
 const SHUGOJU_GRID_COLS = 3;
 const SHUGOJU_ROW_HEIGHT = 90;
 const SHUGOJU_VISIBLE_ROWS = 5;
@@ -310,6 +312,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
   const [hasQuestSearched, setHasQuestSearched] = useState(false);
   const [questListScrollTop, setQuestListScrollTop] = useState(0);
+  const [characterListScrollLeft, setCharacterListScrollLeft] = useState(0);
   const [shugojuId, setShugojuId] = useState("");
   const [shugojuKeyword, setShugojuKeyword] = useState("");
   const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
@@ -361,6 +364,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const exportRef = useRef<HTMLDivElement>(null);
+  const characterListRef = useRef<HTMLDivElement>(null);
   const questListRef = useRef<HTMLDivElement>(null);
   const shugojuListRef = useRef<HTMLDivElement>(null);
 
@@ -493,7 +497,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       return isKeywordMatched && isFilterMatched;
     });
     list.sort((a, b) => (elementIndex.get(a.element) ?? Number.POSITIVE_INFINITY) - (elementIndex.get(b.element) ?? Number.POSITIVE_INFINITY));
-    return list.slice(0, 100);
+    return list.slice(0, 50);
   }, [quests, appliedQuestKeyword, appliedQuestFilter, hasQuestSearched]);
   const questVirtual = useMemo(() => {
     const totalRows = Math.ceil(filteredQuests.length / QUEST_GRID_COLS);
@@ -583,7 +587,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       return appliedSortOrder === "asc" ? a.sortNumber - b.sortNumber : b.sortNumber - a.sortNumber;
     });
 
-    return list;
+    return list.slice(0, 50);
   }, [
     hasSearched,
     appliedNameFilter,
@@ -600,6 +604,14 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     appliedSortOrder,
     appliedIsElementOrderEnabled,
   ]);
+  const characterVirtual = useMemo(() => {
+    const startIndex = Math.max(0, Math.floor(characterListScrollLeft / CHARACTER_ITEM_WIDTH) - 2);
+    const endIndex = Math.min(filteredCharacters.length, startIndex + CHARACTER_VISIBLE_ITEMS + 4);
+    const visible = filteredCharacters.slice(startIndex, endIndex);
+    const paddingLeft = startIndex * CHARACTER_ITEM_WIDTH;
+    const paddingRight = Math.max(0, (filteredCharacters.length - endIndex) * CHARACTER_ITEM_WIDTH);
+    return { visible, paddingLeft, paddingRight };
+  }, [filteredCharacters, characterListScrollLeft]);
 
   function applyFilters(nextNameFilter?: string) {
     setAppliedNameFilter(nextNameFilter ?? nameFilter);
@@ -615,6 +627,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setAppliedSelectedForms(new Set(selectedForms));
     setAppliedSelectedOtherCategories(selectedObtains.has("降臨") ? new Set(selectedOtherCategories) : new Set());
     setHasSearched(true);
+    setCharacterListScrollLeft(0);
+    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
   }
 
   function resetFilters() {
@@ -644,6 +658,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setAppliedSelectedForms(new Set(FORM_OPTIONS));
     setAppliedSelectedOtherCategories(defaultOtherCategories());
     setHasSearched(false);
+    setCharacterListScrollLeft(0);
+    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
   }
 
   function toggleElementFilter(element: CharacterItem["element"]) {
@@ -1097,6 +1113,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCharacterModalOpen(true);
+    setCharacterListScrollLeft(0);
+    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
   }
   function openFruitModal(slotIndex: number) {
     if (!isMobileViewport) return;
@@ -1162,8 +1180,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       </div>
 
       {hasSearched ? (
-        <div className={styles.pickList}>
-          {filteredCharacters.map((c) => (
+        <div
+          ref={characterListRef}
+          className={styles.pickList}
+          onScroll={(e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
+        >
+          <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />
+          {characterVirtual.visible.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -1177,6 +1200,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <span>{c.name}</span>
             </button>
           ))}
+          <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />
           {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
         </div>
       ) : null}
@@ -1761,8 +1785,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
                 </div>
                 {hasSearched ? (
-                  <div className={styles.pickList}>
-                    {filteredCharacters.map((c) => (
+                  <div
+                    ref={characterListRef}
+                    className={styles.pickList}
+                    onScroll={(e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
+                  >
+                    <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />
+                    {characterVirtual.visible.map((c) => (
                       <button
                         key={c.id}
                         type="button"
@@ -1777,6 +1806,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         <span>{c.name}</span>
                       </button>
                     ))}
+                    <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />
                     {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
                   </div>
                 ) : null}
