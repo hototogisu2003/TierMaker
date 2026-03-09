@@ -1663,7 +1663,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                       />
                                       <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
                                     </span>
-                                  ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップして紋章を選択" : "　"}
+                                  ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップしてソウルスキルを選択" : "　"}
                                 </div>
                               </Fragment>
                             ))}
