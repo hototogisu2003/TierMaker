@@ -87,6 +87,38 @@ function filenameDateText(date: Date): string {
   return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}_${String(date.getHours()).padStart(2, "0")}${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+function toBase64Url(input: string): string {
+  if (typeof window === "undefined") return "";
+  const bytes = new TextEncoder().encode(input);
+  return bytesToBase64Url(bytes);
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  if (typeof window === "undefined") return "";
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  const base64 = window.btoa(binary);
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function encodeSharePayload(input: string): Promise<string> {
+  if (typeof window === "undefined") return "";
+  try {
+    const CompressionCtor = (window as Window & { CompressionStream?: new (format: "gzip") => CompressionStream }).CompressionStream;
+    if (CompressionCtor) {
+      const source = new Blob([input]).stream();
+      const compressedStream = source.pipeThrough(new CompressionCtor("gzip"));
+      const compressedBuffer = await new Response(compressedStream).arrayBuffer();
+      return `gz.${bytesToBase64Url(new Uint8Array(compressedBuffer))}`;
+    }
+  } catch {
+    // fallback to non-compressed encoding
+  }
+  return `b64.${toBase64Url(input)}`;
+}
+
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
   const copy = arr.slice();
   const [item] = copy.splice(from, 1);
@@ -378,8 +410,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     appliedIsElementOrderEnabled,
   ]);
 
-  function applyFilters() {
-    setAppliedNameFilter(nameFilter);
+  function applyFilters(nextNameFilter?: string) {
+    setAppliedNameFilter(nextNameFilter ?? nameFilter);
     setAppliedIncludeUnobtainable(includeUnobtainable);
     setAppliedYearFrom(yearFrom);
     setAppliedYearTo(yearTo);
@@ -698,6 +730,50 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     }
   }
 
+  async function copyShareUrl() {
+    try {
+      const payload = {
+        v: 1,
+        title: title.trim(),
+        targetQuestId: selectedQuest?.id ?? "",
+        targetQuestName: selectedQuest?.name ?? "",
+        targetQuestIconUrl: selectedQuest?.iconUrl ?? "",
+        shugojuId: selectedShugoju?.id ?? "",
+        shugojuName: selectedShugoju?.name ?? "",
+        shugojuIconUrl: selectedShugoju?.iconUrl ?? "",
+        memoText,
+        slots: slots.map((slot) => ({
+          slotIndex: slot.slotIndex,
+          characterId: slot.characterId,
+          fruits: slot.fruits,
+          fruitGrades: slot.fruitGrades,
+          crests: slot.crests,
+          slotMemo: slot.slotMemo,
+        })),
+      };
+      const encoded = await encodeSharePayload(JSON.stringify(payload));
+      const url = new URL("/TeamBuild/team", window.location.origin);
+      url.searchParams.set("share", encoded);
+      const text = url.toString();
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "true");
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setMessage("共有URLをコピーしました");
+    } catch {
+      setMessage("共有URLの作成に失敗しました");
+    }
+  }
+
   async function removeRecord(id: string) {
     await deleteTeam(id);
     await refreshRecords();
@@ -712,9 +788,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsArrangeRemoveOpen(false);
     setMessage("保存データを削除しました");
   }
-  function applyQuestSearch() {
-    setAppliedQuestKeyword(questKeyword);
-    setAppliedQuestFilter(questFilter);
+  function applyQuestSearch(nextQuestKeyword?: string, nextQuestFilter?: (typeof QUEST_FILTER_OPTIONS)[number] | "") {
+    setAppliedQuestKeyword(nextQuestKeyword ?? questKeyword);
+    setAppliedQuestFilter(nextQuestFilter ?? questFilter);
     setHasQuestSearched(true);
     setQuestListScrollTop(0);
     if (questListRef.current) questListRef.current.scrollTop = 0;
@@ -760,7 +836,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         <input
           className={styles.input}
           value={nameFilter}
-          onChange={(e) => setNameFilter(e.target.value)}
+          onChange={(e) => {
+            const nextValue = e.target.value;
+            setNameFilter(nextValue);
+            applyFilters(nextValue);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -770,7 +850,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           placeholder="キャラ名検索"
           style={{ minWidth: 240 }}
         />
-        <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={applyFilters}>検索</button>
         <button
           className={styles.iconBtn}
           data-open={isFilterOpen ? "1" : "0"}
@@ -1057,6 +1136,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <button className={`${styles.btn} ${styles.primary}`} onClick={() => void saveTeam()}>保存</button>
               <button className={styles.btn} onClick={exportCurrentAsPng}>PNG出力</button>
               <button className={styles.btn} onClick={resetDraft}>入力クリア</button>
+              <button className={`${styles.btn} ${styles.searchBtn}`} onClick={() => void copyShareUrl()}>URL共有</button>
             </div>
           ) : null}
         </div>
@@ -1307,14 +1387,18 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             />
           </div>
           {isCharacterModalOpen && modalSlot ? (
-            <div className={styles.arrangeOverlay} onClick={() => setIsCharacterModalOpen(false)}>
+            <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsCharacterModalOpen(false)}>
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
                 <div className={styles.label}>{modalSlot.slotIndex + 1}体目 キャラ選択</div>
                 <div className={styles.row}>
                   <input
                     className={styles.input}
                     value={nameFilter}
-                    onChange={(e) => setNameFilter(e.target.value)}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setNameFilter(nextValue);
+                      applyFilters(nextValue);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -1323,7 +1407,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     }}
                     placeholder="キャラ名検索"
                   />
-                  <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={applyFilters}>検索</button>
                   <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
                 </div>
                 {hasSearched ? (
@@ -1345,9 +1428,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     ))}
                     {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
                   </div>
-                ) : (
-                  <div className={styles.helper}>検索を押すまで一覧は表示されません</div>
-                )}
+                ) : null}
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>
                   <button className={styles.btn} type="button" onClick={() => setIsCharacterModalOpen(false)}>閉じる</button>
                 </div>
@@ -1446,14 +1527,36 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             </div>
           ) : null}
           {isQuestModalOpen ? (
-            <div className={styles.arrangeOverlay} onClick={() => setIsQuestModalOpen(false)}>
+            <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsQuestModalOpen(false)}>
               <div className={`${styles.arrangeDialog} ${styles.questDialog}`} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>クエストを選択</div>
+                <div className={styles.modalTopRow}>
+                  <div className={styles.label}>クエストを選択</div>
+                  <div className={styles.modalTopActions}>
+                    <button className={styles.btn} type="button" onClick={() => setIsQuestModalOpen(false)}>閉じる</button>
+                    <button
+                      className={styles.btn}
+                      type="button"
+                      onClick={() => {
+                        setQuestId("");
+                        setQuestKeyword("");
+                        setQuestFilter("");
+                        setHasQuestSearched(false);
+                        setIsQuestModalOpen(false);
+                      }}
+                    >
+                      未設定
+                    </button>
+                  </div>
+                </div>
                 <div className={styles.questSearchRow}>
                   <input
                     className={`${styles.input} ${styles.questSearchInput}`}
                     value={questKeyword}
-                    onChange={(e) => setQuestKeyword(e.target.value)}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setQuestKeyword(nextValue);
+                      applyQuestSearch(nextValue, questFilter);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -1462,9 +1565,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     }}
                     placeholder="ボスを検索"
                   />
-                  <button className={`${styles.btn} ${styles.searchBtn} ${styles.questSearchBtn}`} type="button" onClick={applyQuestSearch}>
-                    検索
-                  </button>
                 </div>
                 <div className={styles.questFilterGrid}>
                   {QUEST_FILTER_OPTIONS.map((value) => (
@@ -1474,7 +1574,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                       type="button"
                       style={{ background: questFilter === value ? "#e3f0ff" : "#fff" }}
                       onClick={() => {
-                        setQuestFilter((prev) => (prev === value ? "" : value));
+                        setQuestFilter((prev) => {
+                          const next = prev === value ? "" : value;
+                          applyQuestSearch(questKeyword, next);
+                          return next;
+                        });
                       }}
                     >
                       {value}
@@ -1510,32 +1614,30 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     <div style={{ height: questVirtual.paddingBottom }} />
                     {filteredQuests.length === 0 ? <div className={styles.helper}>該当クエストがありません</div> : null}
                   </div>
-                ) : (
-                  <div className={styles.helper}>検索を押すまで一覧は表示されません</div>
-                )}
-                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
-                  <button className={styles.btn} type="button" onClick={() => setIsQuestModalOpen(false)}>閉じる</button>
-                  <button
-                    className={styles.btn}
-                    type="button"
-                    onClick={() => {
-                      setQuestId("");
-                      setQuestKeyword("");
-                      setQuestFilter("");
-                      setHasQuestSearched(false);
-                      setIsQuestModalOpen(false);
-                    }}
-                  >
-                    未設定
-                  </button>
-                </div>
+                ) : null}
               </div>
             </div>
           ) : null}
           {isShugojuModalOpen ? (
-            <div className={styles.arrangeOverlay} onClick={() => setIsShugojuModalOpen(false)}>
+            <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsShugojuModalOpen(false)}>
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>守護獣を選択</div>
+                <div className={styles.modalTopRow}>
+                  <div className={styles.label}>守護獣を選択</div>
+                  <div className={styles.modalTopActions}>
+                    <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(false)}>閉じる</button>
+                    <button
+                      className={styles.btn}
+                      type="button"
+                      onClick={() => {
+                        setShugojuId("");
+                        setShugojuKeyword("");
+                        setIsShugojuModalOpen(false);
+                      }}
+                    >
+                      未設定
+                    </button>
+                  </div>
+                </div>
                 <input
                   className={styles.input}
                   value={shugojuKeyword}
@@ -1567,20 +1669,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   </div>
                   <div style={{ height: shugojuVirtual.paddingBottom }} />
                   {filteredShugojus.length === 0 ? <div className={styles.helper}>該当する守護獣がありません</div> : null}
-                </div>
-                <div className={styles.row} style={{ justifyContent: "flex-end" }}>
-                  <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(false)}>閉じる</button>
-                  <button
-                    className={styles.btn}
-                    type="button"
-                    onClick={() => {
-                      setShugojuId("");
-                      setShugojuKeyword("");
-                      setIsShugojuModalOpen(false);
-                    }}
-                  >
-                    未設定
-                  </button>
                 </div>
               </div>
             </div>
