@@ -240,6 +240,21 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return copy;
 }
 
+async function triggerImageSave(dataUrl: string, fileName: string): Promise<void> {
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = fileName;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  if (a.parentNode) a.parentNode.removeChild(a);
+
+  if (isIOS) {
+    window.open(dataUrl, "_blank", "noopener,noreferrer");
+  }
+}
+
 function implementationYearFromNumber(n: number): number | null {
   if (n >= 8927) return 2026;
   if (n >= 8196) return 2025;
@@ -896,17 +911,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       const url = await toPng(node, { cacheBust: true, pixelRatio: 2 });
       const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
       const fileName = `${safeTitle}_${filenameDateText(new Date())}.png`;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      if (a.parentNode) a.parentNode.removeChild(a);
-      // iOS Safari often ignores download attribute on data URLs.
-      if (/iP(hone|ad|od)/.test(navigator.userAgent)) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
+      await triggerImageSave(url, fileName);
     } catch {
       setMessage("PNG出力に失敗しました。再読み込み後に再試行してください");
     }
@@ -936,22 +941,16 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     }
   }
 
-  async function saveImageFromModal() {
+  function saveImageFromModal() {
     try {
-      const url = previewImageUrl || (await createExportPngDataUrl());
-      if (!previewImageUrl) setPreviewImageUrl(url);
+      if (!previewImageUrl) {
+        setMessage("プレビュー生成後に再度お試しください");
+        return;
+      }
+      const url = previewImageUrl;
       const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
       const fileName = `${safeTitle}_${filenameDateText(new Date())}.png`;
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      if (a.parentNode) a.parentNode.removeChild(a);
-      if (/iP(hone|ad|od)/.test(navigator.userAgent)) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
+      void triggerImageSave(url, fileName);
       setMessage("画像保存を開始しました");
     } catch {
       setMessage("画像保存に失敗しました。再読み込み後に再試行してください");
@@ -1909,7 +1908,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <div className={`${styles.arrangeDialog} ${styles.generateDialog}`} onClick={(e) => e.stopPropagation()}>
                 <div className={styles.modalTopRow}>
                   <div className={styles.modalTopActions}>
-                    <button className={styles.btn} type="button" onClick={() => void saveImageFromModal}>画像保存</button>
+                    <button className={styles.btn} type="button" onClick={saveImageFromModal} disabled={isPreviewLoading}>
+                      画像保存
+                    </button>
                     <button className={`${styles.btn} ${styles.searchBtn}`} type="button" onClick={() => void copyShareUrl()}>URLコピー</button>
                   </div>
                   <button className={styles.btn} type="button" onClick={() => setIsGenerateModalOpen(false)}>閉じる</button>
