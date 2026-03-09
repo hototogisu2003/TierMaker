@@ -23,6 +23,36 @@ type DraftSlot = {
   slotMemo: string;
 };
 
+type SharePayload = {
+  v?: number;
+  title?: string;
+  targetQuestId?: string;
+  targetQuestName?: string;
+  targetQuestIconUrl?: string;
+  shugojuId?: string;
+  shugojuName?: string;
+  shugojuIconUrl?: string;
+  memoText?: string;
+  slots?: Array<{
+    slotIndex?: number;
+    characterId?: string;
+    fruits?: string[];
+    fruitGrades?: Record<string, FruitGrade>;
+    crests?: string[];
+    slotMemo?: string;
+  }>;
+};
+
+type CompactShareSlot = [string?, number[]?, number[]?, string?];
+type CompactSharePayloadV2 = {
+  v: 2;
+  t?: string;
+  q?: string;
+  s?: string;
+  m?: string;
+  a?: CompactShareSlot[];
+};
+
 const ELEMENT_OPTIONS = ["火", "水", "木", "光", "闇"] as const;
 const OBTAIN_OPTIONS = ["ガチャ", "降臨", "コラボパック"] as const;
 const GACHA_OPTIONS = ["限定", "α", "恒常", "コラボ"] as const;
@@ -53,6 +83,11 @@ const ELEMENT_ICON_MAP: Record<"all" | (typeof ELEMENT_OPTIONS)[number], { src: 
   光: { src: "/icon/icon_光.png", alt: "光属性" },
   闇: { src: "/icon/icon_闇.png", alt: "闇属性" },
 };
+const FRUIT_ID_BY_NAME = new Map<string, number>(FRUIT_OPTIONS.map((option) => [option.name, option.id]));
+const FRUIT_NAME_BY_ID = new Map<number, string>(FRUIT_OPTIONS.map((option) => [option.id, option.name]));
+const CREST_NAME_BY_ID = new Map<number, string>(
+  Object.entries(CREST_ID_BY_NAME).map(([name, id]) => [id, name])
+);
 
 function emptySlots(): DraftSlot[] {
   return [0, 1, 2, 3].map((slotIndex) => ({ slotIndex, characterId: "", fruits: [], fruitGrades: {}, crests: [], slotMemo: "" }));
@@ -103,6 +138,15 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function fromBase64Url(input: string): Uint8Array {
+  if (typeof window === "undefined") return new Uint8Array();
+  const padded = input.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((input.length + 3) % 4);
+  const binary = window.atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 async function encodeSharePayload(input: string): Promise<string> {
   if (typeof window === "undefined") return "";
   try {
@@ -117,6 +161,76 @@ async function encodeSharePayload(input: string): Promise<string> {
     // fallback to non-compressed encoding
   }
   return `b64.${toBase64Url(input)}`;
+}
+
+async function decodeSharePayload(input: string): Promise<SharePayload> {
+  if (typeof window === "undefined") throw new Error("share decode unavailable");
+  const [prefix, value] = input.includes(".") ? input.split(".", 2) : ["b64", input];
+  if (!value) throw new Error("invalid share payload");
+
+  if (prefix === "gz") {
+    const DecompressionCtor = (window as Window & { DecompressionStream?: new (format: "gzip") => DecompressionStream }).DecompressionStream;
+    if (!DecompressionCtor) throw new Error("browser does not support gzip decode");
+    const compressed = fromBase64Url(value);
+    const compressedBuffer = new ArrayBuffer(compressed.byteLength);
+    new Uint8Array(compressedBuffer).set(compressed);
+    const source = new Blob([compressedBuffer]).stream();
+    const decompressedStream = source.pipeThrough(new DecompressionCtor("gzip"));
+    const text = await new Response(decompressedStream).text();
+    return normalizeSharePayload(JSON.parse(text));
+  }
+
+  const decodedText = new TextDecoder().decode(fromBase64Url(value));
+  return normalizeSharePayload(JSON.parse(decodedText));
+}
+
+function normalizeSharePayload(raw: unknown): SharePayload {
+  if (!raw || typeof raw !== "object") return {};
+  const data = raw as Record<string, unknown>;
+  if (data.v === 2) {
+    const v2 = data as unknown as CompactSharePayloadV2;
+    const slots = Array.isArray(v2.a) ? v2.a : [];
+    return {
+      v: 2,
+      title: typeof v2.t === "string" ? v2.t : "",
+      targetQuestId: typeof v2.q === "string" ? v2.q : "",
+      shugojuId: typeof v2.s === "string" ? v2.s : "",
+      memoText: typeof v2.m === "string" ? v2.m : "",
+      slots: [0, 1, 2, 3].map((slotIndex) => {
+        const tuple = slots[slotIndex];
+        const characterId = Array.isArray(tuple) && typeof tuple[0] === "string" ? tuple[0] : "";
+        const fruitNums = Array.isArray(tuple) && Array.isArray(tuple[1]) ? tuple[1] : [];
+        const crestNums = Array.isArray(tuple) && Array.isArray(tuple[2]) ? tuple[2] : [];
+        const slotMemo = Array.isArray(tuple) && typeof tuple[3] === "string" ? tuple[3] : "";
+        const fruits: string[] = [];
+        const fruitGrades: Record<string, FruitGrade> = {};
+        for (const n of fruitNums) {
+          if (typeof n !== "number" || !Number.isFinite(n)) continue;
+          const id = Math.abs(Math.trunc(n));
+          const name = FRUIT_NAME_BY_ID.get(id);
+          if (!name) continue;
+          fruits.push(name);
+          fruitGrades[name] = n < 0 ? "EL" : "L";
+        }
+        const crests: string[] = [];
+        for (const n of crestNums) {
+          if (typeof n !== "number" || !Number.isFinite(n)) continue;
+          const name = CREST_NAME_BY_ID.get(Math.trunc(n));
+          if (!name) continue;
+          crests.push(name);
+        }
+        return {
+          slotIndex,
+          characterId,
+          fruits,
+          fruitGrades,
+          crests,
+          slotMemo,
+        };
+      }),
+    };
+  }
+  return data as unknown as SharePayload;
 }
 
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
@@ -143,7 +257,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const tab = mode;
   const router = useRouter();
   const [editQueryId, setEditQueryId] = useState<string | null>(null);
+  const [shareQuery, setShareQuery] = useState<string | null>(null);
   const [autoEditAppliedId, setAutoEditAppliedId] = useState<string | null>(null);
+  const [appliedShareQuery, setAppliedShareQuery] = useState<string | null>(null);
   const [characters, setCharacters] = useState<CharacterItem[]>([]);
   const [quests, setQuests] = useState<QuestItem[]>([]);
   const [shugojus, setShugojus] = useState<ShugojuItem[]>([]);
@@ -252,8 +368,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }, [records]);
   useEffect(() => {
     if (tab !== "memo") return;
-    const value = new URLSearchParams(window.location.search).get("edit");
-    setEditQueryId(value);
+    const params = new URLSearchParams(window.location.search);
+    setEditQueryId(params.get("edit"));
+    setShareQuery(params.get("share"));
   }, [tab]);
   useEffect(() => {
     if (tab !== "memo" || !editQueryId || autoEditAppliedId === editQueryId) return;
@@ -262,6 +379,24 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     fillFromRecord(record);
     setAutoEditAppliedId(editQueryId);
   }, [tab, editQueryId, autoEditAppliedId, records]);
+  useEffect(() => {
+    if (tab !== "memo" || !shareQuery || appliedShareQuery === shareQuery) return;
+    let canceled = false;
+    decodeSharePayload(shareQuery)
+      .then((payload) => {
+        if (canceled) return;
+        applyShareData(payload);
+        setAppliedShareQuery(shareQuery);
+        setMessage("共有URLから編成を読み込みました");
+      })
+      .catch(() => {
+        if (canceled) return;
+        setMessage("共有URLの読み込みに失敗しました");
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [tab, shareQuery, appliedShareQuery]);
   useEffect(() => {
     if (!isArrangeLoaded) return;
     persistArrangeIds(arrangeIds).catch(() => setMessage("並べる画面の設定保存に失敗しました"));
@@ -654,6 +789,46 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     );
   }
 
+  function applyShareData(payload: SharePayload) {
+    setEditingId(null);
+    setTitle((payload.title ?? "").trim());
+    setQuestId(payload.targetQuestId ?? "");
+    setQuestKeyword(payload.targetQuestName ?? "");
+    setQuestFilter("");
+    setAppliedQuestKeyword(payload.targetQuestName ?? "");
+    setAppliedQuestFilter("");
+    setHasQuestSearched(Boolean((payload.targetQuestName ?? "").trim()));
+    setShugojuId(payload.shugojuId ?? "");
+    setShugojuKeyword(payload.shugojuName ?? "");
+    setMemoText(payload.memoText ?? "");
+    setActiveSlotIndex(0);
+    setModalSlotIndex(null);
+    setIsCharacterModalOpen(false);
+    setIsFruitModalOpen(false);
+    setIsCrestModalOpen(false);
+
+    const sharedSlots = Array.isArray(payload.slots) ? payload.slots : [];
+    setSlots(
+      [0, 1, 2, 3].map((slotIndex) => {
+        const found = sharedSlots.find((slot) => Number(slot.slotIndex ?? -1) === slotIndex);
+        const fruits = Array.isArray(found?.fruits) ? found!.fruits!.slice(0, 4) : [];
+        const fruitGrades =
+          found?.fruitGrades && typeof found.fruitGrades === "object"
+            ? found.fruitGrades
+            : Object.fromEntries(fruits.map((name) => [name, "L" as FruitGrade]));
+        const crests = Array.isArray(found?.crests) ? found!.crests!.slice(0, 4) : [];
+        return {
+          slotIndex,
+          characterId: (found?.characterId ?? "").toString(),
+          fruits,
+          fruitGrades,
+          crests,
+          slotMemo: (found?.slotMemo ?? "").toString(),
+        };
+      })
+    );
+  }
+
   async function saveTeam() {
     const currentEditing = editingId ? records.find((r) => r.id === editingId) : null;
     const trimmedTitle = title.trim();
@@ -732,24 +907,28 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   async function copyShareUrl() {
     try {
-      const payload = {
-        v: 1,
-        title: title.trim(),
-        targetQuestId: selectedQuest?.id ?? "",
-        targetQuestName: selectedQuest?.name ?? "",
-        targetQuestIconUrl: selectedQuest?.iconUrl ?? "",
-        shugojuId: selectedShugoju?.id ?? "",
-        shugojuName: selectedShugoju?.name ?? "",
-        shugojuIconUrl: selectedShugoju?.iconUrl ?? "",
-        memoText,
-        slots: slots.map((slot) => ({
-          slotIndex: slot.slotIndex,
-          characterId: slot.characterId,
-          fruits: slot.fruits,
-          fruitGrades: slot.fruitGrades,
-          crests: slot.crests,
-          slotMemo: slot.slotMemo,
-        })),
+      const compactSlots: CompactShareSlot[] = slots.map((slot) => {
+        const fruits = slot.fruits
+          .map((name) => {
+            const id = FRUIT_ID_BY_NAME.get(name);
+            if (!id) return null;
+            return (slot.fruitGrades[name] ?? "L") === "EL" ? -id : id;
+          })
+          .filter((v): v is number => v !== null);
+        const crests = slot.crests
+          .map((name) => CREST_ID_BY_NAME[name as keyof typeof CREST_ID_BY_NAME] ?? null)
+          .filter((v): v is number => v !== null);
+        const tuple: CompactShareSlot = [slot.characterId, fruits, crests];
+        if (slot.slotMemo.trim()) tuple.push(slot.slotMemo);
+        return tuple;
+      });
+      const payload: CompactSharePayloadV2 = {
+        v: 2,
+        t: title.trim() || undefined,
+        q: selectedQuest?.id || undefined,
+        s: selectedShugoju?.id || undefined,
+        m: memoText.trim() || undefined,
+        a: compactSlots,
       };
       const encoded = await encodeSharePayload(JSON.stringify(payload));
       const url = new URL("/TeamBuild/team", window.location.origin);
