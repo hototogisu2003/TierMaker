@@ -63,6 +63,7 @@ const GACHA_OPTIONS = ["限定", "α", "恒常", "コラボ"] as const;
 const FORM_OPTIONS = ["進化/神化", "獣神化", "獣神化改", "真獣神化"] as const;
 const OTHER_CATEGORY_OPTIONS = ["黎絶", "轟絶", "爆絶", "超絶", "超究極", "コラボ", "その他"] as const;
 const QUEST_FILTER_OPTIONS = ["破界の星墓", "天魔の孤城", "禁忌の獄", "黎絶", "轟絶", "爆絶", "超絶"] as const;
+const TEAM_RECORD_LIMIT = 50;
 const QUEST_GRID_COLS = 3;
 const QUEST_ROW_HEIGHT = 86;
 const QUEST_VISIBLE_ROWS = 5;
@@ -416,7 +417,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setArrangeIds((prev) => {
       const filtered = prev.filter((id) => records.some((r) => r.id === id));
       const append = records.map((r) => r.id).filter((id) => !filtered.includes(id));
-      return [...filtered, ...append].slice(0, 50);
+      return [...filtered, ...append].slice(0, TEAM_RECORD_LIMIT);
     });
   }, [records]);
   useEffect(() => {
@@ -539,7 +540,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     return { visible, paddingTop, paddingBottom };
   }, [filteredShugojus, shugojuListScrollTop]);
   const arrangedRecords = useMemo(
-    () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, 50),
+    () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, TEAM_RECORD_LIMIT),
     [arrangeIds, records]
   );
 
@@ -862,7 +863,14 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }
 
   function resetDraft() {
+    if (records.length >= TEAM_RECORD_LIMIT) {
+      setMessage(`保存上限(${TEAM_RECORD_LIMIT}件)に達しています。新規保存するには既存編成を削除してください`);
+    }
     setEditingId(null);
+    setEditQueryId(null);
+    setAutoEditAppliedId(null);
+    setShareQuery(null);
+    setAppliedShareQuery(null);
     setTitle("");
     setQuestId("");
     setQuestKeyword("");
@@ -881,6 +889,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsCharacterModalOpen(false);
     setIsFruitModalOpen(false);
     setIsCrestModalOpen(false);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("edit");
+      url.searchParams.delete("share");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
   }
 
   function fillFromRecord(record: TeamRecord) {
@@ -962,7 +976,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }
 
   async function saveTeam() {
-    const currentEditing = editingId ? records.find((r) => r.id === editingId) : null;
+    const activeEditingId = editingId ?? editQueryId;
+    const currentEditing = activeEditingId ? records.find((r) => r.id === activeEditingId) : null;
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setMessage("タイトルは必須です");
@@ -974,8 +989,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       setMessage("空編成は保存できません");
       return;
     }
-    if (!editingId && records.length >= 30) {
-      setMessage("保存上限(30件)に達しているため保存できません");
+    if (!currentEditing && records.length >= TEAM_RECORD_LIMIT) {
+      setMessage(`保存上限(${TEAM_RECORD_LIMIT}件)に達しているため保存できません`);
       return;
     }
 
@@ -995,7 +1010,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       };
     });
 
-    const nextId = editingId ?? makeId();
+    const nextId = currentEditing?.id ?? makeId();
     const record: TeamRecord = {
       id: nextId,
       title: trimmedTitle,
@@ -1012,8 +1027,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
     await putTeam(record);
     await refreshRecords();
-    if (!editingId) setEditingId(nextId);
-    setMessage(editingId ? "編成を上書き保存しました" : "編成を保存しました");
+    if (!currentEditing) setEditingId(nextId);
+    setMessage(currentEditing ? "編成を上書き保存しました" : "編成を保存しました");
   }
 
   async function exportCurrentAsPng() {
@@ -1517,7 +1532,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             <div className={styles.rightGroup}>
               <button className={`${styles.btn} ${styles.primary}`} onClick={() => void saveTeam()}>保存</button>
               <button className={`${styles.btn} ${styles.searchBtn}`} onClick={() => void openGenerateModal()}>画像・URL生成</button>
-              <button className={styles.btn} onClick={resetDraft}>入力クリア</button>
+              <button className={styles.btn} onClick={resetDraft}>新規作成</button>
             </div>
           ) : null}
         </div>
@@ -2268,11 +2283,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       {tab === "arrange" ? (
         <div className={styles.card} style={{ display: "grid", gap: 10 }}>
           <div className={styles.row}>
-            <div className={styles.label}>編成を管理する (最大50件)</div>
+            <div className={styles.label}>編成を管理する (最大{TEAM_RECORD_LIMIT}件)</div>
             <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(true)} disabled={arrangedRecords.length === 0}>
               削除
             </button>
-            <span className={styles.helper}>{arrangedRecords.length}/50件</span>
+            <span className={styles.helper}>{arrangedRecords.length}/{TEAM_RECORD_LIMIT}件</span>
           </div>
           <div className={`${styles.compareBoard} ${styles.arrangeBoard}`}>
             {arrangedRecords.map((record, idx) => (
