@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
@@ -1332,33 +1333,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 <span />
                 <span />
               </button>
-
-              {isMenuOpen ? (
-                <div className={styles.menuPanel}>
-                  <button
-                    type="button"
-                    className={styles.menuItem}
-                    data-active={tab === "memo" ? "1" : "0"}
-                    onClick={() => {
-                      router.push("/TeamBuild/team");
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    編成をメモする
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.menuItem}
-                    data-active={tab === "arrange" ? "1" : "0"}
-                    onClick={() => {
-                      router.push("/TeamBuild/list");
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    編成を管理する
-                  </button>
-                </div>
-              ) : null}
             </div>
             <h1 className={styles.titleText}>モンスト 編成管理ツール</h1>
           </div>
@@ -1371,6 +1345,54 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           ) : null}
         </div>
       </div>
+      {isMenuOpen ? (
+        <div className={styles.menuOverlay} onClick={() => setIsMenuOpen(false)}>
+          <aside className={styles.sideMenu} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.sideMenuHeader}>
+              <div className={styles.sideMenuTitle}>メニュー</div>
+              <button type="button" className={styles.sideMenuClose} onClick={() => setIsMenuOpen(false)}>
+                ×
+              </button>
+            </div>
+            <div className={styles.sideMenuList}>
+              <button
+                type="button"
+                className={styles.sideMenuItem}
+                data-active={tab === "memo" ? "1" : "0"}
+                onClick={() => {
+                  router.push("/TeamBuild/team");
+                  setIsMenuOpen(false);
+                }}
+              >
+                編成をメモする
+              </button>
+              <button
+                type="button"
+                className={styles.sideMenuItem}
+                data-active={tab === "arrange" ? "1" : "0"}
+                onClick={() => {
+                  router.push("/TeamBuild/list");
+                  setIsMenuOpen(false);
+                }}
+              >
+                編成を管理する
+              </button>
+              <a
+                className={styles.sideMenuItem}
+                href="https://marshmallow-qa.com/di9n1qu75lvijbl?t=L0oYf4&utm_medium=url_text&utm_source=promotion"
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                お問い合わせ
+              </a>
+              <Link className={styles.sideMenuItem} href="/privacy" onClick={() => setIsMenuOpen(false)}>
+                プライバシーポリシー
+              </Link>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       {message ? <div className={styles.card}>{message}</div> : null}
 
