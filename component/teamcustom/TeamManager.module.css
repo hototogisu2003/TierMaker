@@ -593,6 +593,27 @@
   font-size: 12px;
 }
 
+.crestGradeBtns {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  grid-column: 3 / 5;
+  flex-wrap: nowrap;
+}
+
+.crestGradeBtn {
+  min-width: 36px;
+  padding: 0 6px;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .clickableArea {
   cursor: pointer;
 }
@@ -1491,6 +1512,16 @@
     min-height: 20px;
     font-size: 10px;
     padding: 0 4px;
+  }
+
+  .crestGradeBtns {
+    gap: 3px;
+  }
+
+  .crestGradeBtn {
+    min-width: 32px;
+    padding: 0 4px;
+    white-space: nowrap;
   }
 
   .editorHeader {

@@ -33,6 +33,7 @@ export type ShugojuItem = {
 };
 
 export type FruitGrade = "L" | "EL";
+export type CrestGrade = 0 | 1 | 2;
 
 export type TeamSlot = {
   slotIndex: number;
@@ -42,6 +43,7 @@ export type TeamSlot = {
   fruits: string[];
   fruitGrades?: Record<string, FruitGrade>;
   crests: string[];
+  crestGrades?: Record<string, CrestGrade>;
   slotMemo?: string;
 };
 

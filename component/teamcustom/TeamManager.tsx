@@ -7,8 +7,8 @@ import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
-import { CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, FruitGrade, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import { CREST_AVAILABLE_GRADES_BY_ID, CREST_GRADE_LABEL, CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
+import type { CharacterItem, CrestGrade, FruitGrade, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -21,6 +21,7 @@ type DraftSlot = {
   fruits: string[];
   fruitGrades: Record<string, FruitGrade>;
   crests: string[];
+  crestGrades: Record<string, CrestGrade>;
   slotMemo: string;
 };
 
@@ -40,6 +41,7 @@ type SharePayload = {
     fruits?: string[];
     fruitGrades?: Record<string, FruitGrade>;
     crests?: string[];
+    crestGrades?: Record<string, CrestGrade>;
     slotMemo?: string;
   }>;
 };
@@ -91,7 +93,15 @@ const CREST_NAME_BY_ID = new Map<number, string>(
 );
 
 function emptySlots(): DraftSlot[] {
-  return [0, 1, 2, 3].map((slotIndex) => ({ slotIndex, characterId: "", fruits: [], fruitGrades: {}, crests: [], slotMemo: "" }));
+  return [0, 1, 2, 3].map((slotIndex) => ({
+    slotIndex,
+    characterId: "",
+    fruits: [],
+    fruitGrades: {},
+    crests: [],
+    crestGrades: {},
+    slotMemo: "",
+  }));
 }
 
 function defaultObtains(): Set<CharacterItem["obtain"]> {
@@ -214,11 +224,18 @@ function normalizeSharePayload(raw: unknown): SharePayload {
           fruitGrades[name] = n < 0 ? "EL" : "L";
         }
         const crests: string[] = [];
+        const crestGrades: Record<string, CrestGrade> = {};
         for (const n of crestNums) {
           if (typeof n !== "number" || !Number.isFinite(n)) continue;
-          const name = CREST_NAME_BY_ID.get(Math.trunc(n));
+          const encoded = Math.trunc(n);
+          const id = Math.trunc(Math.abs(encoded) / 10);
+          const gradeRaw = Math.abs(encoded) % 10;
+          const grade = (gradeRaw === 1 || gradeRaw === 2 ? gradeRaw : 0) as CrestGrade;
+          const name = CREST_NAME_BY_ID.get(id);
           if (!name) continue;
           crests.push(name);
+          const available = CREST_AVAILABLE_GRADES_BY_ID[id] ?? [0];
+          crestGrades[name] = (available.includes(grade) ? grade : available[available.length - 1]) as CrestGrade;
         }
         return {
           slotIndex,
@@ -226,6 +243,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
           fruits,
           fruitGrades,
           crests,
+          crestGrades,
           slotMemo,
         };
       }),
@@ -442,9 +460,28 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
   const fruitGradeIconSrc = (grade: FruitGrade) => (grade === "EL" ? "/calc-legacy/特級EL.png" : "/calc-legacy/特級L.png");
   const fruitGradeOf = (slot: DraftSlot, fruitName: string): FruitGrade => slot.fruitGrades[fruitName] ?? "L";
-  const crestIconSrc = (crestName: string) => {
+  const crestIdOf = (crestName: string): number | null => {
     const id = CREST_ID_BY_NAME[crestName as keyof typeof CREST_ID_BY_NAME];
-    return id ? `/soulskill/skill_${id}.png` : "";
+    return id ?? null;
+  };
+  const crestAvailableGradesOf = (crestName: string): CrestGrade[] => {
+    const id = crestIdOf(crestName);
+    if (!id) return [0];
+    return (CREST_AVAILABLE_GRADES_BY_ID[id] ?? [0]) as CrestGrade[];
+  };
+  const crestDefaultGradeOf = (crestName: string): CrestGrade => {
+    const grades = crestAvailableGradesOf(crestName);
+    return grades[grades.length - 1] ?? 0;
+  };
+  const crestGradeOf = (slot: DraftSlot, crestName: string): CrestGrade => {
+    const grade = slot.crestGrades[crestName];
+    if (typeof grade === "number") return grade;
+    return crestDefaultGradeOf(crestName);
+  };
+  const crestLabel = (crestName: string, grade: CrestGrade): string => `${crestName}${CREST_GRADE_LABEL[grade]}`;
+  const crestIconSrc = (crestName: string, grade: CrestGrade) => {
+    const id = crestIdOf(crestName);
+    return id ? `/soulskill/skill_${id}_${grade}.png` : "";
   };
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
@@ -689,6 +726,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             fruits: [...to.fruits],
             fruitGrades: { ...to.fruitGrades },
             crests: [...to.crests],
+            crestGrades: { ...to.crestGrades },
             slotMemo: to.slotMemo,
           };
         }
@@ -699,6 +737,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             fruits: [...from.fruits],
             fruitGrades: { ...from.fruitGrades },
             crests: [...from.crests],
+            crestGrades: { ...from.crestGrades },
             slotMemo: from.slotMemo,
           };
         }
@@ -712,7 +751,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setSlots((prev) =>
       prev.map((slot) =>
         slot.slotIndex === slotIndex
-          ? { ...slot, characterId: "", fruits: [], fruitGrades: {}, crests: [], slotMemo: "" }
+          ? { ...slot, characterId: "", fruits: [], fruitGrades: {}, crests: [], crestGrades: {}, slotMemo: "" }
           : slot
       )
     );
@@ -734,6 +773,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             delete nextGrades[value];
             return { ...slot, [kind]: current.filter((v) => v !== value), fruitGrades: nextGrades };
           }
+          if (kind === "crests") {
+            const nextCrestGrades = { ...slot.crestGrades };
+            delete nextCrestGrades[value];
+            return { ...slot, [kind]: current.filter((v) => v !== value), crestGrades: nextCrestGrades };
+          }
           return { ...slot, [kind]: current.filter((v) => v !== value) };
         }
         if (current.length >= max) return slot;
@@ -743,7 +787,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return { ...slot, [kind]: next, fruitGrades: { ...slot.fruitGrades, [value]: "L" } };
         } else {
           next.sort((a, b) => (crestOrderMap.get(a) ?? Number.POSITIVE_INFINITY) - (crestOrderMap.get(b) ?? Number.POSITIVE_INFINITY));
-          return { ...slot, [kind]: next };
+          return { ...slot, [kind]: next, crestGrades: { ...slot.crestGrades, [value]: crestDefaultGradeOf(value) } };
         }
       })
     );
@@ -752,6 +796,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   function setFruitGrade(slotIndex: number, fruitName: string, grade: FruitGrade) {
     setSlots((prev) =>
       prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, fruitGrades: { ...slot.fruitGrades, [fruitName]: grade } } : slot))
+    );
+  }
+
+  function setCrestGrade(slotIndex: number, crestName: string, grade: CrestGrade) {
+    setSlots((prev) =>
+      prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, crestGrades: { ...slot.crestGrades, [crestName]: grade } } : slot))
     );
   }
 
@@ -802,6 +852,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             found?.fruitGrades ??
             Object.fromEntries(((found?.fruits ?? []) as string[]).map((name) => [name, "L" as FruitGrade])),
           crests: found?.crests ?? [],
+          crestGrades:
+            found?.crestGrades ??
+            Object.fromEntries(((found?.crests ?? []) as string[]).map((name) => [name, crestDefaultGradeOf(name)])),
           slotMemo: found?.slotMemo ?? "",
         };
       })
@@ -836,12 +889,17 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             ? found.fruitGrades
             : Object.fromEntries(fruits.map((name) => [name, "L" as FruitGrade]));
         const crests = Array.isArray(found?.crests) ? found!.crests!.slice(0, 4) : [];
+        const crestGrades =
+          found?.crestGrades && typeof found.crestGrades === "object"
+            ? found.crestGrades
+            : Object.fromEntries(crests.map((name) => [name, crestDefaultGradeOf(name)]));
         return {
           slotIndex,
           characterId: (found?.characterId ?? "").toString(),
           fruits,
           fruitGrades,
           crests,
+          crestGrades,
           slotMemo: (found?.slotMemo ?? "").toString(),
         };
       })
@@ -876,6 +934,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         fruits: slot.fruits.slice(0, 4),
         fruitGrades: Object.fromEntries(slot.fruits.slice(0, 4).map((name) => [name, slot.fruitGrades[name] ?? "L"])),
         crests: slot.crests.slice(0, 4),
+        crestGrades: Object.fromEntries(slot.crests.slice(0, 4).map((name) => [name, slot.crestGrades[name] ?? crestDefaultGradeOf(name)])),
         slotMemo: slot.slotMemo,
       };
     });
@@ -969,7 +1028,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           })
           .filter((v): v is number => v !== null);
         const crests = slot.crests
-          .map((name) => CREST_ID_BY_NAME[name as keyof typeof CREST_ID_BY_NAME] ?? null)
+          .map((name) => {
+            const id = CREST_ID_BY_NAME[name as keyof typeof CREST_ID_BY_NAME] ?? null;
+            if (!id) return null;
+            const grade = slot.crestGrades[name] ?? crestDefaultGradeOf(name);
+            return id * 10 + grade;
+          })
           .filter((v): v is number => v !== null);
         const tuple: CompactShareSlot = [slot.characterId, fruits, crests];
         if (slot.slotMemo.trim()) tuple.push(slot.slotMemo);
@@ -1316,6 +1380,37 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               </button>
             ))}
           </div>
+          {editorSlot.crests.length > 0 ? (
+            <div className={styles.selectedFruitList}>
+              {editorSlot.crests.map((crest) => {
+                const grade = crestGradeOf(editorSlot, crest);
+                const availableGrades = crestAvailableGradesOf(crest);
+                return (
+                  <div key={`selected-crest-editor-${editorSlotIndex}-${crest}`} className={styles.selectedFruitRow}>
+                    <img className={styles.crestSkillIcon} src={crestIconSrc(crest, grade)} alt={crestLabel(crest, grade)} />
+                    <span className={styles.selectedFruitName}>{crestLabel(crest, grade)}</span>
+                    <div className={styles.crestGradeBtns}>
+                      {[0, 1, 2].map((g) => {
+                        if (!availableGrades.includes(g as CrestGrade)) return null;
+                        const label = g === 0 ? "無印" : g === 1 ? "上" : "極";
+                        return (
+                          <button
+                            key={`${crest}-${g}`}
+                            className={`${styles.btn} ${styles.gradeBtn} ${styles.crestGradeBtn}`}
+                            type="button"
+                            style={{ background: grade === g ? "#e3f0ff" : "#fff" }}
+                            onClick={() => setCrestGrade(editorSlotIndex, crest, g as CrestGrade)}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -1561,8 +1656,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                 >
                                   {crestRows[idx] ? (
                                     <span className={styles.fruitCellContent}>
-                                      <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
-                                      <span>{crestRows[idx]}</span>
+                                      <img
+                                        className={styles.crestSkillIcon}
+                                        src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                        alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                      />
+                                      <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
                                     </span>
                                   ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップして紋章を選択" : "　"}
                                 </div>
@@ -1772,6 +1871,37 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     </button>
                   ))}
                 </div>
+                {modalSlot.crests.length > 0 ? (
+                  <div className={styles.selectedFruitList}>
+                    {modalSlot.crests.map((crest) => {
+                      const grade = crestGradeOf(modalSlot, crest);
+                      const availableGrades = crestAvailableGradesOf(crest);
+                      return (
+                        <div key={`selected-crest-modal-${modalSlot.slotIndex}-${crest}`} className={styles.selectedFruitRow}>
+                          <img className={styles.crestSkillIcon} src={crestIconSrc(crest, grade)} alt={crestLabel(crest, grade)} />
+                          <span className={styles.selectedFruitName}>{crestLabel(crest, grade)}</span>
+                          <div className={styles.crestGradeBtns}>
+                            {[0, 1, 2].map((g) => {
+                              if (!availableGrades.includes(g as CrestGrade)) return null;
+                              const label = g === 0 ? "無印" : g === 1 ? "上" : "極";
+                              return (
+                                <button
+                                  key={`${crest}-${g}`}
+                                  className={`${styles.btn} ${styles.gradeBtn} ${styles.crestGradeBtn}`}
+                                  type="button"
+                                  style={{ background: grade === g ? "#e3f0ff" : "#fff" }}
+                                  onClick={() => setCrestGrade(modalSlot.slotIndex, crest, g as CrestGrade)}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>
                   <button className={styles.btn} type="button" onClick={() => setIsCrestModalOpen(false)}>閉じる</button>
                 </div>
@@ -1999,8 +2129,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                               <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>
                                 {crestRows[idx] ? (
                                   <span className={styles.fruitCellContent}>
-                                    <img className={styles.crestSkillIcon} src={crestIconSrc(crestRows[idx])} alt={crestRows[idx]} />
-                                    <span>{crestRows[idx]}</span>
+                                    <img
+                                      className={styles.crestSkillIcon}
+                                      src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                      alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                    />
+                                    <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
                                   </span>
                                 ) : "　"}
                               </div>
