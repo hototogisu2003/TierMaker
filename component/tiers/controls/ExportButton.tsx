@@ -17,6 +17,109 @@ export default function ExportButton({ targetRef }: Props) {
     return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
+  function withFrozenLayout(container: HTMLElement) {
+    const restorers: Array<() => void> = [];
+
+    const freezeStyle = (el: HTMLElement, nextStyles: Partial<CSSStyleDeclaration>) => {
+      const prev = {
+        width: el.style.width,
+        minWidth: el.style.minWidth,
+        maxWidth: el.style.maxWidth,
+        height: el.style.height,
+        minHeight: el.style.minHeight,
+        maxHeight: el.style.maxHeight,
+        display: el.style.display,
+        gridTemplateColumns: el.style.gridTemplateColumns,
+        gridAutoRows: el.style.gridAutoRows,
+        columnGap: el.style.columnGap,
+        rowGap: el.style.rowGap,
+        alignContent: el.style.alignContent,
+        boxSizing: el.style.boxSizing,
+      };
+
+      Object.assign(el.style, nextStyles);
+      restorers.push(() => {
+        Object.assign(el.style, prev);
+      });
+    };
+
+    const rootRect = container.getBoundingClientRect();
+    freezeStyle(container, {
+      width: `${Math.ceil(rootRect.width)}px`,
+      minWidth: `${Math.ceil(rootRect.width)}px`,
+      maxWidth: `${Math.ceil(rootRect.width)}px`,
+      height: `${Math.ceil(rootRect.height)}px`,
+      minHeight: `${Math.ceil(rootRect.height)}px`,
+      maxHeight: `${Math.ceil(rootRect.height)}px`,
+      boxSizing: "border-box",
+    });
+
+    const tierRows = Array.from(container.querySelectorAll<HTMLElement>(".tierRow"));
+    tierRows.forEach((row) => {
+      const rowRect = row.getBoundingClientRect();
+      freezeStyle(row, {
+        width: `${Math.ceil(rowRect.width)}px`,
+        minWidth: `${Math.ceil(rowRect.width)}px`,
+        maxWidth: `${Math.ceil(rowRect.width)}px`,
+        boxSizing: "border-box",
+      });
+
+      const itemsWrap = row.querySelector<HTMLElement>(".tierItems");
+      if (!itemsWrap) return;
+
+      const wrapRect = itemsWrap.getBoundingClientRect();
+      const iconCards = Array.from(itemsWrap.querySelectorAll<HTMLElement>(".iconCard"));
+      if (iconCards.length === 0) {
+        freezeStyle(itemsWrap, {
+          width: `${Math.ceil(wrapRect.width)}px`,
+          minWidth: `${Math.ceil(wrapRect.width)}px`,
+          maxWidth: `${Math.ceil(wrapRect.width)}px`,
+          boxSizing: "border-box",
+        });
+        return;
+      }
+
+      iconCards.forEach((card) => {
+        const cardRect = card.getBoundingClientRect();
+        freezeStyle(card, {
+          width: `${Math.ceil(cardRect.width)}px`,
+          minWidth: `${Math.ceil(cardRect.width)}px`,
+          maxWidth: `${Math.ceil(cardRect.width)}px`,
+          height: `${Math.ceil(cardRect.height)}px`,
+          minHeight: `${Math.ceil(cardRect.height)}px`,
+          maxHeight: `${Math.ceil(cardRect.height)}px`,
+          boxSizing: "border-box",
+        });
+      });
+
+      const rowGroups = new Map<number, number>();
+      iconCards.forEach((card) => {
+        const top = Math.round(card.offsetTop);
+        rowGroups.set(top, (rowGroups.get(top) ?? 0) + 1);
+      });
+
+      const columns = Math.max(1, ...Array.from(rowGroups.values()));
+      const firstCardRect = iconCards[0].getBoundingClientRect();
+
+      freezeStyle(itemsWrap, {
+        width: `${Math.ceil(wrapRect.width)}px`,
+        minWidth: `${Math.ceil(wrapRect.width)}px`,
+        maxWidth: `${Math.ceil(wrapRect.width)}px`,
+        display: "grid",
+        gridTemplateColumns: `repeat(${columns}, ${Math.ceil(firstCardRect.width)}px)`,
+        gridAutoRows: `${Math.ceil(firstCardRect.height)}px`,
+        columnGap: "0px",
+        rowGap: "0px",
+        alignContent: "start",
+        boxSizing: "border-box",
+      });
+    });
+
+    return () => {
+      restorers.reverse().forEach((restore) => restore());
+    };
+  }
+
   async function waitForImages(container: HTMLElement, timeoutMs = 10000) {
     const imgs = Array.from(container.querySelectorAll("img"));
     if (imgs.length === 0) return;
@@ -68,14 +171,30 @@ export default function ExportButton({ targetRef }: Props) {
     const toPng = mod.toPng;
     const attempts = 3;
     let lastError: unknown = null;
+    const rect = el.getBoundingClientRect();
+    const exportWidth = Math.ceil(rect.width);
+    const exportHeight = Math.ceil(rect.height);
 
     for (let i = 0; i < attempts; i += 1) {
+      const restoreLayout = withFrozenLayout(el);
       try {
         await stabilizeForCapture(el);
         const dataUrl = await toPng(el, {
+          width: exportWidth,
+          height: exportHeight,
           cacheBust: true,
           pixelRatio: 2,
+          skipAutoScale: true,
           backgroundColor: "#ffffff",
+          style: {
+            width: `${exportWidth}px`,
+            height: `${exportHeight}px`,
+            minWidth: `${exportWidth}px`,
+            maxWidth: `${exportWidth}px`,
+            minHeight: `${exportHeight}px`,
+            maxHeight: `${exportHeight}px`,
+            boxSizing: "border-box",
+          },
           filter: (node) => {
             if (!(node instanceof Element)) return true;
             return !node.classList.contains("no-export");
@@ -85,6 +204,8 @@ export default function ExportButton({ targetRef }: Props) {
       } catch (e) {
         lastError = e;
         await sleep(250 * (i + 1));
+      } finally {
+        restoreLayout();
       }
     }
 

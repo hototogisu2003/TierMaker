@@ -54,6 +54,7 @@ export default function TierRow({
   const rowStyle: React.CSSProperties = {
     width: "100%",
     ["--rank-col-width" as string]: `${rankColWidth}px`,
+    ["--mobile-rank-col-width" as string]: `${Math.max(56, rankColWidth - 12)}px`,
   };
 
   React.useEffect(() => {
@@ -329,6 +330,14 @@ export default function TierRow({
         }
 
         @media (max-width: 768px) {
+          .tierRow {
+            grid-template-columns: var(--mobile-rank-col-width) 1fr;
+          }
+
+          .rankResizeHandle {
+            left: calc(var(--mobile-rank-col-width) - 4px);
+          }
+
           .tierItems {
             min-height: clamp(40px, 11vw, 56px);
           }

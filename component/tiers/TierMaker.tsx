@@ -121,7 +121,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   // Active dragging item id
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [rankColWidth, setRankColWidth] = React.useState(80);
+  const [rankColWidth, setRankColWidth] = React.useState(72);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
     DEFAULT_INCLUDE_UNOBTAINABLE
