@@ -2160,7 +2160,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 <div className={styles.modalTopRow}>
                   <div className={styles.label}>クエストを選択</div>
                   <div className={styles.modalTopActions}>
-                    <button className={styles.btn} type="button" onClick={() => setIsQuestModalOpen(false)}>閉じる</button>
                     <button
                       className={styles.btn}
                       type="button"
@@ -2174,6 +2173,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     >
                       未設定
                     </button>
+                    <button className={styles.btn} type="button" onClick={() => setIsQuestModalOpen(false)}>閉じる</button>
                   </div>
                 </div>
                 <div className={styles.questSearchRow}>
