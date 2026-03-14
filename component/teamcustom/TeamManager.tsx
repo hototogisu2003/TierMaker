@@ -1932,7 +1932,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             {renderEditorPane(styles.rightPane)}
           </div>
           <div>
-            <div className={styles.helper} style={{ marginBottom: 6 }}>守護獣</div>
                 <div className={styles.supportRow}>
               <button
                 className={styles.btn}
@@ -2253,7 +2252,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 <div className={styles.modalTopRow}>
                   <div className={styles.label}>守護獣を選択</div>
                   <div className={styles.modalTopActions}>
-                    <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(false)}>閉じる</button>
                     <button
                       className={styles.btn}
                       type="button"
@@ -2265,6 +2263,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     >
                       未設定
                     </button>
+                    <button className={styles.btn} type="button" onClick={() => setIsShugojuModalOpen(false)}>閉じる</button>
                   </div>
                 </div>
                 <input
@@ -2330,7 +2329,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         type="button"
                         className={styles.spotItem}
                         data-selected={mainSpot === spot ? "1" : "0"}
-                        onClick={() => setMainSpot(spot)}
+                        onClick={() => setMainSpot((prev) => (prev === spot ? "" : spot))}
                       >
                         <img className={styles.spotIcon} src={spotIconSrc(spot, "main")} alt={`${spot}メイン`} />
                         <span>{spot}</span>
@@ -2347,7 +2346,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         type="button"
                         className={styles.spotItem}
                         data-selected={subSpot === spot ? "1" : "0"}
-                        onClick={() => setSubSpot(spot)}
+                        onClick={() => setSubSpot((prev) => (prev === spot ? "" : spot))}
                       >
                         <img className={styles.spotIcon} src={spotIconSrc(spot, "sub")} alt={`${spot}サブ`} />
                         <span>{spot}</span>
