@@ -39,6 +39,8 @@ export type ShugojuItem = {
   iconUrl: string;
 };
 
+export type SpotKey = "火" | "水" | "木" | "光" | "闇" | "王者";
+
 export type FruitGrade = "L" | "EL";
 export type CrestGrade = 0 | 1 | 2;
 
@@ -64,6 +66,8 @@ export type TeamRecord = {
   shugojuId?: string | null;
   shugojuName?: string | null;
   shugojuIconUrl?: string | null;
+  mainSpot?: SpotKey | null;
+  subSpot?: SpotKey | null;
   slots: TeamSlot[];
   memoText?: string;
   createdAt: string;

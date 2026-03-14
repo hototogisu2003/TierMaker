@@ -821,6 +821,50 @@
   font-size: 12px;
 }
 
+.supportRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.spotGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.spotSection {
+  display: grid;
+  gap: 8px;
+}
+
+.spotItem {
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #1f2937;
+  font-size: 12px;
+}
+
+.spotItem[data-selected="1"] {
+  border-color: #1f6feb;
+  background: #e8f0ff;
+  color: #1147a8;
+}
+
+.spotIcon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
 .memoTextarea {
   width: 100%;
   min-height: 120px;
@@ -1342,6 +1386,13 @@
   gap: 10px;
 }
 
+.exportHeaderIcons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
 .exportTitleGroup {
   display: flex;
   align-items: center;
@@ -1373,6 +1424,16 @@
 .exportShugojuIcon {
   width: 44px;
   height: 44px;
+  border: 1px solid #b6c1d0;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #ffffff;
+  flex: 0 0 auto;
+}
+
+.exportSpotIcon {
+  width: 40px;
+  height: 40px;
   border: 1px solid #b6c1d0;
   border-radius: 8px;
   object-fit: contain;

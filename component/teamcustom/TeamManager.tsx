@@ -8,7 +8,7 @@ import styles from "./TeamManager.module.css";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
 import { CREST_AVAILABLE_GRADES_BY_ID, CREST_GRADE_LABEL, CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, CrestGrade, FruitGrade, QuestItem, ShugojuItem, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import type { CharacterItem, CrestGrade, FruitGrade, QuestItem, ShugojuItem, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -34,6 +34,8 @@ type SharePayload = {
   shugojuId?: string;
   shugojuName?: string;
   shugojuIconUrl?: string;
+  mainSpot?: SpotKey;
+  subSpot?: SpotKey;
   memoText?: string;
   slots?: Array<{
     slotIndex?: number;
@@ -53,6 +55,8 @@ type CompactSharePayloadV2 = {
   t?: string;
   q?: string;
   s?: string;
+  pm?: SpotKey;
+  ps?: SpotKey;
   m?: string;
   a?: CompactShareSlot[];
 };
@@ -73,6 +77,9 @@ const CHARACTER_VISIBLE_ITEMS = 12;
 const SHUGOJU_GRID_COLS = 3;
 const SHUGOJU_ROW_HEIGHT = 90;
 const SHUGOJU_VISIBLE_ROWS = 5;
+const SPOT_OPTIONS = ["火", "水", "木", "光", "闇", "王者"] as const satisfies readonly SpotKey[];
+const SPOT_MAIN_BONUS = { hp: 2000, attack: 2000, speed: 40.8 } as const;
+const SPOT_SUB_BONUS = { hp: 1500, attack: 1500, speed: 30.6 } as const;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const SLOT_LABELS = ["1st", "2nd", "3rd", "4th"] as const;
 const ELEMENT_HEADER_COLOR: Record<NonNullable<CharacterItem["element"]>, string> = {
@@ -211,6 +218,8 @@ function normalizeSharePayload(raw: unknown): SharePayload {
       title: typeof v2.t === "string" ? v2.t : "",
       targetQuestId: typeof v2.q === "string" ? v2.q : "",
       shugojuId: typeof v2.s === "string" ? v2.s : "",
+      mainSpot: SPOT_OPTIONS.includes(v2.pm as SpotKey) ? (v2.pm as SpotKey) : undefined,
+      subSpot: SPOT_OPTIONS.includes(v2.ps as SpotKey) ? (v2.ps as SpotKey) : undefined,
       memoText: typeof v2.m === "string" ? v2.m : "",
       slots: [0, 1, 2, 3].map((slotIndex) => {
         const tuple = slots[slotIndex];
@@ -343,6 +352,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [shugojuId, setShugojuId] = useState("");
   const [shugojuKeyword, setShugojuKeyword] = useState("");
   const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
+  const [mainSpot, setMainSpot] = useState<SpotKey | "">("");
+  const [subSpot, setSubSpot] = useState<SpotKey | "">("");
+  const [isSpotModalOpen, setIsSpotModalOpen] = useState(false);
   const [shugojuListScrollTop, setShugojuListScrollTop] = useState(0);
   const [memoText, setMemoText] = useState("");
   const [slots, setSlots] = useState<DraftSlot[]>(emptySlots());
@@ -489,6 +501,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
   const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
+  const spotIconSrc = (spot: SpotKey | "", kind: "main" | "sub") => (spot ? `/spot/${spot}_${kind}.png` : "");
   const fruitGradeIconSrc = (grade: FruitGrade) => (grade === "EL" ? "/calc-legacy/特級EL.png" : "/calc-legacy/特級L.png");
   const fruitGradeOf = (slot: DraftSlot, fruitIndex: number): FruitGrade => slot.fruitGrades[fruitIndex] ?? "L";
   const crestIdOf = (crestName: string): number | null => {
@@ -565,6 +578,29 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     });
 
     return totals;
+  };
+  const spotBonusTotalsOf = (slot: DraftSlot) => {
+    const currentCharacter = slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+    if (!currentCharacter || !currentCharacter.element) return { hp: 0, attack: 0, speed: 0 };
+
+    const mainApplies = Boolean(mainSpot) && (mainSpot === "王者" || mainSpot === currentCharacter.element);
+    const subApplies = Boolean(subSpot) && (subSpot === "王者" || subSpot === currentCharacter.element);
+    const subBlocked = mainApplies && subApplies;
+
+    return {
+      hp: (mainApplies ? SPOT_MAIN_BONUS.hp : 0) + (!subBlocked && subApplies ? SPOT_SUB_BONUS.hp : 0),
+      attack: (mainApplies ? SPOT_MAIN_BONUS.attack : 0) + (!subBlocked && subApplies ? SPOT_SUB_BONUS.attack : 0),
+      speed: (mainApplies ? SPOT_MAIN_BONUS.speed : 0) + (!subBlocked && subApplies ? SPOT_SUB_BONUS.speed : 0),
+    };
+  };
+  const statusBonusTotalsOf = (slot: DraftSlot) => {
+    const fruit = fruitBonusTotalsOf(slot);
+    const spot = spotBonusTotalsOf(slot);
+    return {
+      hp: fruit.hp + spot.hp,
+      attack: fruit.attack + spot.attack,
+      speed: fruit.speed + spot.speed,
+    };
   };
   const formatStatValue = (label: "HP" | "攻撃" | "スピード", value: number | null) => {
     if (value === null) return "";
@@ -962,6 +998,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setShugojuId("");
     setShugojuKeyword("");
     setIsShugojuModalOpen(false);
+    setMainSpot("");
+    setSubSpot("");
+    setIsSpotModalOpen(false);
     setMemoText("");
     setSlots(emptySlots());
     setActiveSlotIndex(0);
@@ -990,6 +1029,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setShugojuId(record.shugojuId ?? "");
     setShugojuKeyword(record.shugojuName ?? "");
     setIsShugojuModalOpen(false);
+    setMainSpot(record.mainSpot ?? "");
+    setSubSpot(record.subSpot ?? "");
+    setIsSpotModalOpen(false);
     setMemoText(record.memoText ?? "");
     setSlots(
       [0, 1, 2, 3].map((slotIndex) => {
@@ -1020,6 +1062,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setHasQuestSearched(Boolean((payload.targetQuestName ?? "").trim()));
     setShugojuId(payload.shugojuId ?? "");
     setShugojuKeyword(payload.shugojuName ?? "");
+    setMainSpot(payload.mainSpot ?? "");
+    setSubSpot(payload.subSpot ?? "");
     setMemoText(payload.memoText ?? "");
     setActiveSlotIndex(0);
     setModalSlotIndex(null);
@@ -1100,6 +1144,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       shugojuId: selectedShugoju?.id ?? null,
       shugojuName: selectedShugoju?.name ?? null,
       shugojuIconUrl: selectedShugoju?.iconUrl ?? null,
+      mainSpot: mainSpot || null,
+      subSpot: subSpot || null,
       slots: finalSlots,
       memoText,
       createdAt: currentEditing?.createdAt ?? nowText(),
@@ -1195,6 +1241,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         t: title.trim() || undefined,
         q: selectedQuest?.id || undefined,
         s: selectedShugoju?.id || undefined,
+        pm: mainSpot || undefined,
+        ps: subSpot || undefined,
         m: memoText.trim() || undefined,
         a: compactSlots,
       };
@@ -1698,7 +1746,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   const c = slot.characterId ? charMap.get(slot.characterId) : null;
                   const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
                   const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
-                  const fruitBonusTotals = fruitBonusTotalsOf(slot);
+                  const fruitBonusTotals = statusBonusTotalsOf(slot);
                   const statRows = [
                     { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
                     { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
@@ -1885,7 +1933,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </div>
           <div>
             <div className={styles.helper} style={{ marginBottom: 6 }}>守護獣</div>
-                <div className={styles.row}>
+                <div className={styles.supportRow}>
               <button
                 className={styles.btn}
                 type="button"
@@ -1899,7 +1947,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               {selectedShugoju?.iconUrl ? (
                 <img className={styles.icon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} style={{ width: 32, height: 32 }} />
               ) : null}
-              <span className={styles.helper}>{selectedShugoju?.name || "未選択"}</span>
+              <button className={styles.btn} type="button" onClick={() => setIsSpotModalOpen(true)}>
+                スポットを選択
+              </button>
+              {mainSpot ? <img className={styles.icon} src={spotIconSrc(mainSpot, "main")} alt={`${mainSpot}メイン`} style={{ width: 32, height: 32 }} /> : null}
+              {subSpot ? <img className={styles.icon} src={spotIconSrc(subSpot, "sub")} alt={`${subSpot}サブ`} style={{ width: 32, height: 32 }} /> : null}
             </div>
           </div>
           <div>
@@ -2250,6 +2302,62 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               </div>
             </div>
           ) : null}
+          {isSpotModalOpen ? (
+            <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsSpotModalOpen(false)}>
+              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.modalTopRow}>
+                  <div className={styles.label}>スポットを選択</div>
+                  <div className={styles.modalTopActions}>
+                    <button
+                      className={styles.btn}
+                      type="button"
+                      onClick={() => {
+                        setMainSpot("");
+                        setSubSpot("");
+                      }}
+                    >
+                      未設定
+                    </button>
+                    <button className={styles.btn} type="button" onClick={() => setIsSpotModalOpen(false)}>閉じる</button>
+                  </div>
+                </div>
+                <div className={styles.spotSection}>
+                  <div className={styles.helper}>メインスポット</div>
+                  <div className={styles.spotGrid}>
+                    {SPOT_OPTIONS.map((spot) => (
+                      <button
+                        key={`main-${spot}`}
+                        type="button"
+                        className={styles.spotItem}
+                        data-selected={mainSpot === spot ? "1" : "0"}
+                        onClick={() => setMainSpot(spot)}
+                      >
+                        <img className={styles.spotIcon} src={spotIconSrc(spot, "main")} alt={`${spot}メイン`} />
+                        <span>{spot}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className={styles.spotSection}>
+                  <div className={styles.helper}>サブスポット</div>
+                  <div className={styles.spotGrid}>
+                    {SPOT_OPTIONS.map((spot) => (
+                      <button
+                        key={`sub-${spot}`}
+                        type="button"
+                        className={styles.spotItem}
+                        data-selected={subSpot === spot ? "1" : "0"}
+                        onClick={() => setSubSpot(spot)}
+                      >
+                        <img className={styles.spotIcon} src={spotIconSrc(spot, "sub")} alt={`${spot}サブ`} />
+                        <span>{spot}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {isGenerateModalOpen ? (
             <div className={styles.arrangeOverlay} onClick={() => setIsGenerateModalOpen(false)}>
               <div className={`${styles.arrangeDialog} ${styles.generateDialog}`} onClick={(e) => e.stopPropagation()}>
@@ -2283,9 +2391,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   ) : null}
                   <div className={styles.exportTitle}>{title.trim() || "編成"}</div>
                 </div>
-                {selectedShugoju?.iconUrl ? (
-                  <img className={styles.exportShugojuIcon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} />
-                ) : null}
+                <div className={styles.exportHeaderIcons}>
+                  {mainSpot ? <img className={styles.exportSpotIcon} src={spotIconSrc(mainSpot, "main")} alt={`${mainSpot}メイン`} /> : null}
+                  {subSpot ? <img className={styles.exportSpotIcon} src={spotIconSrc(subSpot, "sub")} alt={`${subSpot}サブ`} /> : null}
+                  {selectedShugoju?.iconUrl ? (
+                    <img className={styles.exportShugojuIcon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} />
+                  ) : null}
+                </div>
               </div>
               <div className={styles.exportTeamSheet}>
                 {exportColumns.map((columnSlots, columnIndex) => (
@@ -2294,7 +2406,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                       const c = slot.characterId ? charMap.get(slot.characterId) : null;
                       const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
                       const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
-                      const fruitBonusTotals = fruitBonusTotalsOf(slot);
+                      const fruitBonusTotals = statusBonusTotalsOf(slot);
                       const statRows = [
                         { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
                         { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
