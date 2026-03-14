@@ -1,42 +1,47 @@
-﻿export type FruitOption = {
+import type { FruitGrade } from "@/lib/teamcustom/types";
+
+export type FruitOption = {
   id: number;
   name: string;
   isStatus: boolean;
+  bonuses: Record<FruitGrade, { hp: number; attack: number; speed: number }>;
 };
 
+const EMPTY_BONUS = { hp: 0, attack: 0, speed: 0 };
+
 export const FRUIT_OPTIONS: FruitOption[] = [
-  { id: 1, name: "同族加撃", isStatus: true },
-  { id: 2, name: "同族加撃速", isStatus: true },
-  { id: 3, name: "同族加命撃", isStatus: true },
-  { id: 4, name: "撃種加撃", isStatus: true },
-  { id: 5, name: "撃種加撃速", isStatus: true },
-  { id: 6, name: "撃種加命撃", isStatus: true },
-  { id: 7, name: "戦型加撃", isStatus: true },
-  { id: 8, name: "戦型加撃速", isStatus: true },
-  { id: 9, name: "戦型加命撃", isStatus: true },
-  { id: 10, name: "同族加命", isStatus: true },
-  { id: 11, name: "同族加速", isStatus: true },
-  { id: 12, name: "同族加速命", isStatus: true },
-  { id: 13, name: "撃種加命", isStatus: true },
-  { id: 14, name: "撃種加速", isStatus: true },
-  { id: 15, name: "撃種加速命", isStatus: true },
-  { id: 16, name: "戦型加命", isStatus: true },
-  { id: 17, name: "戦型加速", isStatus: true },
-  { id: 18, name: "戦型加速命", isStatus: true },
-  { id: 19, name: "友撃", isStatus: false },
-  { id: 20, name: "ケガ減り", isStatus: false },
-  { id: 21, name: "将命削り", isStatus: false },
-  { id: 22, name: "兵命削り", isStatus: false },
-  { id: 23, name: "一撃失心", isStatus: false },
-  { id: 24, name: "速必殺", isStatus: false },
-  { id: 25, name: "毒がまん", isStatus: false },
-  { id: 26, name: "ちび癒し", isStatus: false },
-  { id: 27, name: "ハート強化", isStatus: false },
-  { id: 28, name: "学び", isStatus: false },
-  { id: 29, name: "荒稼ぎ", isStatus: false },
-  { id: 30, name: "スピクリ", isStatus: false },
-  { id: 31, name: "Sランク", isStatus: false },
-  { id: 32, name: "スコア稼ぎ", isStatus: false },
+  { id: 1, name: "同族加撃", isStatus: true, bonuses: { L: { hp: 0, attack: 3000, speed: 0 }, EL: { hp: 0, attack: 3300, speed: 0 } } },
+  { id: 2, name: "同族加撃速", isStatus: true, bonuses: { L: { hp: 0, attack: 2000, speed: 26.6 }, EL: { hp: 0, attack: 2200, speed: 29.3 } } },
+  { id: 3, name: "同族加命撃", isStatus: true, bonuses: { L: { hp: 2000, attack: 2000, speed: 0 }, EL: { hp: 2200, attack: 2200, speed: 0 } } },
+  { id: 4, name: "撃種加撃", isStatus: true, bonuses: { L: { hp: 0, attack: 1500, speed: 0 }, EL: { hp: 0, attack: 1650, speed: 0 } } },
+  { id: 5, name: "撃種加撃速", isStatus: true, bonuses: { L: { hp: 0, attack: 1000, speed: 13.2 }, EL: { hp: 0, attack: 1100, speed: 14.5 } } },
+  { id: 6, name: "撃種加命撃", isStatus: true, bonuses: { L: { hp: 1000, attack: 1000, speed: 0 }, EL: { hp: 1100, attack: 1100, speed: 0 } } },
+  { id: 7, name: "戦型加撃", isStatus: true, bonuses: { L: { hp: 0, attack: 1500, speed: 0 }, EL: { hp: 0, attack: 1650, speed: 0 } } },
+  { id: 8, name: "戦型加撃速", isStatus: true, bonuses: { L: { hp: 0, attack: 1000, speed: 13.2 }, EL: { hp: 0, attack: 1100, speed: 14.5 } } },
+  { id: 9, name: "戦型加命撃", isStatus: true, bonuses: { L: { hp: 1000, attack: 1000, speed: 0 }, EL: { hp: 1100, attack: 1100, speed: 0 } } },
+  { id: 10, name: "同族加命", isStatus: true, bonuses: { L: { hp: 2500, attack: 0, speed: 0 }, EL: { hp: 2750, attack: 0, speed: 0 } } },
+  { id: 11, name: "同族加速", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 33.3 }, EL: { hp: 0, attack: 0, speed: 36.6 } } },
+  { id: 12, name: "同族加速命", isStatus: true, bonuses: { L: { hp: 2000, attack: 0, speed: 26.6 }, EL: { hp: 2200, attack: 0, speed: 29.3 } } },
+  { id: 13, name: "撃種加命", isStatus: true, bonuses: { L: { hp: 1250, attack: 0, speed: 0 }, EL: { hp: 1375, attack: 0, speed: 0 } } },
+  { id: 14, name: "撃種加速", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 16.6 }, EL: { hp: 0, attack: 0, speed: 18.3 } } },
+  { id: 15, name: "撃種加速命", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 13.2 }, EL: { hp: 0, attack: 0, speed: 14.5 } } },
+  { id: 16, name: "戦型加命", isStatus: true, bonuses: { L: { hp: 1250, attack: 0, speed: 0 }, EL: { hp: 1375, attack: 0, speed: 0 } } },
+  { id: 17, name: "戦型加速", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 16.6 }, EL: { hp: 0, attack: 0, speed: 18.3 } } },
+  { id: 18, name: "戦型加速命", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 13.2 }, EL: { hp: 0, attack: 0, speed: 14.5 } } },
+  { id: 19, name: "友撃", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 20, name: "ケガ減り", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 21, name: "将命削り", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 22, name: "兵命削り", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 23, name: "一撃失心", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 24, name: "速必殺", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 25, name: "毒がまん", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 26, name: "ちび癒し", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 27, name: "ハート強化", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 28, name: "学び", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 29, name: "荒稼ぎ", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 30, name: "スピクリ", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 31, name: "Sランク", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
+  { id: 32, name: "スコア稼ぎ", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
 ];
 
 export const CREST_OPTIONS = [

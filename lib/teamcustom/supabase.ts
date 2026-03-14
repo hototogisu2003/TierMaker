@@ -35,6 +35,15 @@ function toNumber(v: unknown): number {
   return Number.POSITIVE_INFINITY;
 }
 
+function toStatNumber(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
 function isObtainable(getValue: unknown): boolean {
   if (typeof getValue === "number") return getValue !== 0;
   if (typeof getValue === "string") {
@@ -116,7 +125,7 @@ export async function fetchCharactersAndQuests(): Promise<{
 
   const { data: charactersData, error: charactersError } = await supabase
     .from(charactersTable)
-    .select("id,name,name_kana,element,obtain,gacha,form,quest,content,get,number,icon_path")
+    .select('id,name,name_kana,hp,attack,speed,shuzoku,gekishu,senkei,"ゲージ",element,obtain,gacha,form,quest,content,get,number,icon_path')
     .order("number", { ascending: true })
     .order("id", { ascending: true })
     .limit(5000);
@@ -138,6 +147,13 @@ export async function fetchCharactersAndQuests(): Promise<{
         id,
         name,
         nameKana: toText(r.name_kana).trim(),
+        hp: toStatNumber(r.hp),
+        attack: toStatNumber(r.attack),
+        speed: toStatNumber(r.speed),
+        hasGauge: isObtainable(r["ゲージ"]),
+        shuzoku: toText(r.shuzoku).trim(),
+        gekishu: toText(r.gekishu).trim(),
+        senkei: toText(r.senkei).trim(),
         element: normalizeElement(toText(r.element)),
         obtain: normalizeObtain(toText(r.obtain)),
         gachaType: normalizeGacha(toText(r.gacha)),

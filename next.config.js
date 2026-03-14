@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: [
+    "192.168.40.175",
+  ],
   images: {
     // next/image を使う場合に Supabase Storage のドメインを許可する
     // （現状は img タグなので必須ではないが、将来切替のために用意）

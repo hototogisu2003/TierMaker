@@ -336,16 +336,19 @@
 
 .teamHeader {
   display: grid;
-  grid-template-columns: 60px 1fr;
+  grid-template-columns: 60px minmax(0, 2.1fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.9fr);
   background: #d6b2d7;
   border-bottom: 1px solid #8f8f8f;
 }
 
 .teamRank,
-.teamName {
+.teamName,
+.teamMetaCell {
   padding: 2px 6px;
   font-size: 11px;
   line-height: 1.1;
+  display: flex;
+  align-items: center;
 }
 
 .teamRank {
@@ -357,8 +360,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  border-right: 1px solid #8f8f8f;
 }
 
 .teamName {
@@ -367,17 +369,15 @@
   white-space: nowrap;
 }
 
-.slotClearBtn {
-  border: 1px solid #8a97aa;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 10px;
-  line-height: 1.4;
-  padding: 0 6px;
-  height: 18px;
-  cursor: pointer;
-  flex: 0 0 auto;
+.teamMetaCell {
+  border-right: 1px solid #8f8f8f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teamMetaCell:last-child {
+  border-right: 0;
 }
 
 .mobileEditBtn {
@@ -395,15 +395,82 @@
 .teamBody {
   display: grid;
   grid-template-columns: 60px 1fr;
+  grid-template-rows: auto auto;
+}
+
+.detailWrap {
+  display: contents;
 }
 
 .iconCell {
   border-right: 1px solid #8f8f8f;
+  border-bottom: 1px solid #8f8f8f;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 105px;
+  min-height: 52px;
   background: #ffffff;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 92px;
+  border-bottom: 1px solid #8f8f8f;
+  background: #ffffff;
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 52px;
+  align-content: center;
+  align-self: stretch;
+  grid-auto-rows: min-content;
+}
+
+.statLabel,
+.statValue,
+.statBonus {
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.statLabel {
+  border-right: 1px solid #8f8f8f;
+}
+
+.statValue {
+  text-align: left;
+}
+
+.statValueWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.gaugeValueWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.gaugeDivider {
+  color: #111827;
+  font-weight: 700;
+  margin-left: 0;
+}
+
+.gaugeIcon {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.statBonus {
+  text-align: left;
+  color: #1f2937;
 }
 
 .iconCellEmpty {
@@ -430,6 +497,9 @@
 .detailTable {
   display: grid;
   grid-template-columns: 40% 60%;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  border-top: 1px solid #8f8f8f;
 }
 
 .slotMemoCell {
@@ -477,6 +547,11 @@
   padding: 2px 6px;
   background: #d0d0d0;
   font-size: 11px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .tableHead:last-child {
@@ -486,11 +561,16 @@
 .tableCell {
   border-bottom: 1px solid #8f8f8f;
   border-right: 1px solid #8f8f8f;
-  min-height: 15px;
+  height: 18px;
   padding: 1px 6px;
   font-size: 11px;
   background: #ffffff;
   text-align: left;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  line-height: 1.1;
+  overflow: hidden;
 }
 
 .fruitCellContent {
@@ -498,6 +578,16 @@
   align-items: center;
   gap: 4px;
   justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fruitCellContent > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fruitGradeIcon {
@@ -645,6 +735,9 @@
 .slotMoveBtns {
   display: grid;
   gap: 4px;
+  align-content: start;
+  align-self: start;
+  padding-top: 2px;
 }
 
 .slotMoveBtn {
@@ -662,6 +755,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.slotClearActionBtn {
+  width: 26px;
+  height: 18px;
+  border-color: #b91c1c;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 16px;
+  line-height: 1;
+  white-space: nowrap;
+  font-weight: 700;
+  margin-bottom: 30px;
 }
 
 .slotMoveBtn:disabled {
@@ -1220,12 +1326,13 @@
 }
 
 .exportSheet {
-  width: var(--export-width, 980px);
+  width: var(--export-width, 544px);
+  box-sizing: border-box;
   background: #ffffff;
   color: #111111;
-  padding: 16px;
+  padding: 12px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .exportHeader {
@@ -1238,20 +1345,24 @@
 .exportTitleGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .exportTitle {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.2;
-  word-break: break-word;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .exportQuestIcon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 1px solid #b6c1d0;
   border-radius: 8px;
   object-fit: contain;
@@ -1260,8 +1371,8 @@
 }
 
 .exportShugojuIcon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 1px solid #b6c1d0;
   border-radius: 8px;
   object-fit: contain;
@@ -1271,7 +1382,16 @@
 
 .exportTeamSheet {
   display: grid;
-  gap: 4px;
+  grid-template-columns: repeat(2, 262px);
+  justify-content: start;
+  align-items: start;
+  gap: 6px;
+}
+
+.exportTeamColumn {
+  display: grid;
+  align-content: start;
+  gap: 6px;
 }
 
 .exportMemoBlock {
@@ -1425,11 +1545,12 @@
   }
 
   .teamHeader {
-    grid-template-columns: 42px 1fr;
+    grid-template-columns: 42px minmax(0, 1.85fr) minmax(0, 0.75fr) minmax(0, 0.58fr) minmax(0, 0.75fr);
   }
 
   .teamBody {
     grid-template-columns: 42px 1fr;
+    grid-template-rows: auto auto;
   }
 
   .slotMemoCell {
@@ -1437,23 +1558,36 @@
   }
 
   .teamRank,
-  .teamName {
+  .teamName,
+  .teamMetaCell {
     padding: 1px 4px;
     font-size: 10px;
-  }
-
-  .slotClearBtn {
-    font-size: 9px;
-    height: 16px;
-    padding: 0 4px;
   }
 
   .teamRank {
     font-size: 10px;
   }
 
+  .teamMetaCell {
+    font-size: 9px;
+    padding: 1px 2px;
+  }
+
   .iconCell {
-    min-height: 70px;
+    min-height: 52px;
+    grid-column: 1;
+    grid-row: 1;
+    border-bottom: 1px solid #8f8f8f;
+  }
+
+  .detailWrap {
+    display: contents;
+  }
+
+  .statsGrid {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 52px;
   }
 
   .sheetIcon {
@@ -1468,6 +1602,7 @@
 
   .slotMoveBtns {
     gap: 2px;
+    padding-top: 1px;
   }
 
   .slotMoveBtn {
@@ -1477,9 +1612,38 @@
     border-radius: 5px;
   }
 
+  .slotClearActionBtn {
+    width: 20px;
+    height: 16px;
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
   .tableHead {
     font-size: 11px;
     padding: 1px 4px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 52px minmax(0, 1fr) 62px;
+  }
+
+  .detailTable {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid #8f8f8f;
+  }
+
+  .statLabel,
+  .statValue,
+  .statBonus {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .gaugeIcon {
+    width: 10px;
+    height: 10px;
   }
 
   .slotMemoLabel {

@@ -1,7 +1,14 @@
-﻿export type CharacterItem = {
+export type CharacterItem = {
   id: string;
   name: string;
   nameKana: string;
+  hp: number;
+  attack: number;
+  speed: number;
+  hasGauge: boolean;
+  shuzoku: string;
+  gekishu: string;
+  senkei: string;
   element: "火" | "水" | "木" | "光" | "闇" | "";
   obtain: "ガチャ" | "降臨" | "コラボパック" | "";
   gachaType: "限定" | "α" | "恒常" | "コラボ" | "";

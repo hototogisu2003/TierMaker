@@ -64,6 +64,7 @@ const FORM_OPTIONS = ["進化/神化", "獣神化", "獣神化改", "真獣神�
 const OTHER_CATEGORY_OPTIONS = ["黎絶", "轟絶", "爆絶", "超絶", "超究極", "コラボ", "その他"] as const;
 const QUEST_FILTER_OPTIONS = ["破界の星墓", "天魔の孤城", "禁忌の獄", "黎絶", "轟絶", "爆絶", "超絶"] as const;
 const TEAM_RECORD_LIMIT = 50;
+const EXPORT_IMAGE_WIDTH_PX = 544;
 const QUEST_GRID_COLS = 3;
 const QUEST_ROW_HEIGHT = 86;
 const QUEST_VISIBLE_ROWS = 5;
@@ -302,6 +303,19 @@ function normalizeFruitGradeList(
   return fruits.map((name) => (fruitGradesMap?.[name] === "EL" ? "EL" : "L"));
 }
 
+function trimStatText(value: number, digits: number): string {
+  return value.toFixed(digits).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+}
+
+function formatSpeedText(value: number, digits: number): string {
+  const fixed = value.toFixed(digits);
+  return fixed.replace(/(\.\d*[1-9])0+$/, "$1").replace(/\.00$/, ".0");
+}
+
+function fruitGradeRank(grade: FruitGrade): number {
+  return grade === "EL" ? 2 : 1;
+}
+
 export default function TeamManager({ mode }: { mode: Tab }) {
   const tab = mode;
   const router = useRouter();
@@ -500,6 +514,71 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     const id = crestIdOf(crestName);
     return id ? `/soulskill/skill_${id}_${grade}.png` : "";
   };
+  const fruitOptionByName = useMemo(() => new Map(FRUIT_OPTIONS.map((option) => [option.name, option])), []);
+  const fruitBonusTotalsOf = (slot: DraftSlot) => {
+    const currentCharacter = slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+    if (!currentCharacter) return { hp: 0, attack: 0, speed: 0 };
+
+    const totals = { hp: 0, attack: 0, speed: 0 };
+    const addBonus = (optionId: number, grade: FruitGrade) => {
+      const option = FRUIT_OPTIONS.find((item) => item.id === optionId);
+      const bonus = option?.bonuses[grade] ?? { hp: 0, attack: 0, speed: 0 };
+      totals.hp += bonus.hp;
+      totals.attack += bonus.attack;
+      totals.speed += bonus.speed;
+    };
+
+    slot.fruits.forEach((fruitName, index) => {
+      const option = fruitOptionByName.get(fruitName);
+      if (!option) return;
+      if (option.id >= 1 && option.id <= 9) return;
+      addBonus(option.id, slot.fruitGrades[index] ?? "L");
+    });
+
+    const sharedGroups: Array<{
+      ids: number[];
+      value: string;
+      getValue: (character: CharacterItem) => string;
+    }> = [
+      { ids: [1, 2, 3], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
+      { ids: [4, 5, 6], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
+      { ids: [7, 8, 9], value: currentCharacter.senkei, getValue: (character) => character.senkei },
+    ];
+
+    sharedGroups.forEach((group) => {
+      if (!group.value) return;
+      const bestById = new Map<number, FruitGrade>();
+      slots.forEach((otherSlot) => {
+        const otherCharacter = otherSlot.characterId ? charMap.get(otherSlot.characterId) ?? null : null;
+        if (!otherCharacter || group.getValue(otherCharacter) !== group.value) return;
+        otherSlot.fruits.forEach((fruitName, index) => {
+          const option = fruitOptionByName.get(fruitName);
+          if (!option || !group.ids.includes(option.id)) return;
+          const grade = otherSlot.fruitGrades[index] ?? "L";
+          const currentBest = bestById.get(option.id);
+          if (!currentBest || fruitGradeRank(grade) > fruitGradeRank(currentBest)) {
+            bestById.set(option.id, grade);
+          }
+        });
+      });
+      bestById.forEach((grade, optionId) => addBonus(optionId, grade));
+    });
+
+    return totals;
+  };
+  const formatStatValue = (label: "HP" | "攻撃" | "スピード", value: number | null) => {
+    if (value === null) return "";
+    return label === "スピード" ? formatSpeedText(value, 2) : String(Math.round(value));
+  };
+  const formatGaugeAttackValue = (value: number | null, hasGauge: boolean) => {
+    if (value === null || !hasGauge) return "";
+    return String(Math.floor(value * 1.2));
+  };
+  const formatStatBonus = (label: "HP" | "攻撃" | "スピード", value: number, enabled: boolean) => {
+    if (!enabled || value === 0) return "";
+    const text = label === "スピード" ? formatSpeedText(value, 1) : String(Math.round(value));
+    return `(+${text})`;
+  };
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
     const keyword = appliedQuestKeyword.trim().toLowerCase();
@@ -543,6 +622,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, TEAM_RECORD_LIMIT),
     [arrangeIds, records]
   );
+  const exportColumns = useMemo(() => [slots.slice(0, 2), slots.slice(2, 4)], [slots]);
 
   const filteredFruitOptions = useMemo(
     () => FRUIT_OPTIONS.filter((option) => (fruitFilter === "status" ? option.isStatus : !option.isStatus)),
@@ -1035,7 +1115,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!exportRef.current) return;
     try {
       const node = exportRef.current;
-      node.style.setProperty("--export-width", "390px");
+      node.style.setProperty("--export-width", `${EXPORT_IMAGE_WIDTH_PX}px`);
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => resolve());
       });
@@ -1051,7 +1131,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   async function createExportPngDataUrl(): Promise<string> {
     if (!exportRef.current) throw new Error("export target missing");
     const node = exportRef.current;
-    node.style.setProperty("--export-width", "390px");
+    node.style.setProperty("--export-width", `${EXPORT_IMAGE_WIDTH_PX}px`);
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve());
     });
@@ -1618,6 +1698,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   const c = slot.characterId ? charMap.get(slot.characterId) : null;
                   const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
                   const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
+                  const fruitBonusTotals = fruitBonusTotalsOf(slot);
+                  const statRows = [
+                    { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
+                    { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
+                    { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed },
+                  ];
 
                   return (
                     <div key={slot.slotIndex} className={styles.teamRow}>
@@ -1638,25 +1724,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                           <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
                           <div className={styles.teamNameWrap}>
                             <div className={styles.teamName}>{c?.name || ""}</div>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              className={styles.slotClearBtn}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                clearSlot(slot.slotIndex);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  clearSlot(slot.slotIndex);
-                                }
-                              }}
-                            >
-                              解除
-                            </span>
                           </div>
+                          <div className={styles.teamMetaCell}>{c?.shuzoku || ""}</div>
+                          <div className={styles.teamMetaCell}>{c?.gekishu || ""}</div>
+                          <div className={styles.teamMetaCell}>{c?.senkei || ""}</div>
                         </div>
                         <div className={styles.teamBody}>
                           <div
@@ -1689,81 +1760,77 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                               <span className={styles.sheetSelectText}>キャラを選択</span>
                             )}
                           </div>
-                          <div className={styles.detailTable}>
-                            <div
-                              className={`${styles.tableHead} ${styles.clickableArea}`}
-                              onClick={(e) => {
-                                if (isMobileViewport) {
-                                  e.stopPropagation();
-                                  openFruitModal(slot.slotIndex);
-                                } else {
-                                  setActiveSlotIndex(slot.slotIndex);
-                                }
-                              }}
-                            >
-                              わくわくの実
-                            </div>
-                            <div
-                              className={`${styles.tableHead} ${styles.clickableArea}`}
-                              onClick={(e) => {
-                                if (isMobileViewport) {
-                                  e.stopPropagation();
-                                  openCrestModal(slot.slotIndex);
-                                } else {
-                                  setActiveSlotIndex(slot.slotIndex);
-                                }
-                              }}
-                            >
-                              紋章
-                            </div>
-                            {fruitRows.map((fruit, idx) => (
-                              <Fragment key={`${slot.slotIndex}-row-${idx}`}>
-                                <div
-                                  className={`${styles.tableCell} ${styles.clickableArea} ${fruit ? "" : styles.tableCellEmpty} ${
-                                    !fruit && idx === 0 && slot.fruits.length === 0 ? styles.cellPlaceholder : ""
-                                  }`}
-                                  onClick={(e) => {
-                                    if (isMobileViewport) {
-                                      e.stopPropagation();
-                                      openFruitModal(slot.slotIndex);
-                                    } else {
-                                      setActiveSlotIndex(slot.slotIndex);
-                                    }
-                                  }}
-                                >
-                                  {fruit ? (
-                                    <span className={styles.fruitCellContent}>
-                                      <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, idx))} alt={fruitGradeOf(slot, idx)} />
-                                      <span>{fruit}</span>
+                          <div className={styles.detailWrap}>
+                            <div className={styles.statsGrid}>
+                              {statRows.map((stat) => (
+                                <Fragment key={`${slot.slotIndex}-${stat.label}`}>
+                                  <div className={styles.statLabel}>{stat.label}</div>
+                                  <div className={styles.statValue}>
+                                    <span className={styles.statValueWrap}>
+                                      <span>{formatStatValue(stat.label, stat.base === null ? null : stat.base + stat.bonus)}</span>
+                                      {stat.label === "攻撃" && c?.hasGauge ? (
+                                        <span className={styles.gaugeValueWrap}>
+                                          <span className={styles.gaugeDivider}>/</span>
+                                          <span>{formatGaugeAttackValue(stat.base === null ? null : stat.base + stat.bonus, true)}</span>
+                                          <img className={styles.gaugeIcon} src="/icon/icon_ゲージ.png" alt="ゲージ" />
+                                        </span>
+                                      ) : null}
                                     </span>
-                                  ) : idx === 0 && slot.fruits.length === 0 && isMobileViewport ? "タップして実を選択" : "　"}
-                                </div>
-                                <div
-                                  className={`${styles.tableCell} ${styles.clickableArea} ${crestRows[idx] ? "" : styles.tableCellEmpty} ${
-                                    !crestRows[idx] && idx === 0 && slot.crests.length === 0 ? styles.cellPlaceholder : ""
-                                  }`}
-                                  onClick={(e) => {
-                                    if (isMobileViewport) {
-                                      e.stopPropagation();
-                                      openCrestModal(slot.slotIndex);
-                                    } else {
-                                      setActiveSlotIndex(slot.slotIndex);
-                                    }
-                                  }}
-                                >
-                                  {crestRows[idx] ? (
-                                    <span className={styles.fruitCellContent}>
-                                      <img
-                                        className={styles.crestSkillIcon}
-                                        src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
-                                        alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
-                                      />
-                                      <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
-                                    </span>
-                                  ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップしてソウルスキルを選択" : "　"}
-                                </div>
-                              </Fragment>
-                            ))}
+                                  </div>
+                                  <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.bonus, Boolean(c))}</div>
+                                </Fragment>
+                              ))}
+                            </div>
+                            <div className={styles.detailTable}>
+                              {fruitRows.map((fruit, idx) => (
+                                <Fragment key={`${slot.slotIndex}-row-${idx}`}>
+                                  <div
+                                    className={`${styles.tableCell} ${styles.clickableArea} ${fruit ? "" : styles.tableCellEmpty} ${
+                                      !fruit && idx === 0 && slot.fruits.length === 0 ? styles.cellPlaceholder : ""
+                                    }`}
+                                    onClick={(e) => {
+                                      if (isMobileViewport) {
+                                        e.stopPropagation();
+                                        openFruitModal(slot.slotIndex);
+                                      } else {
+                                        setActiveSlotIndex(slot.slotIndex);
+                                      }
+                                    }}
+                                  >
+                                    {fruit ? (
+                                      <span className={styles.fruitCellContent}>
+                                        <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, idx))} alt={fruitGradeOf(slot, idx)} />
+                                        <span>{fruit}</span>
+                                      </span>
+                                    ) : idx === 0 && slot.fruits.length === 0 && isMobileViewport ? "タップして実を選択" : "　"}
+                                  </div>
+                                  <div
+                                    className={`${styles.tableCell} ${styles.clickableArea} ${crestRows[idx] ? "" : styles.tableCellEmpty} ${
+                                      !crestRows[idx] && idx === 0 && slot.crests.length === 0 ? styles.cellPlaceholder : ""
+                                    }`}
+                                    onClick={(e) => {
+                                      if (isMobileViewport) {
+                                        e.stopPropagation();
+                                        openCrestModal(slot.slotIndex);
+                                      } else {
+                                        setActiveSlotIndex(slot.slotIndex);
+                                      }
+                                    }}
+                                  >
+                                    {crestRows[idx] ? (
+                                      <span className={styles.fruitCellContent}>
+                                        <img
+                                          className={styles.crestSkillIcon}
+                                          src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                          alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                        />
+                                        <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
+                                      </span>
+                                    ) : idx === 0 && slot.crests.length === 0 && isMobileViewport ? "タップしてソウルスキルを選択" : "　"}
+                                  </div>
+                                </Fragment>
+                              ))}
+                            </div>
                           </div>
                         </div>
                         <div className={styles.slotMemoCell}>
@@ -1778,7 +1845,16 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                           />
                         </div>
                       </div>
-                      <div className={styles.slotMoveBtns}>
+                        <div className={styles.slotMoveBtns}>
+                        <button
+                          className={`${styles.slotMoveBtn} ${styles.slotClearActionBtn}`}
+                          type="button"
+                          onClick={() => clearSlot(slot.slotIndex)}
+                          aria-label={`${SLOT_LABELS[slot.slotIndex]}を解除`}
+                          title="解除"
+                        >
+                          ×
+                        </button>
                         <button
                           className={styles.slotMoveBtn}
                           type="button"
@@ -2212,64 +2288,95 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 ) : null}
               </div>
               <div className={styles.exportTeamSheet}>
-                {slots.map((slot) => {
-                  const c = slot.characterId ? charMap.get(slot.characterId) : null;
-                  const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
-                  const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
-                  return (
-                    <div key={`export-${slot.slotIndex}`} className={styles.teamBlock}>
-                      <div className={styles.teamHeader} style={{ backgroundColor: ELEMENT_HEADER_COLOR[c?.element ?? ""] }}>
-                        <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
-                        <div className={styles.teamNameWrap}>
-                          <div className={styles.teamName}>{c?.name || ""}</div>
+                {exportColumns.map((columnSlots, columnIndex) => (
+                  <div key={`export-column-${columnIndex}`} className={styles.exportTeamColumn}>
+                    {columnSlots.map((slot) => {
+                      const c = slot.characterId ? charMap.get(slot.characterId) : null;
+                      const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
+                      const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
+                      const fruitBonusTotals = fruitBonusTotalsOf(slot);
+                      const statRows = [
+                        { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
+                        { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
+                        { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed },
+                      ];
+                      return (
+                        <div key={`export-${slot.slotIndex}`} className={styles.teamBlock}>
+                          <div className={styles.teamHeader} style={{ backgroundColor: ELEMENT_HEADER_COLOR[c?.element ?? ""] }}>
+                            <div className={styles.teamRank}>{SLOT_LABELS[slot.slotIndex]}</div>
+                          <div className={styles.teamNameWrap}>
+                            <div className={styles.teamName}>{c?.name || ""}</div>
+                          </div>
+                          <div className={styles.teamMetaCell}>{c?.shuzoku || ""}</div>
+                          <div className={styles.teamMetaCell}>{c?.gekishu || ""}</div>
+                          <div className={styles.teamMetaCell}>{c?.senkei || ""}</div>
                         </div>
-                      </div>
-                      <div className={styles.teamBody}>
-                        <div className={styles.iconCell}>
-                          {c?.iconUrl ? (
-                            <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
-                          ) : (
-                            <span className={styles.sheetSelectText}>選択</span>
-                          )}
-                        </div>
-                        <div className={styles.detailTable}>
-                          <div className={styles.tableHead}>わくわくの実</div>
-                          <div className={styles.tableHead}>紋章</div>
-                          {fruitRows.map((fruit, idx) => (
-                            <Fragment key={`export-${slot.slotIndex}-row-${idx}`}>
-                              <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>
-                                {fruit ? (
-                                  <span className={styles.fruitCellContent}>
-                                    <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, idx))} alt={fruitGradeOf(slot, idx)} />
-                                    <span>{fruit}</span>
-                                  </span>
-                                ) : "　"}
+                          <div className={styles.teamBody}>
+                            <div className={styles.iconCell}>
+                              {c?.iconUrl ? (
+                                <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
+                              ) : (
+                                <span className={styles.sheetSelectText}>選択</span>
+                              )}
+                            </div>
+                            <div className={styles.detailWrap}>
+                              <div className={styles.statsGrid}>
+                                {statRows.map((stat) => (
+                                  <Fragment key={`export-${slot.slotIndex}-${stat.label}`}>
+                                    <div className={styles.statLabel}>{stat.label}</div>
+                                    <div className={styles.statValue}>
+                                      <span className={styles.statValueWrap}>
+                                        <span>{formatStatValue(stat.label, stat.base === null ? null : stat.base + stat.bonus)}</span>
+                                        {stat.label === "攻撃" && c?.hasGauge ? (
+                                          <span className={styles.gaugeValueWrap}>
+                                            <span className={styles.gaugeDivider}>/</span>
+                                            <span>{formatGaugeAttackValue(stat.base === null ? null : stat.base + stat.bonus, true)}</span>
+                                            <img className={styles.gaugeIcon} src="/icon/icon_ゲージ.png" alt="ゲージ" />
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                    <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.bonus, Boolean(c))}</div>
+                                  </Fragment>
+                                ))}
                               </div>
-                              <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>
-                                {crestRows[idx] ? (
-                                  <span className={styles.fruitCellContent}>
-                                    <img
-                                      className={styles.crestSkillIcon}
-                                      src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
-                                      alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
-                                    />
-                                    <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
-                                  </span>
-                                ) : "　"}
+                              <div className={styles.detailTable}>
+                                {fruitRows.map((fruit, idx) => (
+                                  <Fragment key={`export-${slot.slotIndex}-row-${idx}`}>
+                                    <div className={`${styles.tableCell} ${fruit ? "" : styles.tableCellEmpty}`}>
+                                      {fruit ? (
+                                        <span className={styles.fruitCellContent}>
+                                          <img className={styles.fruitGradeIcon} src={fruitGradeIconSrc(fruitGradeOf(slot, idx))} alt={fruitGradeOf(slot, idx)} />
+                                          <span>{fruit}</span>
+                                        </span>
+                                      ) : "　"}
+                                    </div>
+                                    <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>
+                                      {crestRows[idx] ? (
+                                        <span className={styles.fruitCellContent}>
+                                          <img
+                                            className={styles.crestSkillIcon}
+                                            src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                            alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                          />
+                                          <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
+                                        </span>
+                                      ) : "　"}
+                                    </div>
+                                  </Fragment>
+                                ))}
                               </div>
-                            </Fragment>
-                          ))}
+                            </div>
+                          </div>
+                          <div className={styles.slotMemoCell}>
+                            <div className={styles.slotMemoLabel}>備考</div>
+                            <div className={styles.slotMemoText}>{slot.slotMemo || " "}</div>
+                          </div>
                         </div>
-                      </div>
-                      {slot.slotMemo.trim() ? (
-                        <div className={styles.slotMemoCell}>
-                          <div className={styles.slotMemoLabel}>備考</div>
-                          <div className={styles.slotMemoText}>{slot.slotMemo}</div>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
               <div className={styles.exportMemoBlock}>
                 <div className={styles.exportMemoTitle}>メモ</div>
