@@ -82,6 +82,10 @@ function getSubmissionSlotFunctionName(): string {
   return process.env.NEXT_PUBLIC_SEIBO_SUBMISSION_SLOT_FUNCTION ?? "claim_seibo_submission_slot";
 }
 
+function getReleaseSubmissionSlotFunctionName(): string {
+  return process.env.NEXT_PUBLIC_SEIBO_RELEASE_SUBMISSION_SLOT_FUNCTION ?? "release_seibo_submission_slot";
+}
+
 function isMissingTableError(message: string): boolean {
   return /relation .* does not exist|Could not find the table|schema cache/i.test(message);
 }
@@ -344,6 +348,23 @@ export async function claimSeiboSubmissionSlot(
     allowed: false,
     message: formatSubmissionLimitMessage(response.next_allowed_at, cooldownHours),
   };
+}
+
+export async function releaseSeiboSubmissionSlot(deviceToken: string): Promise<void> {
+  const normalizedToken = deviceToken.trim();
+  if (!normalizedToken) return;
+
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase.rpc(getReleaseSubmissionSlotFunctionName(), {
+    p_token_hash: hashDeviceToken(normalizedToken),
+  });
+
+  if (error) {
+    if (isMissingFunctionError(error.message) || isMissingTableError(error.message)) {
+      return;
+    }
+    throw new Error(`投稿制限ロックの解放に失敗しました: ${error.message}`);
+  }
 }
 
 export async function fetchAllSeiboRankings(): Promise<SeiboQuestRanking[]> {

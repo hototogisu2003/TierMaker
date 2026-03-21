@@ -1,7 +1,12 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isCountablePrediction } from "@/lib/seiboPrediction/shared";
-import { claimSeiboSubmissionSlot, coerceSeiboPayload, insertSeiboSubmission } from "@/lib/seiboPrediction/server";
+import {
+  claimSeiboSubmissionSlot,
+  coerceSeiboPayload,
+  insertSeiboSubmission,
+  releaseSeiboSubmissionSlot,
+} from "@/lib/seiboPrediction/server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +35,7 @@ export async function POST(request: Request) {
   const cookieStore = cookies();
   let deviceToken = normalizeDeviceToken(cookieStore.get(SEIBO_DEVICE_COOKIE_NAME)?.value);
   let shouldSetDeviceTokenCookie = false;
+  let hasClaimedSubmissionSlot = false;
 
   if (!deviceToken) {
     deviceToken = crypto.randomUUID();
@@ -61,7 +67,12 @@ export async function POST(request: Request) {
           { status: 429 }
         );
       } else {
+        hasClaimedSubmissionSlot = true;
         const result = await insertSeiboSubmission(payload);
+        if (!result.stored) {
+          await releaseSeiboSubmissionSlot(deviceToken);
+          hasClaimedSubmissionSlot = false;
+        }
         response = NextResponse.json(result, { status: result.stored ? 200 : 202 });
       }
     }
@@ -72,6 +83,14 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (hasClaimedSubmissionSlot) {
+      try {
+        await releaseSeiboSubmissionSlot(deviceToken);
+      } catch {
+        // ignore release failures and preserve original error
+      }
+    }
+
     const message = error instanceof Error ? error.message : "予想の保存に失敗しました";
     const response = NextResponse.json({ stored: false, message }, { status: 400 });
     if (shouldSetDeviceTokenCookie) {

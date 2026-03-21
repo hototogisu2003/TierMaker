@@ -128,6 +128,25 @@ begin
 end;
 $$;
 
+create or replace function public.release_seibo_submission_slot(
+  p_token_hash text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_token_hash is null or btrim(p_token_hash) = '' then
+    return;
+  end if;
+
+  delete from public.seibo_submission_locks
+   where token_hash = p_token_hash;
+end;
+$$;
+
 alter table public.seibo_submission_locks enable row level security;
 
 grant execute on function public.claim_seibo_submission_slot(text, integer) to anon, authenticated;
+grant execute on function public.release_seibo_submission_slot(text) to anon, authenticated;
