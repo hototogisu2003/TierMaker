@@ -198,7 +198,7 @@ async function createPreviewBlob(node: HTMLElement) {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   return toBlob(node, {
     cacheBust: true,
-    pixelRatio: 2,
+    pixelRatio: 3,
     backgroundColor: "#ffffff",
   });
 }

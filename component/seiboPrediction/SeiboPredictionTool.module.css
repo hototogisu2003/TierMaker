@@ -485,12 +485,13 @@
 
 .exportSheet {
   width: 863px;
+  box-sizing: border-box;
   background: #ffffff;
   color: #111111;
   display: grid;
   gap: 0;
-  border-top: 1px solid #111111;
-  border-left: 1px solid #111111;
+  border-top: 2px solid #111111;
+  border-left: 2px solid #111111;
 }
 
 .exportLandscapeHeader,
@@ -504,8 +505,8 @@
 .exportLandscapeTitleCell,
  .exportLandscapeIconCell,
  .exportLandscapeMechanicsCell {
-  border-right: 1px solid #111111;
-  border-bottom: 1px solid #111111;
+  border-right: 2px solid #111111;
+  border-bottom: 2px solid #111111;
 }
 
 .exportLandscapeHeaderCell,
@@ -546,21 +547,21 @@
 }
 
 .exportLandscapeMechanicsCell {
-  grid-template-columns: minmax(0, 1fr) 72px;
+  grid-template-columns: 220px 74px;
   align-items: stretch;
 }
 
 .exportLandscapeGimmickGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 55px);
   grid-template-rows: 72px;
 }
 
 .exportLandscapeGimmickCell {
   display: grid;
   place-items: center;
-  border-right: 1px solid #111111;
-  border-bottom: 1px solid #111111;
+  border-right: 2px solid #111111;
+  border-bottom: 2px solid #111111;
   background: #ffffff;
 }
 
@@ -574,26 +575,27 @@
 
 .exportLandscapeMechanicIcon,
 .exportLandscapeShotIcon {
-  width: 54px;
-  height: 54px;
+  width: 51px;
+  height: 51px;
   object-fit: contain;
 }
 
 .exportLandscapeShotIconWrap {
   display: grid;
   place-items: center;
-  border-left: 1px solid #111111;
+  border-left: 2px solid #111111;
 }
 
 .exportLandscapeCharactersCell {
-  border-right: 1px solid #111111;
-  border-bottom: 1px solid #111111;
+  border-right: 2px solid #111111;
+  border-bottom: 2px solid #111111;
   min-height: 72px;
   display: flex;
   gap: 4px;
-  align-items: flex-start;
+  align-items: center;
+  align-content: center;
   flex-wrap: wrap;
-  padding: 4px 6px;
+  padding: 2px 6px;
   background: #ffffff;
 }
 
