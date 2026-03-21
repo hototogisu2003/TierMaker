@@ -26,6 +26,14 @@ function parseGimmickRankingLabel(label: string): { shotType: ShotType | ""; gim
   };
 }
 
+function getCompetitionRank<T extends { count: number }>(items: T[], index: number): number {
+  if (index <= 0) return 1;
+  if (items[index - 1]?.count === items[index]?.count) {
+    return getCompetitionRank(items, index - 1);
+  }
+  return index + 1;
+}
+
 export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQuestRanking[] }) {
   const [activeQuestKey, setActiveQuestKey] = useState<SeiboQuestKey>(SEIBO_QUESTS[0].key);
   const activeRanking = rankings.find((entry) => entry.questKey === activeQuestKey) ?? null;
@@ -105,9 +113,9 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
                 <h2 className={styles.rankingTitle}>適正キャラ 上位15件</h2>
                 {activeRanking.characterRanking.length > 0 ? (
                   <div className={styles.characterRankingGrid}>
-                    {activeRanking.characterRanking.map((item, index) => (
+                    {activeRanking.characterRanking.map((item, index, items) => (
                       <div key={`${item.id}-${index}`} className={styles.characterRankingCard}>
-                        <div className={styles.rankingIndex}>{index + 1}</div>
+                        <div className={styles.rankingIndex}>{getCompetitionRank(items, index)}</div>
                         {item.iconUrl ? (
                           <img className={styles.characterRankingIcon} src={item.iconUrl} alt={item.name} />
                         ) : (
