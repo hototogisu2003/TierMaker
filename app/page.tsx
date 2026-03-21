@@ -37,6 +37,12 @@ export default function HomePage() {
           編成メモへ
         </Link>
       </div>
+
+      <div style={{ marginTop: "10px" }}>
+        <Link href="/Seibo-Prediction" style={buttonStyle}>
+          星墓クエスト予想メーカーへ
+        </Link>
+      </div>
     </section>
   );
 }
