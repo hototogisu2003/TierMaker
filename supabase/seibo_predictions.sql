@@ -27,7 +27,18 @@ create table if not exists public.seibo_predictions (
 create index if not exists seibo_predictions_quest_key_idx
   on public.seibo_predictions (quest_key, created_at desc);
 
+alter table public.seibo_predictions
+  add column if not exists token_hash text;
+
+create unique index if not exists seibo_predictions_token_hash_quest_key_idx
+  on public.seibo_predictions (token_hash, quest_key)
+  where token_hash is not null;
+
 alter table public.seibo_predictions enable row level security;
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.seibo_predictions to anon, authenticated;
+grant usage, select on sequence public.seibo_predictions_id_seq to anon, authenticated;
 
 do $$
 begin
@@ -55,6 +66,33 @@ begin
       on public.seibo_predictions
       for insert
       with check (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'seibo_predictions'
+      and policyname = 'seibo_predictions_update_all'
+  ) then
+    create policy seibo_predictions_update_all
+      on public.seibo_predictions
+      for update
+      using (true)
+      with check (true);
+  end if;
+
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'seibo_predictions'
+      and policyname = 'seibo_predictions_delete_all'
+  ) then
+    create policy seibo_predictions_delete_all
+      on public.seibo_predictions
+      for delete
+      using (true);
   end if;
 end $$;
 

@@ -1,17 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { isCountablePrediction } from "@/lib/seiboPrediction/shared";
-import {
-  claimSeiboSubmissionSlot,
-  coerceSeiboPayload,
-  insertSeiboSubmission,
-  releaseSeiboSubmissionSlot,
-} from "@/lib/seiboPrediction/server";
+import { coerceSeiboPayload, insertSeiboSubmission } from "@/lib/seiboPrediction/server";
 
 export const dynamic = "force-dynamic";
 
 const SEIBO_DEVICE_COOKIE_NAME = "seibo_device_token";
-const SEIBO_SUBMISSION_COOLDOWN_HOURS = 12;
 
 function normalizeDeviceToken(rawValue: string | undefined): string {
   const value = (rawValue ?? "").trim();
@@ -35,7 +28,6 @@ export async function POST(request: Request) {
   const cookieStore = cookies();
   let deviceToken = normalizeDeviceToken(cookieStore.get(SEIBO_DEVICE_COOKIE_NAME)?.value);
   let shouldSetDeviceTokenCookie = false;
-  let hasClaimedSubmissionSlot = false;
 
   if (!deviceToken) {
     deviceToken = crypto.randomUUID();
@@ -45,37 +37,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const payload = coerceSeiboPayload(body);
-    const countablePredictions = payload.predictions.filter(isCountablePrediction);
-
-    let response: NextResponse;
-    if (countablePredictions.length === 0) {
-      response = NextResponse.json(
-        {
-          stored: true,
-          message: "画像は作成できましたが、ランキングに反映される予想はありません。",
-        },
-        { status: 200 }
-      );
-    } else {
-      const slotClaim = await claimSeiboSubmissionSlot(deviceToken, SEIBO_SUBMISSION_COOLDOWN_HOURS);
-      if (!slotClaim.allowed) {
-        response = NextResponse.json(
-          {
-            stored: false,
-            message: slotClaim.message,
-          },
-          { status: 429 }
-        );
-      } else {
-        hasClaimedSubmissionSlot = true;
-        const result = await insertSeiboSubmission(payload);
-        if (!result.stored) {
-          await releaseSeiboSubmissionSlot(deviceToken);
-          hasClaimedSubmissionSlot = false;
-        }
-        response = NextResponse.json(result, { status: result.stored ? 200 : 202 });
-      }
-    }
+    const result = await insertSeiboSubmission(payload, deviceToken);
+    const response = NextResponse.json(result, { status: result.stored ? 200 : 202 });
 
     if (shouldSetDeviceTokenCookie) {
       setDeviceTokenCookie(response, deviceToken);
@@ -83,14 +46,6 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    if (hasClaimedSubmissionSlot) {
-      try {
-        await releaseSeiboSubmissionSlot(deviceToken);
-      } catch {
-        // ignore release failures and preserve original error
-      }
-    }
-
     const message = error instanceof Error ? error.message : "予想の保存に失敗しました";
     const response = NextResponse.json({ stored: false, message }, { status: 400 });
     if (shouldSetDeviceTokenCookie) {

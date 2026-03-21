@@ -273,21 +273,53 @@ async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, SeiboC
   return result;
 }
 
-export async function insertSeiboSubmission(input: unknown): Promise<{ stored: boolean; message?: string }> {
+export async function insertSeiboSubmission(
+  input: unknown,
+  deviceToken: string
+): Promise<{ stored: boolean; message?: string }> {
   const payload = normalizeSubmissionPayload(input);
   const tableName = getPredictionTableName();
   const supabase = getSupabaseServerClient();
+  const tokenHash = hashDeviceToken(deviceToken.trim());
   const batchId = crypto.randomUUID();
 
   const countablePredictions = payload.predictions.filter(isCountablePrediction);
   if (countablePredictions.length === 0) {
+    const { error } = await supabase.from(tableName).delete().eq("token_hash", tokenHash);
+    if (error) {
+      if (isMissingTableError(error.message)) {
+        return {
+          stored: false,
+          message:
+            "Supabaseに集計テーブルがありません。TierMaker/supabase/seibo_predictions.sql を実行してください。",
+        };
+      }
+      throw new Error(`予想の削除に失敗しました: ${error.message}`);
+    }
     return {
       stored: true,
       message: "画像は作成できますが、ランキングに反映される予想はまだありません。",
     };
   }
 
+  const { data: existingRows, error: existingError } = await supabase
+    .from(tableName)
+    .select("quest_key")
+    .eq("token_hash", tokenHash);
+
+  if (existingError) {
+    if (isMissingTableError(existingError.message)) {
+      return {
+        stored: false,
+        message:
+          "Supabaseに集計テーブルがありません。TierMaker/supabase/seibo_predictions.sql を実行してください。",
+      };
+    }
+    throw new Error(`既存予想の取得に失敗しました: ${existingError.message}`);
+  }
+
   const rows = countablePredictions.map((prediction) => ({
+    token_hash: tokenHash,
     batch_id: batchId,
     quest_key: prediction.questKey,
     shot_type: toStorageShotType(prediction.shotType),
@@ -295,7 +327,10 @@ export async function insertSeiboSubmission(input: unknown): Promise<{ stored: b
     character_ids: prediction.characters.map((character) => character.id),
   }));
 
-  const { error } = await supabase.from(tableName).insert(rows);
+  const { error } = await supabase.from(tableName).upsert(rows, {
+    onConflict: "token_hash,quest_key",
+    ignoreDuplicates: false,
+  });
   if (error) {
     if (isMissingTableError(error.message)) {
       return {
@@ -305,6 +340,23 @@ export async function insertSeiboSubmission(input: unknown): Promise<{ stored: b
       };
     }
     throw new Error(`\u4e88\u60f3\u306e\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${error.message}`);
+  }
+
+  const activeQuestKeys = new Set(countablePredictions.map((prediction) => prediction.questKey));
+  const removableQuestKeys = ((existingRows ?? []) as GenericRow[])
+    .map((row) => toText(row.quest_key))
+    .filter((questKey) => questKey && !activeQuestKeys.has(questKey as SeiboQuestKey));
+
+  if (removableQuestKeys.length > 0) {
+    const { error: deleteError } = await supabase
+      .from(tableName)
+      .delete()
+      .eq("token_hash", tokenHash)
+      .in("quest_key", removableQuestKeys);
+
+    if (deleteError) {
+      throw new Error(`不要な旧予想の削除に失敗しました: ${deleteError.message}`);
+    }
   }
 
   return {
