@@ -42,7 +42,7 @@ const EXPORT_ROW_COLORS: Record<SeiboQuestKey, string> = {
   cocytus: "#b7e9b8",
   largamente: "#fff45c",
   melangcolin: "#e6c1e5",
-  ex: "#b7dcee",
+  ex: "#ffffff",
 };
 
 function getExportShotIconPath(shotType: ShotType | ""): string {
