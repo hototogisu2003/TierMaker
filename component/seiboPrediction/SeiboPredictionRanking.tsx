@@ -71,15 +71,15 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
           <>
             <div className={styles.rankingBlocks}>
               <section className={styles.rankingBlock}>
-                <h2 className={styles.rankingTitle}>撃種 + ギミック 上位5件</h2>
+                <h2 className={styles.rankingTitle}>ギミック 上位5件</h2>
                 {activeRanking.gimmickRanking.length > 0 ? (
                   <div className={styles.rankingList}>
-                    {activeRanking.gimmickRanking.map((item, index) => {
+                    {activeRanking.gimmickRanking.map((item, index, items) => {
                       const parsed = parseGimmickRankingLabel(item.label);
                       const shotIconPath = getShotIconPath(parsed.shotType);
                       return (
                         <div key={item.label} className={styles.rankingRow}>
-                          <div className={styles.rankingIndex}>{index + 1}</div>
+                          <div className={styles.rankingIndex}>{getCompetitionRank(items, index)}</div>
                           <div className={styles.rankingIconRow}>
                             {parsed.gimmicks.map((gimmick) => {
                               const iconPath = getGimmickIconPath(gimmick as Gimmick);
