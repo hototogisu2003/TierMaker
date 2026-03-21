@@ -134,6 +134,30 @@ function readStoredPredictions(): DraftPrediction[] | null {
   }
 }
 
+async function refreshStoredPredictionCharacters(predictions: DraftPrediction[]): Promise<DraftPrediction[]> {
+  const ids = [...new Set(predictions.flatMap((prediction) => prediction.characters.map((character) => character.id)).filter(Boolean))];
+  if (ids.length === 0) {
+    return predictions;
+  }
+
+  const response = await fetch("/api/seibo-prediction/characters", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+    cache: "no-store",
+  });
+  const data = (await response.json()) as CharacterSearchResponse;
+  if (!response.ok) {
+    throw new Error(data.message ?? "キャラクター取得に失敗しました");
+  }
+
+  const latestById = new Map((data.characters ?? []).map((character) => [character.id, character]));
+  return predictions.map((prediction) => ({
+    ...prediction,
+    characters: prediction.characters.map((character) => latestById.get(character.id) ?? character),
+  }));
+}
+
 function writeStoredPredictions(predictions: DraftPrediction[]) {
   if (typeof window === "undefined") return;
   try {
@@ -486,19 +510,43 @@ export default function SeiboPredictionTool({ bossCards }: { bossCards: SeiboBos
   }, [previewUrl]);
 
   useEffect(() => {
-    try {
-      const storedPredictions = readStoredPredictions();
-      if (!storedPredictions) {
-        hasLoadedDraftRef.current = true;
-        return;
-      }
+    let active = true;
 
-      setPredictions(storedPredictions);
-    } catch {
-      window.localStorage.removeItem(SEIBO_PREDICTION_STORAGE_KEY);
-    } finally {
-      hasLoadedDraftRef.current = true;
-    }
+    const loadStoredPredictions = async () => {
+      try {
+        const storedPredictions = readStoredPredictions();
+        if (!storedPredictions) {
+          return;
+        }
+
+        if (active) {
+          setPredictions(storedPredictions);
+        }
+
+        try {
+          const refreshedPredictions = await refreshStoredPredictionCharacters(storedPredictions);
+          if (active) {
+            setPredictions(refreshedPredictions);
+          }
+        } catch {
+          if (active) {
+            setPredictions(storedPredictions);
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(SEIBO_PREDICTION_STORAGE_KEY);
+      } finally {
+        if (active) {
+          hasLoadedDraftRef.current = true;
+        }
+      }
+    };
+
+    void loadStoredPredictions();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {

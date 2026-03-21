@@ -273,6 +273,16 @@ async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, SeiboC
   return result;
 }
 
+export async function fetchSeiboCharactersByIds(ids: string[]): Promise<SeiboCharacterSummary[]> {
+  const uniqueIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const characterMap = await fetchCharacterMapByIds(uniqueIds);
+  return uniqueIds
+    .map((id) => characterMap.get(id))
+    .filter((character): character is SeiboCharacterSummary => Boolean(character));
+}
+
 export async function insertSeiboSubmission(
   input: unknown,
   deviceToken: string

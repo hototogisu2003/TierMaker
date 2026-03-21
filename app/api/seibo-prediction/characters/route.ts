@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { searchSeiboCharacters } from "@/lib/seiboPrediction/server";
+import { fetchSeiboCharactersByIds, searchSeiboCharacters } from "@/lib/seiboPrediction/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ characters });
   } catch (error) {
     const message = error instanceof Error ? error.message : "キャラクター検索に失敗しました";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as { ids?: unknown };
+    const ids = Array.isArray(body?.ids)
+      ? body.ids
+          .map((value) => String(value ?? "").trim())
+          .filter(Boolean)
+          .slice(0, 24)
+      : [];
+
+    if (ids.length === 0) {
+      return NextResponse.json({ characters: [] });
+    }
+
+    const characters = await fetchSeiboCharactersByIds(ids);
+    return NextResponse.json({ characters });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "キャラクター取得に失敗しました";
     return NextResponse.json({ message }, { status: 500 });
   }
 }
