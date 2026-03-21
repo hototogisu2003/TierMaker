@@ -110,7 +110,7 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
               </section>
 
               <section className={styles.rankingBlock}>
-                <h2 className={styles.rankingTitle}>適正キャラ 上位15件</h2>
+                <h2 className={styles.rankingTitle}>適正キャラ 上位20件</h2>
                 {activeRanking.characterRanking.length > 0 ? (
                   <div className={styles.characterRankingGrid}>
                     {activeRanking.characterRanking.map((item, index, items) => (
