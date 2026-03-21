@@ -479,12 +479,12 @@
   position: fixed;
   left: -10000px;
   top: 0;
-  width: 933px;
+  width: 863px;
   pointer-events: none;
 }
 
 .exportSheet {
-  width: 933px;
+  width: 863px;
   background: #ffffff;
   color: #111111;
   display: grid;
@@ -496,7 +496,7 @@
 .exportLandscapeHeader,
 .exportLandscapeRow {
   display: grid;
-  grid-template-columns: 215px 74px 294px 350px;
+  grid-template-columns: 215px 74px 294px 280px;
 }
 
 .exportLandscapeHeaderCell,
