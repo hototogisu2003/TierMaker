@@ -538,9 +538,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       value: string;
       getValue: (character: CharacterItem) => string;
     }> = [
-      { ids: [1, 2, 3, 12], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
-      { ids: [4, 5, 6, 15], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
-      { ids: [7, 8, 9, 18], value: currentCharacter.senkei, getValue: (character) => character.senkei },
+      { ids: [1, 2, 3, 10, 11, 12], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
+      { ids: [4, 5, 6, 13, 14, 15], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
+      { ids: [7, 8, 9, 16, 17, 18], value: currentCharacter.senkei, getValue: (character) => character.senkei },
     ];
     const sharedFruitIds = new Set(sharedGroups.flatMap((group) => group.ids));
 
