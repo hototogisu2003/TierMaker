@@ -533,6 +533,17 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!currentCharacter) return { hp: 0, attack: 0, speed: 0 };
 
     const totals = { hp: 0, attack: 0, speed: 0 };
+    const sharedGroups: Array<{
+      ids: number[];
+      value: string;
+      getValue: (character: CharacterItem) => string;
+    }> = [
+      { ids: [1, 2, 3, 12], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
+      { ids: [4, 5, 6, 15], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
+      { ids: [7, 8, 9, 18], value: currentCharacter.senkei, getValue: (character) => character.senkei },
+    ];
+    const sharedFruitIds = new Set(sharedGroups.flatMap((group) => group.ids));
+
     const addBonus = (optionId: number, grade: FruitGrade) => {
       const option = FRUIT_OPTIONS.find((item) => item.id === optionId);
       const bonus = option?.bonuses[grade] ?? { hp: 0, attack: 0, speed: 0 };
@@ -544,19 +555,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     slot.fruits.forEach((fruitName, index) => {
       const option = fruitOptionByName.get(fruitName);
       if (!option) return;
-      if (option.id >= 1 && option.id <= 9) return;
+      if (sharedFruitIds.has(option.id)) return;
       addBonus(option.id, slot.fruitGrades[index] ?? "L");
     });
-
-    const sharedGroups: Array<{
-      ids: number[];
-      value: string;
-      getValue: (character: CharacterItem) => string;
-    }> = [
-      { ids: [1, 2, 3], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
-      { ids: [4, 5, 6], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
-      { ids: [7, 8, 9], value: currentCharacter.senkei, getValue: (character) => character.senkei },
-    ];
 
     sharedGroups.forEach((group) => {
       if (!group.value) return;
