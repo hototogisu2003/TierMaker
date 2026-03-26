@@ -24,4 +24,5 @@ export type CharacterForUI = {
   sortNumber: number;
   iconPath: string;
   iconUrl: string;
+  isLocalUpload?: boolean;
 };

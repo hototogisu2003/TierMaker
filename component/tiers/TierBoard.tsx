@@ -66,6 +66,7 @@ type Props = {
   onRankColWidthChange: (next: number) => void;
   activeItemId: string | null;
   activeCharacter: CharacterForUI | null;
+  onUploadLocalImages: (files: FileList | File[]) => void;
 };
 
 const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
@@ -111,11 +112,13 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onRankColWidthChange,
     activeItemId,
     activeCharacter,
+    onUploadLocalImages,
   },
   ref
 ) {
   const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(false);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+  const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
   const isOtherObtainEnabled = selectedObtains.has("降臨");
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
@@ -480,6 +483,27 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
             groupByElement={effectiveElementOrderEnabled}
             activeItemId={activeItemId}
           />
+          <div className="uploadArea">
+            <input
+              ref={uploadInputRef}
+              className="uploadInput"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                if (!e.target.files || e.target.files.length === 0) return;
+                onUploadLocalImages(e.target.files);
+                e.currentTarget.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="uploadBtn"
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              画像をアップロード
+            </button>
+          </div>
         </div>
       </div>
 
@@ -522,6 +546,32 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         .poolArea {
           max-width: 100%;
           overflow: hidden;
+        }
+
+        .uploadArea {
+          margin-top: 8px;
+          display: flex;
+          justify-content: flex-start;
+        }
+
+        .uploadInput {
+          display: none;
+        }
+
+        .uploadBtn {
+          border: 1px solid #6b7280;
+          background: #ffffff;
+          color: #111111;
+          padding: 6px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 700;
+          font-size: 13px;
+          line-height: 1.2;
+        }
+
+        .uploadBtn:hover {
+          background: #f3f4f6;
         }
 
         .tiersFrame {

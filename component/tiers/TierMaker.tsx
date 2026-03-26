@@ -114,6 +114,12 @@ function findContainerOfItem(containers: Record<string, string[]>, itemId: strin
 
 export default function TierMaker({ characters, initialTiers }: Props) {
   const boardRef = React.useRef<HTMLDivElement | null>(null);
+  const localUploadUrlsRef = React.useRef<string[]>([]);
+  const [localCharacters, setLocalCharacters] = React.useState<CharacterForUI[]>([]);
+  const allCharacters = React.useMemo(
+    () => [...characters, ...localCharacters],
+    [characters, localCharacters]
+  );
 
   const [{ tierMeta, containers }, setState] = React.useState(() =>
     buildInitialState(characters, initialTiers)
@@ -185,16 +191,24 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   const characterById = React.useMemo(() => {
     const m = new Map<string, CharacterForUI>();
-    for (const c of characters) m.set(c.id, c);
+    for (const c of allCharacters) m.set(c.id, c);
     return m;
-  }, [characters]);
+  }, [allCharacters]);
+
+  React.useEffect(() => {
+    return () => {
+      for (const url of localUploadUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, []);
 
   const normalizedFilter = appliedNameFilter.trim().toLowerCase();
 
   const visibleCharacterIds = React.useMemo(() => {
     if (normalizedFilter) {
       const ids = new Set<string>();
-      for (const c of characters) {
+      for (const c of allCharacters) {
         if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
         const name = c.name.trim().toLowerCase();
         const nameKana = c.nameKana.trim().toLowerCase();
@@ -226,7 +240,11 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     }
 
     const ids = new Set<string>();
-    for (const c of characters) {
+    for (const c of allCharacters) {
+      if (c.isLocalUpload) {
+        ids.add(c.id);
+        continue;
+      }
       if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
       const isElementMatched =
         appliedIsAllElementsMode || (!!c.element && appliedSelectedElements.has(c.element));
@@ -252,7 +270,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     }
     return ids;
   }, [
-    characters,
+    allCharacters,
     normalizedFilter,
     appliedIncludeUnobtainable,
     appliedSelectedElements,
@@ -405,7 +423,43 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   function resetBoard() {
     setActiveId(null);
-    setState(buildInitialState(characters, initialTiers));
+    setState(buildInitialState(allCharacters, initialTiers));
+  }
+
+  function uploadLocalImages(files: FileList | File[]) {
+    const fileArray = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (fileArray.length === 0) return;
+
+    const uploadedCharacters = fileArray.map((file, index) => {
+      const objectUrl = URL.createObjectURL(file);
+      localUploadUrlsRef.current.push(objectUrl);
+      const fileName = file.name.replace(/\.[^.]+$/, "") || `upload-${Date.now()}-${index + 1}`;
+
+      return {
+        id: `local-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        name: fileName,
+        nameKana: fileName,
+        element: "",
+        obtain: "",
+        gachaType: "",
+        formType: "",
+        otherCategory: "",
+        isObtainable: true,
+        sortNumber: Number.POSITIVE_INFINITY,
+        iconPath: file.name,
+        iconUrl: objectUrl,
+        isLocalUpload: true,
+      } satisfies CharacterForUI;
+    });
+
+    setLocalCharacters((prev) => [...prev, ...uploadedCharacters]);
+    setState((prev) => ({
+      ...prev,
+      containers: {
+        ...prev.containers,
+        pool: [...prev.containers.pool, ...uploadedCharacters.map((character) => character.id)],
+      },
+    }));
   }
 
   function renameTier(tierId: TierId, nextName: string) {
@@ -579,6 +633,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onRankColWidthChange={setRankColWidth}
           activeItemId={activeId}
           activeCharacter={activeCharacter}
+          onUploadLocalImages={uploadLocalImages}
         />
       </DndContext>
 
