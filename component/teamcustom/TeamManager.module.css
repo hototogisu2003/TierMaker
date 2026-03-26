@@ -1463,7 +1463,7 @@
 }
 
 .exportSheet {
-  width: var(--export-width, 1280px);
+  width: var(--export-width, 960px);
   height: var(--export-height, 960px);
   box-sizing: border-box;
   background: #ffffff;
