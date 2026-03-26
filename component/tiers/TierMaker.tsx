@@ -2,6 +2,7 @@
 
 import React from "react";
 import type {
+  CharacterContent,
   CharacterElement,
   CharacterForm,
   CharacterForUI,
@@ -46,13 +47,15 @@ const DEFAULT_NAME_FILTER = "";
 const DEFAULT_YEAR: YearValue = "";
 const DEFAULT_SORT_ORDER: SortOrder = "desc";
 const DEFAULT_ELEMENT_ORDER_ENABLED = true;
-const DEFAULT_IS_ALL_ELEMENTS_MODE = false;
+const DEFAULT_IS_ALL_ELEMENTS_MODE = true;
 const DEFAULT_INCLUDE_UNOBTAINABLE = false;
-const DEFAULT_SELECTED_ELEMENTS = new Set<CharacterElement>(["火"]);
-const DEFAULT_SELECTED_OBTAINS = new Set<CharacterObtain>(["ガチャ"]);
+const DEFAULT_SELECTED_ELEMENTS = new Set<CharacterElement>();
+const DEFAULT_SELECTED_OBTAINS = new Set<CharacterObtain>();
 const DEFAULT_SELECTED_GACHAS = new Set<CharacterGacha>(["限定"]);
 const FORM_OPTIONS: CharacterForm[] = ["進化/神化", "獣神化", "獣神化改", "真獣神化"];
-const DEFAULT_SELECTED_FORMS = new Set<CharacterForm>(FORM_OPTIONS);
+const CONTENT_OPTIONS: CharacterContent[] = ["破界の星墓", "天魔の孤城", "禁忌の獄"];
+const DEFAULT_SELECTED_FORMS = new Set<CharacterForm>();
+const DEFAULT_SELECTED_CONTENTS = new Set<CharacterContent>();
 const DEFAULT_SELECTED_OTHER_CATEGORIES = new Set<CharacterOtherCategory>();
 
 const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
@@ -151,6 +154,9 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [selectedForms, setSelectedForms] = React.useState<Set<CharacterForm>>(
     () => new Set<CharacterForm>(DEFAULT_SELECTED_FORMS)
   );
+  const [selectedContents, setSelectedContents] = React.useState<Set<CharacterContent>>(
+    () => new Set<CharacterContent>(DEFAULT_SELECTED_CONTENTS)
+  );
   const [selectedOtherCategories, setSelectedOtherCategories] = React.useState<
     Set<CharacterOtherCategory>
   >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
@@ -179,9 +185,13 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [appliedSelectedForms, setAppliedSelectedForms] = React.useState<Set<CharacterForm>>(
     () => new Set<CharacterForm>(DEFAULT_SELECTED_FORMS)
   );
+  const [appliedSelectedContents, setAppliedSelectedContents] = React.useState<
+    Set<CharacterContent>
+  >(() => new Set<CharacterContent>(DEFAULT_SELECTED_CONTENTS));
   const [appliedSelectedOtherCategories, setAppliedSelectedOtherCategories] = React.useState<
     Set<CharacterOtherCategory>
   >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
+  const [hasAppliedFiltersOnce, setHasAppliedFiltersOnce] = React.useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -206,6 +216,10 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const normalizedFilter = appliedNameFilter.trim().toLowerCase();
 
   const visibleCharacterIds = React.useMemo(() => {
+    if (!hasAppliedFiltersOnce) {
+      return new Set<string>();
+    }
+
     if (normalizedFilter) {
       const ids = new Set<string>();
       for (const c of allCharacters) {
@@ -220,9 +234,14 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     }
 
     const isAllElementsSelected = appliedIsAllElementsMode;
-    const isAllObtainsSelected = OBTAIN_OPTIONS.every((o) => appliedSelectedObtains.has(o));
+    const isObtainFilterInactive =
+      appliedSelectedObtains.size === 0 ||
+      OBTAIN_OPTIONS.every((o) => appliedSelectedObtains.has(o));
     const isAllGachasSelected = GACHA_OPTIONS.every((g) => appliedSelectedGachas.has(g));
-    const isAllFormsSelected = FORM_OPTIONS.every((f) => appliedSelectedForms.has(f));
+    const isFormFilterInactive =
+      appliedSelectedForms.size === 0 ||
+      FORM_OPTIONS.every((f) => appliedSelectedForms.has(f));
+    const isAllContentsUnselected = appliedSelectedContents.size === 0;
     const isAllOtherCategoriesSelected = OTHER_CATEGORY_OPTIONS.every((o) =>
       appliedSelectedOtherCategories.has(o)
     );
@@ -230,9 +249,10 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     if (
       !normalizedFilter &&
       isAllElementsSelected &&
-      isAllObtainsSelected &&
+      isObtainFilterInactive &&
       isAllGachasSelected &&
-      isAllFormsSelected &&
+      isFormFilterInactive &&
+      isAllContentsUnselected &&
       isAllOtherCategoriesSelected &&
       isYearUnselected
     ) {
@@ -248,11 +268,19 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
       const isElementMatched =
         appliedIsAllElementsMode || (!!c.element && appliedSelectedElements.has(c.element));
-      const isObtainMatched = !!c.obtain && appliedSelectedObtains.has(c.obtain);
+      const isObtainMatched =
+        appliedSelectedObtains.size === 0 ||
+        (!!c.obtain && appliedSelectedObtains.has(c.obtain));
       const isFormMatched =
-        isAllFormsSelected || (!!c.formType && appliedSelectedForms.has(c.formType));
+        appliedSelectedForms.size === 0 ||
+        (!!c.formType && appliedSelectedForms.has(c.formType));
+      const isContentMatched =
+        appliedSelectedContents.size === 0 ||
+        (!!c.contentType && appliedSelectedContents.has(c.contentType));
       const isSubtypeMatched =
-        c.obtain === "ガチャ"
+        appliedSelectedObtains.size === 0
+          ? true
+          : c.obtain === "ガチャ"
           ? !!c.gachaType && appliedSelectedGachas.has(c.gachaType)
           : c.obtain === "降臨"
             ? !!c.otherCategory && appliedSelectedOtherCategories.has(c.otherCategory)
@@ -264,13 +292,21 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         (appliedYearFrom === "" && appliedYearTo === "") ||
         (implYear !== null && implYear >= minYear && implYear <= maxYear);
 
-      if (isElementMatched && isObtainMatched && isFormMatched && isSubtypeMatched && isYearMatched) {
+      if (
+        isElementMatched &&
+        isObtainMatched &&
+        isFormMatched &&
+        isContentMatched &&
+        isSubtypeMatched &&
+        isYearMatched
+      ) {
         ids.add(c.id);
       }
     }
     return ids;
   }, [
     allCharacters,
+    hasAppliedFiltersOnce,
     normalizedFilter,
     appliedIncludeUnobtainable,
     appliedSelectedElements,
@@ -278,6 +314,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     appliedSelectedObtains,
     appliedSelectedGachas,
     appliedSelectedForms,
+    appliedSelectedContents,
     appliedSelectedOtherCategories,
     appliedYearFrom,
     appliedYearTo,
@@ -349,6 +386,18 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     });
   }
 
+  function toggleContentFilter(content: CharacterContent) {
+    setSelectedContents((prev) => {
+      const next = new Set(prev);
+      if (next.has(content)) {
+        next.delete(content);
+      } else {
+        next.add(content);
+      }
+      return next;
+    });
+  }
+
   function toggleOtherCategoryFilter(category: CharacterOtherCategory) {
     setSelectedOtherCategories((prev) => {
       const next = new Set(prev);
@@ -362,6 +411,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   }
 
   function applyFilters() {
+    setHasAppliedFiltersOnce(true);
     setAppliedNameFilter(nameFilter);
     setAppliedIncludeUnobtainable(includeUnobtainable);
     setAppliedYearFrom(yearFrom);
@@ -377,6 +427,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         : new Set<CharacterGacha>()
     );
     setAppliedSelectedForms(new Set(selectedForms));
+    setAppliedSelectedContents(new Set(selectedContents));
     setAppliedSelectedOtherCategories(
       selectedObtains.has("降臨")
         ? new Set(selectedOtherCategories)
@@ -385,6 +436,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   }
 
   function resetFilters() {
+    setHasAppliedFiltersOnce(false);
     setNameFilter(DEFAULT_NAME_FILTER);
     setIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setYearFrom(DEFAULT_YEAR);
@@ -396,6 +448,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     setSelectedObtains(new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS));
     setSelectedGachas(new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS));
     setSelectedForms(new Set<CharacterForm>(DEFAULT_SELECTED_FORMS));
+    setSelectedContents(new Set<CharacterContent>(DEFAULT_SELECTED_CONTENTS));
     setSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
 
     setAppliedNameFilter(DEFAULT_NAME_FILTER);
@@ -409,6 +462,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     setAppliedSelectedObtains(new Set<CharacterObtain>(DEFAULT_SELECTED_OBTAINS));
     setAppliedSelectedGachas(new Set<CharacterGacha>(DEFAULT_SELECTED_GACHAS));
     setAppliedSelectedForms(new Set<CharacterForm>(DEFAULT_SELECTED_FORMS));
+    setAppliedSelectedContents(new Set<CharacterContent>(DEFAULT_SELECTED_CONTENTS));
     setAppliedSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
   }
 
@@ -443,6 +497,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         obtain: "",
         gachaType: "",
         formType: "",
+        contentType: "",
         otherCategory: "",
         isObtainable: true,
         sortNumber: Number.POSITIVE_INFINITY,
@@ -621,6 +676,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           onToggleGacha={toggleGachaFilter}
           selectedForms={selectedForms}
           onToggleForm={toggleFormFilter}
+          selectedContents={selectedContents}
+          onToggleContent={toggleContentFilter}
           selectedOtherCategories={selectedOtherCategories}
           onToggleOtherCategory={toggleOtherCategoryFilter}
           onApplyFilters={applyFilters}

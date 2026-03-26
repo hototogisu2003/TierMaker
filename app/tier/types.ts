@@ -1,13 +1,14 @@
-export type CharacterElement = "火" | "水" | "木" | "光" | "闇";
+﻿export type CharacterElement = "火" | "水" | "木" | "光" | "闇";
 export type CharacterObtain = "ガチャ" | "降臨" | "コラボパック";
 export type CharacterGacha = "限定" | "α" | "恒常" | "コラボ";
 export type CharacterForm = "進化/神化" | "獣神化" | "獣神化改" | "真獣神化";
+export type CharacterContent = "破界の星墓" | "天魔の孤城" | "禁忌の獄";
 export type CharacterOtherCategory =
   | "黎絶"
   | "轟絶"
   | "爆絶"
-  | "超究極"
   | "超絶"
+  | "超究極"
   | "コラボ"
   | "その他";
 
@@ -19,6 +20,7 @@ export type CharacterForUI = {
   obtain: CharacterObtain | "";
   gachaType: CharacterGacha | "";
   formType: CharacterForm | "";
+  contentType: CharacterContent | "";
   otherCategory: CharacterOtherCategory | "";
   isObtainable: boolean;
   sortNumber: number;

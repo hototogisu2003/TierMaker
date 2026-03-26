@@ -186,6 +186,8 @@ export default function PoolRow({
     return ids;
   }, [itemIds, charactersById]);
 
+  const isEmpty = flatIds.length === 0;
+
   const nonGroupWindow = React.useMemo(() => {
     const columns = Math.max(1, Math.floor(Math.max(gridWidth, iconSize) / iconSize));
     const total = flatIds.length;
@@ -256,7 +258,9 @@ export default function PoolRow({
   return (
     <SortableContext id="pool" items={visibleIdsForSortable} strategy={rectSortingStrategy}>
       <div ref={setNodeRef} className="poolRow" data-over={isOver ? "1" : "0"}>
-      {groupByElement ? (
+      {isEmpty ? (
+        <div className="emptyState">キャラクターを選択してください</div>
+      ) : groupByElement ? (
         <>
           <div ref={scrollRef} className="poolElementRows" onScroll={onPoolScroll}>
             <div className="poolElementRowsInner">
@@ -351,6 +355,16 @@ export default function PoolRow({
 
         .poolRow[data-over="1"] {
           background: rgba(255, 255, 255, 0.07);
+        }
+
+        .emptyState {
+          min-height: ${Math.max(72, iconSize)}px;
+          display: grid;
+          place-items: center;
+          color: #4b5563;
+          font-size: 14px;
+          font-weight: 600;
+          text-align: center;
         }
 
         .poolItems {

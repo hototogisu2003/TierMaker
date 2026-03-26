@@ -2,6 +2,7 @@
 
 import React from "react";
 import type {
+  CharacterContent,
   CharacterElement,
   CharacterForm,
   CharacterForUI,
@@ -54,6 +55,8 @@ type Props = {
   onToggleGacha: (gacha: CharacterGacha) => void;
   selectedForms: Set<CharacterForm>;
   onToggleForm: (form: CharacterForm) => void;
+  selectedContents: Set<CharacterContent>;
+  onToggleContent: (content: CharacterContent) => void;
   selectedOtherCategories: Set<CharacterOtherCategory>;
   onToggleOtherCategory: (category: CharacterOtherCategory) => void;
   onApplyFilters: () => void;
@@ -100,6 +103,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onToggleGacha,
     selectedForms,
     onToggleForm,
+    selectedContents,
+    onToggleContent,
     selectedOtherCategories,
     onToggleOtherCategory,
     onApplyFilters,
@@ -116,7 +121,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   },
   ref
 ) {
-  const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(false);
+  const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(true);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
@@ -125,6 +130,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const obtainOrder: CharacterObtain[] = ["ガチャ", "降臨", "コラボパック"];
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
   const formOrder: CharacterForm[] = ["進化/神化", "獣神化", "獣神化改", "真獣神化"];
+  const contentOrder: CharacterContent[] = ["破界の星墓", "天魔の孤城", "禁忌の獄"];
   const otherCategoryRow1: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "超絶"];
   const otherCategoryRow2: CharacterOtherCategory[] = ["超究極", "コラボ", "その他"];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
@@ -362,6 +368,26 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                       })}
                     </div>
                   </div>
+
+                    <div className="blockRow">
+                      <span className="filterLabel">クエスト</span>
+                      <div className="contentRow">
+                        {contentOrder.map((content) => {
+                          const selected = selectedContents.has(content);
+                          return (
+                            <button
+                              key={content}
+                              type="button"
+                              className="contentBtn"
+                              data-selected={selected ? "1" : "0"}
+                              onClick={() => onToggleContent(content)}
+                            >
+                              {content}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     <div className="blockRow">
                       <span className="filterLabel">形態</span>
@@ -772,6 +798,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainRow,
         .gachaRow,
+        .contentRow,
         .formRow,
         .otherCategoryRow,
         .otherCategorySubRow {
@@ -803,6 +830,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainBtn,
         .gachaBtn,
+        .contentBtn,
         .formBtn,
         .otherCategoryBtn {
           min-width: 64px;
@@ -817,6 +845,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
         .obtainBtn[data-selected="1"],
         .gachaBtn[data-selected="1"],
+        .contentBtn[data-selected="1"],
         .formBtn[data-selected="1"],
         .otherCategoryBtn[data-selected="1"] {
           background: #dbeafe;

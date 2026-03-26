@@ -1,8 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+﻿import { createClient } from "@supabase/supabase-js";
 import { unstable_noStore as noStore } from "next/cache";
 import type { Metadata } from "next";
 import TierMaker from "@/component/tiers/TierMaker";
 import type {
+  CharacterContent,
   CharacterElement,
   CharacterForm,
   CharacterForUI,
@@ -25,6 +26,7 @@ type CharacterRow = {
   obtain?: string | null;
   gacha?: string | null;
   form?: string | null;
+  content?: string | null;
   quest?: string | null;
   get?: number | string | null;
   number?: number | string | null;
@@ -88,7 +90,9 @@ function normalizeObtain(raw: string | null | undefined): CharacterObtain | "" {
   if (v === "ガチャ" || v === "gacha") return "ガチャ";
   if (v === "降臨") return "降臨";
   if (v === "その他" || v === "other") return "降臨";
-  if (v === "コラボパック" || v === "collabpack" || v === "collab pack") return "コラボパック";
+  if (v === "コラボパック" || v === "collabpack" || v === "collab pack") {
+    return "コラボパック";
+  }
   return "";
 }
 
@@ -110,13 +114,21 @@ function normalizeForm(raw: string | null | undefined): CharacterForm | "" {
   return "";
 }
 
+function normalizeContent(raw: string | null | undefined): CharacterContent | "" {
+  const v = (raw ?? "").trim();
+  if (v === "破界の星墓") return "破界の星墓";
+  if (v === "天魔の孤城") return "天魔の孤城";
+  if (v === "禁忌の獄") return "禁忌の獄";
+  return "";
+}
+
 function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherCategory | "" {
   const v = (raw ?? "").trim().toLowerCase();
   if (v === "黎絶") return "黎絶";
   if (v === "轟絶") return "轟絶";
   if (v === "爆絶") return "爆絶";
-  if (v === "超究極") return "超究極";
   if (v === "超絶") return "超絶";
+  if (v === "超究極") return "超究極";
   if (v === "コラボ" || v === "collab") return "コラボ";
   if (v === "その他" || v === "other") return "その他";
   return "";
@@ -138,7 +150,7 @@ export default async function TierPage() {
 
   const { data, error } = await supabase
     .from(tableName)
-    .select("id,name,name_kana,element,obtain,gacha,form,quest,get,number,icon_path")
+    .select("id,name,name_kana,element,obtain,gacha,form,content,quest,get,number,icon_path")
     .abortSignal(AbortSignal.timeout(8000))
     .order("number", { ascending: true })
     .order("id", { ascending: true })
@@ -178,6 +190,7 @@ export default async function TierPage() {
         obtain: normalizeObtain(r.obtain),
         gachaType: normalizeGacha(r.gacha),
         formType: normalizeForm(r.form),
+        contentType: normalizeContent(r.content),
         otherCategory: normalizeOtherCategory(r.quest),
         isObtainable: isObtainableFromGet(r.get),
         sortNumber: toSortableNumber(r.number),
