@@ -6,6 +6,99 @@
   color: #111;
 }
 
+/* Keep export rendering fixed across device sizes */
+.exportSheet .teamHeader {
+  grid-template-columns: 76px minmax(0, 2.6fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 0.85fr);
+  min-height: 34px;
+}
+
+.exportSheet .teamBody {
+  grid-template-columns: 76px 1fr;
+  grid-template-rows: auto auto;
+}
+
+.exportSheet .slotMemoCell {
+  grid-template-columns: 46px 1fr;
+}
+
+.exportSheet .teamRank,
+.exportSheet .teamName,
+.exportSheet .teamMetaCell {
+  padding: 3px 8px;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.exportSheet .teamRank {
+  font-size: 16px;
+}
+
+.exportSheet .teamMetaCell {
+  padding: 3px 8px;
+}
+
+.exportSheet .iconCell {
+  min-height: 86px;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.exportSheet .statsGrid {
+  grid-template-columns: 88px minmax(0, 1fr) 120px;
+  min-height: 86px;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.exportSheet .sheetIcon {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+}
+
+.exportSheet .statLabel,
+.exportSheet .statValue,
+.exportSheet .statBonus {
+  font-size: 17px;
+  padding: 4px 9px;
+}
+
+.exportSheet .gaugeIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.exportSheet .tableCell {
+  height: 32px;
+  min-height: 32px;
+  padding: 5px 9px;
+  font-size: 18px;
+}
+
+.exportSheet .fruitGradeIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.exportSheet .crestSkillIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.exportSheet .slotMemoLabel {
+  min-height: 44px;
+  font-size: 15px;
+  line-height: 1.2;
+  padding: 6px 8px;
+}
+
+.exportSheet .slotMemoText {
+  min-height: 44px;
+  font-size: 22px;
+  line-height: 1.2;
+  padding: 6px 8px;
+}
+
 .topBand {
   position: sticky;
   top: 0;
@@ -1370,41 +1463,46 @@
 }
 
 .exportSheet {
-  width: var(--export-width, 544px);
+  width: var(--export-width, 1280px);
+  height: var(--export-height, 960px);
   box-sizing: border-box;
   background: #ffffff;
   color: #111111;
-  padding: 12px;
+  padding: 16px;
   display: grid;
-  gap: 8px;
+  grid-template-rows: 88px minmax(0, 1fr) 200px;
+  align-content: start;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .exportHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 16px;
+  min-height: 80px;
 }
 
 .exportHeaderIcons {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 0 0 auto;
 }
 
 .exportTitleGroup {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .exportTitle {
-  font-size: 18px;
+  font-size: 32px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -1412,30 +1510,30 @@
 }
 
 .exportQuestIcon {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   border: 1px solid #b6c1d0;
-  border-radius: 8px;
+  border-radius: 12px;
   object-fit: contain;
   background: #ffffff;
   flex: 0 0 auto;
 }
 
 .exportShugojuIcon {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   border: 1px solid #b6c1d0;
-  border-radius: 8px;
+  border-radius: 12px;
   object-fit: contain;
   background: #ffffff;
   flex: 0 0 auto;
 }
 
 .exportSpotIcon {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   border: 1px solid #b6c1d0;
-  border-radius: 8px;
+  border-radius: 12px;
   object-fit: contain;
   background: #ffffff;
   flex: 0 0 auto;
@@ -1443,38 +1541,121 @@
 
 .exportTeamSheet {
   display: grid;
-  grid-template-columns: repeat(2, 262px);
-  justify-content: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  justify-content: stretch;
   align-items: start;
-  gap: 6px;
+  align-self: start;
+  gap: 14px;
 }
 
 .exportTeamColumn {
   display: grid;
+  grid-template-rows: repeat(2, auto);
   align-content: start;
-  gap: 6px;
+  gap: 14px;
 }
 
 .exportMemoBlock {
   border: 1px solid #d0d7e2;
   border-radius: 8px;
   background: #ffffff;
-  padding: 8px;
+  padding: 4px 8px;
   display: grid;
-  gap: 6px;
+  align-content: start;
+  gap: 2px;
 }
 
 .exportMemoTitle {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .exportMemo {
-  min-height: 96px;
+  min-height: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 13px;
-  line-height: 1.45;
+  align-self: start;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.exportSheet .teamHeader {
+  grid-template-columns: 76px minmax(0, 2.6fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 0.85fr);
+  min-height: 34px;
+}
+
+.exportSheet .teamRank,
+.exportSheet .teamName,
+.exportSheet .teamMetaCell {
+  font-size: 15px;
+  line-height: 1.1;
+  padding: 3px 8px;
+}
+
+.exportSheet .teamRank {
+  font-size: 16px;
+}
+
+.exportSheet .teamBody {
+  grid-template-columns: 76px 1fr;
+}
+
+.exportSheet .iconCell {
+  min-height: 86px;
+}
+
+.exportSheet .sheetIcon {
+  width: 76px;
+  height: 76px;
+}
+
+.exportSheet .statsGrid {
+  grid-template-columns: 88px minmax(0, 1fr) 120px;
+  min-height: 86px;
+}
+
+.exportSheet .statLabel,
+.exportSheet .statValue,
+.exportSheet .statBonus {
+  font-size: 17px;
+  line-height: 1.15;
+  padding: 4px 9px;
+}
+
+.exportSheet .tableCell {
+  height: 32px;
+  font-size: 18px;
+  padding: 5px 9px;
+}
+
+.exportSheet .fruitGradeIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.exportSheet .crestSkillIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.exportSheet .slotMemoCell {
+  grid-template-columns: 46px 1fr;
+}
+
+.exportSheet .slotMemoLabel,
+.exportSheet .slotMemoText {
+  min-height: 44px;
+  line-height: 1.2;
+  padding: 6px 8px;
+}
+
+.exportSheet .slotMemoLabel {
+  font-size: 15px;
+}
+
+.exportSheet .slotMemoText {
+  font-size: 22px;
 }
 
 @media (max-width: 1024px) {
