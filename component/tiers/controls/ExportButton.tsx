@@ -7,7 +7,7 @@ type Props = {
 };
 
 const OUTPUT_WIDTH = 1280;
-const OUTPUT_TITLE_HEIGHT = 40;
+const OUTPUT_TITLE_HEIGHT = 60;
 const OUTPUT_ROW_HEIGHT = 94;
 const MIN_EXPORTED_ROWS = 1;
 const EXPORT_WRAP_COLUMNS = 12;
@@ -191,7 +191,7 @@ export default function ExportButton({ targetRef }: Props) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (includeTitle) {
-      let fontSize = 22;
+      let fontSize = 30;
       const maxTextWidth = OUTPUT_WIDTH - 24;
       ctx.font = `bold ${fontSize}px ${rankFontFamily}`;
       while (ctx.measureText(title).width > maxTextWidth && fontSize > 12) {
