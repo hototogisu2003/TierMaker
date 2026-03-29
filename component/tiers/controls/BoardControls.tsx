@@ -3,15 +3,135 @@
 import React from "react";
 import Link from "next/link";
 import ExportButton from "./ExportButton";
+import { RELEASE_NOTES, type ReleaseNoteItem } from "./releaseNotes";
 
 type Props = {
   onReset: () => void;
   exportTargetRef: React.RefObject<HTMLDivElement | null>;
 };
 
+function ReleaseNotesModal({
+  notes,
+  onClose,
+}: {
+  notes: ReleaseNoteItem[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="更新情報">
+      <div className="panel">
+        <div className="panelHeader">
+          <div className="panelTitle">更新情報</div>
+          <button type="button" className="closeBtn" onClick={onClose} aria-label="閉じる">
+            ×
+          </button>
+        </div>
+
+        <div className="panelBody">
+          {notes.map((note) => (
+            <section key={note.id} className="noteBlock">
+              <div className="noteDate">{note.date}</div>
+              {note.title ? <div className="noteTitle">{note.title}</div> : null}
+              <ul className="noteList">
+                {note.items.map((item, index) => (
+                  <li key={`${note.id}-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          display: grid;
+          place-items: center;
+          padding: 16px;
+          background: rgba(0, 0, 0, 0.35);
+        }
+
+        .panel {
+          width: min(92vw, 560px);
+          max-height: 82vh;
+          overflow: auto;
+          border: 1px solid #d1d5db;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+        }
+
+        .panelHeader {
+          position: sticky;
+          top: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 12px 14px;
+          border-bottom: 1px solid #e5e7eb;
+          background: #ffffff;
+        }
+
+        .panelTitle {
+          font-size: 15px;
+          font-weight: 800;
+          color: #111827;
+        }
+
+        .closeBtn {
+          width: 28px;
+          height: 28px;
+          border: 1px solid #9ca3af;
+          border-radius: 999px;
+          background: #ffffff;
+          color: #111827;
+          font-size: 16px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .panelBody {
+          display: grid;
+          gap: 14px;
+          padding: 14px;
+        }
+
+        .noteBlock {
+          display: grid;
+          gap: 6px;
+        }
+
+        .noteDate {
+          font-size: 12px;
+          font-weight: 800;
+          color: #4b5563;
+        }
+
+        .noteTitle {
+          font-size: 14px;
+          font-weight: 800;
+          color: #111827;
+        }
+
+        .noteList {
+          margin: 0;
+          padding-left: 18px;
+          color: #111827;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export default function BoardControls({ onReset, exportTargetRef }: Props) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isContactOpen, setIsContactOpen] = React.useState(false);
+  const [isReleaseNotesOpen, setIsReleaseNotesOpen] = React.useState(false);
 
   return (
     <div className="controlsRow">
@@ -51,9 +171,9 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
 
               {isContactOpen ? (
                 <div className="contactPanel">
-                  <div>運営者名：ほととぎす</div>
+                  <div>運営者名: ほととぎす</div>
                   <div>
-                    X（Twitter）：
+                    X(Twitter):
                     <a
                       className="xLink"
                       href="https://x.com/hototogisu2003"
@@ -77,7 +197,18 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           ) : null}
         </div>
 
-        <div className="brandText">モンストTierMaker</div>
+        <div className="brandWrap">
+          <div className="brandText">モンストTierMaker</div>
+          <button
+            type="button"
+            className="releaseBtn"
+            aria-label="更新情報"
+            title="更新情報"
+            onClick={() => setIsReleaseNotesOpen(true)}
+          >
+            🔔
+          </button>
+        </div>
       </div>
 
       <div className="right">
@@ -86,6 +217,10 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
         </button>
         <ExportButton targetRef={exportTargetRef} />
       </div>
+
+      {isReleaseNotesOpen ? (
+        <ReleaseNotesModal notes={RELEASE_NOTES} onClose={() => setIsReleaseNotesOpen(false)} />
+      ) : null}
 
       <style jsx>{`
         .controlsRow {
@@ -98,6 +233,12 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
 
         .left,
         .right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .brandWrap {
           display: flex;
           align-items: center;
           gap: 8px;
@@ -126,6 +267,25 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           height: 2px;
           background: #111111;
           display: block;
+        }
+
+        .releaseBtn {
+          width: 32px;
+          height: 32px;
+          border: 1px solid #9ca3af;
+          background: #ffffff;
+          border-radius: 7px;
+          cursor: pointer;
+          display: inline-grid;
+          place-items: center;
+          font-size: 16px;
+          line-height: 1;
+        }
+
+        .releaseBtn:hover,
+        .menuBtn:hover,
+        .btn:hover {
+          background: #f3f4f6;
         }
 
         .menuPanel {
@@ -216,10 +376,6 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           font-weight: 700;
           font-size: 13px;
           line-height: 1.15;
-        }
-
-        .btn:hover {
-          background: #e5e7eb;
         }
       `}</style>
     </div>
