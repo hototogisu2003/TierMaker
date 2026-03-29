@@ -37,6 +37,7 @@ type SortOrder = "asc" | "desc";
 type YearValue = number | "";
 
 type TierMeta = { id: TierId; name: string; color: string };
+type BoardState = { tierMeta: TierMeta[]; containers: Record<string, string[]> };
 
 type Props = {
   characters: CharacterForUI[];
@@ -72,6 +73,8 @@ const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
 ];
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const DEFAULT_TIER_COLORS = ["#ef4444", "#f97316", "#facc15", "#22c55e", "#3b82f6", "#a855f7"];
+const BOARD_STORAGE_KEY = "tiermaker-board-state-v1";
+const DEFAULT_RANK_COL_WIDTH = 72;
 
 function implementationYearFromNumber(n: number): number | null {
   if (n >= 8927) return 2026;
@@ -92,7 +95,7 @@ function implementationYearFromCharacter(character: CharacterForUI): number | nu
     : null;
 }
 
-function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[]) {
+function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[]): BoardState {
   const tierMeta: TierMeta[] = initialTiers.map((t, idx) => ({
     id: t,
     name: t,
@@ -108,6 +111,68 @@ function buildInitialState(characters: CharacterForUI[], initialTiers: TierId[])
   return { tierMeta, containers };
 }
 
+function normalizeBoardState(
+  persisted: Partial<BoardState> | null | undefined,
+  characters: CharacterForUI[],
+  initialTiers: TierId[]
+): BoardState {
+  const fallback = buildInitialState(characters, initialTiers);
+  if (!persisted || !Array.isArray(persisted.tierMeta) || typeof persisted.containers !== "object") {
+    return fallback;
+  }
+
+  const tierMeta = persisted.tierMeta
+    .filter(
+      (tier): tier is TierMeta =>
+        !!tier &&
+        typeof tier.id === "string" &&
+        typeof tier.name === "string" &&
+        typeof tier.color === "string"
+    )
+    .map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      color: tier.color,
+    }));
+
+  if (tierMeta.length === 0) {
+    return fallback;
+  }
+
+  const validIds = new Set(characters.filter((c) => !c.isLocalUpload).map((c) => c.id));
+  const seen = new Set<string>();
+  const normalizedContainers: Record<string, string[]> = {};
+
+  const appendIds = (source: unknown): string[] => {
+    if (!Array.isArray(source)) return [];
+    const next: string[] = [];
+    for (const item of source) {
+      if (typeof item !== "string") continue;
+      if (!validIds.has(item) || seen.has(item)) continue;
+      seen.add(item);
+      next.push(item);
+    }
+    return next;
+  };
+
+  normalizedContainers.pool = appendIds(persisted.containers?.pool);
+  for (const tier of tierMeta) {
+    normalizedContainers[tier.id] = appendIds(persisted.containers?.[tier.id]);
+  }
+
+  for (const character of characters) {
+    if (character.isLocalUpload) continue;
+    if (seen.has(character.id)) continue;
+    normalizedContainers.pool.push(character.id);
+    seen.add(character.id);
+  }
+
+  return {
+    tierMeta,
+    containers: normalizedContainers,
+  };
+}
+
 function findContainerOfItem(containers: Record<string, string[]>, itemId: string): string | null {
   for (const [cid, items] of Object.entries(containers)) {
     if (items.includes(itemId)) return cid;
@@ -118,6 +183,7 @@ function findContainerOfItem(containers: Record<string, string[]>, itemId: strin
 export default function TierMaker({ characters, initialTiers }: Props) {
   const boardRef = React.useRef<HTMLDivElement | null>(null);
   const localUploadUrlsRef = React.useRef<string[]>([]);
+  const hasLoadedPersistedBoardRef = React.useRef(false);
   const [localCharacters, setLocalCharacters] = React.useState<CharacterForUI[]>([]);
   const allCharacters = React.useMemo(
     () => [...characters, ...localCharacters],
@@ -130,7 +196,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   // Active dragging item id
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [rankColWidth, setRankColWidth] = React.useState(72);
+  const [rankColWidth, setRankColWidth] = React.useState(DEFAULT_RANK_COL_WIDTH);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
     DEFAULT_INCLUDE_UNOBTAINABLE
@@ -212,6 +278,41 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    if (hasLoadedPersistedBoardRef.current) return;
+    hasLoadedPersistedBoardRef.current = true;
+
+    try {
+      const raw = window.localStorage.getItem(BOARD_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<BoardState & { rankColWidth?: number }>;
+      const normalized = normalizeBoardState(parsed, characters, initialTiers);
+      setState(normalized);
+      if (typeof parsed.rankColWidth === "number" && Number.isFinite(parsed.rankColWidth)) {
+        setRankColWidth(Math.max(56, Math.min(180, parsed.rankColWidth)));
+      }
+    } catch {
+      // Ignore malformed localStorage data and use defaults.
+    }
+  }, [characters, initialTiers]);
+
+  React.useEffect(() => {
+    if (!hasLoadedPersistedBoardRef.current) return;
+
+    try {
+      const persistable = normalizeBoardState({ tierMeta, containers }, allCharacters, initialTiers);
+      window.localStorage.setItem(
+        BOARD_STORAGE_KEY,
+        JSON.stringify({
+          ...persistable,
+          rankColWidth,
+        })
+      );
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  }, [tierMeta, containers, rankColWidth, allCharacters, initialTiers]);
 
   const normalizedFilter = appliedNameFilter.trim().toLowerCase();
 

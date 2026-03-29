@@ -6,10 +6,51 @@ type Props = {
   targetRef: React.RefObject<HTMLDivElement | null>;
 };
 
+const OUTPUT_WIDTH = 1280;
+const OUTPUT_TITLE_HEIGHT = 40;
+const OUTPUT_ROW_HEIGHT = 94;
+const MIN_EXPORTED_ROWS = 1;
+const EXPORT_WRAP_COLUMNS = 12;
+const EXPORT_MIN_RANK_WIDTH = 92;
+const EXPORT_RANK_FONT_SIZE = 24;
+const EXPORT_FALLBACK_FONT_FAMILY = "sans-serif";
+const EXPORT_ICON_SCALE = 0.91;
+
+type ExportIconData = {
+  src: string;
+  alt: string;
+  element?: HTMLImageElement | null;
+};
+
+type ExportRowData = {
+  name: string;
+  color: string;
+  icons: ExportIconData[];
+};
+
+type ExportSnapshot = {
+  rows: ExportRowData[];
+  rankFontFamily: string;
+};
+
+type LoadedIcon = ExportIconData & {
+  image: HTMLImageElement | null;
+};
+
+type LoadedRow = Omit<ExportRowData, "icons"> & {
+  icons: LoadedIcon[];
+};
+
+type LoadedSnapshot = {
+  rows: LoadedRow[];
+  rankFontFamily: string;
+};
+
 export default function ExportButton({ targetRef }: Props) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [previewSnapshot, setPreviewSnapshot] = React.useState<LoadedSnapshot | null>(null);
   const [titleInput, setTitleInput] = React.useState("");
   const [includeTitleOnImage, setIncludeTitleOnImage] = React.useState(false);
 
@@ -17,199 +58,206 @@ export default function ExportButton({ targetRef }: Props) {
     return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
-  function withFrozenLayout(container: HTMLElement) {
-    const restorers: Array<() => void> = [];
-
-    const freezeStyle = (el: HTMLElement, nextStyles: Partial<CSSStyleDeclaration>) => {
-      const prev = {
-        width: el.style.width,
-        minWidth: el.style.minWidth,
-        maxWidth: el.style.maxWidth,
-        height: el.style.height,
-        minHeight: el.style.minHeight,
-        maxHeight: el.style.maxHeight,
-        display: el.style.display,
-        gridTemplateColumns: el.style.gridTemplateColumns,
-        gridAutoRows: el.style.gridAutoRows,
-        columnGap: el.style.columnGap,
-        rowGap: el.style.rowGap,
-        alignContent: el.style.alignContent,
-        boxSizing: el.style.boxSizing,
-      };
-
-      Object.assign(el.style, nextStyles);
-      restorers.push(() => {
-        Object.assign(el.style, prev);
-      });
-    };
-
-    const rootRect = container.getBoundingClientRect();
-    freezeStyle(container, {
-      width: `${Math.ceil(rootRect.width)}px`,
-      minWidth: `${Math.ceil(rootRect.width)}px`,
-      maxWidth: `${Math.ceil(rootRect.width)}px`,
-      height: `${Math.ceil(rootRect.height)}px`,
-      minHeight: `${Math.ceil(rootRect.height)}px`,
-      maxHeight: `${Math.ceil(rootRect.height)}px`,
-      boxSizing: "border-box",
-    });
-
+  function buildSnapshot(container: HTMLElement): ExportSnapshot {
     const tierRows = Array.from(container.querySelectorAll<HTMLElement>(".tierRow"));
-    tierRows.forEach((row) => {
-      const rowRect = row.getBoundingClientRect();
-      freezeStyle(row, {
-        width: `${Math.ceil(rowRect.width)}px`,
-        minWidth: `${Math.ceil(rowRect.width)}px`,
-        maxWidth: `${Math.ceil(rowRect.width)}px`,
-        boxSizing: "border-box",
-      });
 
-      const itemsWrap = row.querySelector<HTMLElement>(".tierItems");
-      if (!itemsWrap) return;
+    const rows = tierRows.map<ExportRowData>((row) => {
+      const tierLeft = row.querySelector<HTMLElement>(".tierLeft");
+      const tierNameInput = row.querySelector<HTMLInputElement>(".tierNameInput");
+      const images = Array.from(row.querySelectorAll<HTMLImageElement>(".tierItems .iconImg"));
 
-      const wrapRect = itemsWrap.getBoundingClientRect();
-      const iconCards = Array.from(itemsWrap.querySelectorAll<HTMLElement>(".iconCard"));
-      if (iconCards.length === 0) {
-        freezeStyle(itemsWrap, {
-          width: `${Math.ceil(wrapRect.width)}px`,
-          minWidth: `${Math.ceil(wrapRect.width)}px`,
-          maxWidth: `${Math.ceil(wrapRect.width)}px`,
-          boxSizing: "border-box",
-        });
-        return;
-      }
-
-      iconCards.forEach((card) => {
-        const cardRect = card.getBoundingClientRect();
-        freezeStyle(card, {
-          width: `${Math.ceil(cardRect.width)}px`,
-          minWidth: `${Math.ceil(cardRect.width)}px`,
-          maxWidth: `${Math.ceil(cardRect.width)}px`,
-          height: `${Math.ceil(cardRect.height)}px`,
-          minHeight: `${Math.ceil(cardRect.height)}px`,
-          maxHeight: `${Math.ceil(cardRect.height)}px`,
-          boxSizing: "border-box",
-        });
-      });
-
-      const rowGroups = new Map<number, number>();
-      iconCards.forEach((card) => {
-        const top = Math.round(card.offsetTop);
-        rowGroups.set(top, (rowGroups.get(top) ?? 0) + 1);
-      });
-
-      const columns = Math.max(1, ...Array.from(rowGroups.values()));
-      const firstCardRect = iconCards[0].getBoundingClientRect();
-
-      freezeStyle(itemsWrap, {
-        width: `${Math.ceil(wrapRect.width)}px`,
-        minWidth: `${Math.ceil(wrapRect.width)}px`,
-        maxWidth: `${Math.ceil(wrapRect.width)}px`,
-        display: "grid",
-        gridTemplateColumns: `repeat(${columns}, ${Math.ceil(firstCardRect.width)}px)`,
-        gridAutoRows: `${Math.ceil(firstCardRect.height)}px`,
-        columnGap: "0px",
-        rowGap: "0px",
-        alignContent: "start",
-        boxSizing: "border-box",
-      });
+      return {
+        name: tierNameInput?.value?.trim() || "",
+        color: tierLeft ? getComputedStyle(tierLeft).backgroundColor || "#ffffff" : "#ffffff",
+        icons: images.map((img) => ({
+          src: img.currentSrc || img.src,
+          alt: img.alt || "",
+          element: img,
+        })),
+      };
     });
 
-    return () => {
-      restorers.reverse().forEach((restore) => restore());
+    const lastOccupiedIndex = rows.reduce((acc, row, index) => (row.icons.length > 0 ? index : acc), -1);
+    const exportCount = lastOccupiedIndex >= 0 ? lastOccupiedIndex + 1 : MIN_EXPORTED_ROWS;
+
+    return {
+      rows: rows.slice(0, exportCount),
+      rankFontFamily:
+        tierRows.length > 0
+          ? getComputedStyle(
+              tierRows[0].querySelector<HTMLInputElement>(".tierNameInput") ?? tierRows[0]
+            ).fontFamily || EXPORT_FALLBACK_FONT_FAMILY
+          : EXPORT_FALLBACK_FONT_FAMILY,
     };
   }
 
-  async function waitForImages(container: HTMLElement, timeoutMs = 10000) {
-    const imgs = Array.from(container.querySelectorAll("img"));
-    if (imgs.length === 0) return;
+  async function loadImage(icon: ExportIconData): Promise<LoadedIcon> {
+    const src = icon.src;
+    const canReuseExisting =
+      !!icon.element &&
+      icon.element.complete &&
+      icon.element.naturalWidth > 0 &&
+      (() => {
+        if (src.startsWith("blob:") || src.startsWith("data:")) return true;
+        try {
+          return new URL(src, window.location.href).origin === window.location.origin;
+        } catch {
+          return false;
+        }
+      })();
 
-    await Promise.race([
-      Promise.all(
-        imgs.map(async (img) => {
-          if (img.complete && img.naturalWidth > 0) {
-            try {
-              if ("decode" in img) {
-                await img.decode();
-              }
-            } catch {
-              // Ignore decode errors and continue.
-            }
-            return;
-          }
-
-          await new Promise<void>((resolve) => {
-            const done = () => {
-              img.removeEventListener("load", done);
-              img.removeEventListener("error", done);
-              resolve();
-            };
-            img.addEventListener("load", done, { once: true });
-            img.addEventListener("error", done, { once: true });
-          });
-        })
-      ),
-      sleep(timeoutMs),
-    ]);
-  }
-
-  async function stabilizeForCapture(container: HTMLElement) {
-    await waitForImages(container, 10000);
-    if ("fonts" in document) {
-      try {
-        await (document as Document & { fonts: { ready: Promise<unknown> } }).fonts.ready;
-      } catch {
-        // Ignore font readiness errors.
-      }
+    if (canReuseExisting) {
+      return {
+        ...icon,
+        image: icon.element ?? null,
+      };
     }
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-  }
 
-  async function captureWithRetry(el: HTMLElement) {
-    const mod = await import("html-to-image");
-    const toPng = mod.toPng;
     const attempts = 3;
-    let lastError: unknown = null;
-    const rect = el.getBoundingClientRect();
-    const exportWidth = Math.ceil(rect.width);
-    const exportHeight = Math.ceil(rect.height);
-
     for (let i = 0; i < attempts; i += 1) {
-      const restoreLayout = withFrozenLayout(el);
-      try {
-        await stabilizeForCapture(el);
-        const dataUrl = await toPng(el, {
-          width: exportWidth,
-          height: exportHeight,
-          cacheBust: true,
-          pixelRatio: 2,
-          skipAutoScale: true,
-          backgroundColor: "#ffffff",
-          style: {
-            width: `${exportWidth}px`,
-            height: `${exportHeight}px`,
-            minWidth: `${exportWidth}px`,
-            maxWidth: `${exportWidth}px`,
-            minHeight: `${exportHeight}px`,
-            maxHeight: `${exportHeight}px`,
-            boxSizing: "border-box",
-          },
-          filter: (node) => {
-            if (!(node instanceof Element)) return true;
-            return !node.classList.contains("no-export");
-          },
-        });
-        return dataUrl;
-      } catch (e) {
-        lastError = e;
-        await sleep(250 * (i + 1));
-      } finally {
-        restoreLayout();
+      const loaded = await new Promise<LoadedIcon>((resolve) => {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => resolve({ ...icon, image });
+        image.onerror = () => resolve({ ...icon, image: null });
+        image.src = `${icon.src}${icon.src.includes("?") ? "&" : "?"}exportTry=${i}`;
+      });
+
+      if (loaded.image) {
+        return loaded;
       }
+
+      if (icon.element && icon.element.complete && icon.element.naturalWidth > 0) {
+        return {
+          ...icon,
+          image: icon.element ?? null,
+        };
+      }
+
+      await sleep(250 * (i + 1));
     }
 
-    throw lastError ?? new Error("画像出力に失敗しました");
+    return {
+      ...icon,
+      image: null,
+    };
+  }
+
+  async function loadSnapshot(snapshot: ExportSnapshot): Promise<LoadedSnapshot> {
+    const rows = await Promise.all(
+      snapshot.rows.map(async (row) => ({
+        ...row,
+        icons: await Promise.all(row.icons.map((icon) => loadImage(icon))),
+      }))
+    );
+
+    return { rows, rankFontFamily: snapshot.rankFontFamily };
+  }
+
+  function renderSnapshotToCanvas(snapshot: LoadedSnapshot, title: string, includeTitle: boolean) {
+    const rankFontFamily = snapshot.rankFontFamily || EXPORT_FALLBACK_FONT_FAMILY;
+    const measureCanvas = document.createElement("canvas");
+    const measureCtx = measureCanvas.getContext("2d");
+    if (!measureCtx) {
+      throw new Error("画像描画に失敗しました。");
+    }
+
+    measureCtx.font = `800 ${EXPORT_RANK_FONT_SIZE}px ${rankFontFamily}`;
+    const widestRankLabel = snapshot.rows.reduce((max, row) => {
+      const label = row.name || " ";
+      return Math.max(max, measureCtx.measureText(label).width);
+    }, 0);
+    const rankWidth = Math.max(EXPORT_MIN_RANK_WIDTH, Math.ceil(widestRankLabel + 24));
+    const iconSize = ((OUTPUT_WIDTH - rankWidth) / EXPORT_WRAP_COLUMNS) * EXPORT_ICON_SCALE;
+    const rowGap = Math.max(0, OUTPUT_ROW_HEIGHT - iconSize);
+
+    const rowHeights = snapshot.rows.map((row) => {
+      const lineCount = Math.max(1, Math.ceil(row.icons.length / EXPORT_WRAP_COLUMNS));
+      return lineCount * OUTPUT_ROW_HEIGHT;
+    });
+    const boardHeight = rowHeights.reduce((sum, height) => sum + height, 0);
+    const titleHeight = includeTitle ? OUTPUT_TITLE_HEIGHT : 0;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = OUTPUT_WIDTH;
+    canvas.height = titleHeight + boardHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("画像描画に失敗しました。");
+    }
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (includeTitle) {
+      let fontSize = 22;
+      const maxTextWidth = OUTPUT_WIDTH - 24;
+      ctx.font = `bold ${fontSize}px ${rankFontFamily}`;
+      while (ctx.measureText(title).width > maxTextWidth && fontSize > 12) {
+        fontSize -= 1;
+        ctx.font = `bold ${fontSize}px ${rankFontFamily}`;
+      }
+      ctx.fillStyle = "#111827";
+      ctx.font = `bold ${fontSize}px ${rankFontFamily}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(title, 16, titleHeight / 2);
+    }
+
+    let currentY = titleHeight;
+    snapshot.rows.forEach((row, rowIndex) => {
+      const rowHeight = rowHeights[rowIndex];
+      const rowTop = currentY;
+      const rowBottom = rowTop + rowHeight;
+
+      ctx.fillStyle = row.color;
+      ctx.fillRect(0, rowTop, rankWidth, rowHeight);
+
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 2;
+      if (rowIndex === 0) {
+        ctx.beginPath();
+        ctx.moveTo(0, rowTop + 0.5);
+        ctx.lineTo(OUTPUT_WIDTH, rowTop + 0.5);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, rowBottom - 0.5);
+      ctx.lineTo(OUTPUT_WIDTH, rowBottom - 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0.5, rowTop);
+      ctx.lineTo(0.5, rowBottom);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(rankWidth + 0.5, rowTop);
+      ctx.lineTo(rankWidth + 0.5, rowBottom);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(OUTPUT_WIDTH - 0.5, rowTop);
+      ctx.lineTo(OUTPUT_WIDTH - 0.5, rowBottom);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111111";
+      ctx.font = `800 ${EXPORT_RANK_FONT_SIZE}px ${rankFontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(row.name, rankWidth / 2, rowTop + rowHeight / 2);
+
+      row.icons.forEach((icon, index) => {
+        if (!icon.image) return;
+        const col = index % EXPORT_WRAP_COLUMNS;
+        const line = Math.floor(index / EXPORT_WRAP_COLUMNS);
+        const iconX = rankWidth + col * iconSize;
+        const iconY = rowTop + line * OUTPUT_ROW_HEIGHT + rowGap / 2;
+        ctx.drawImage(icon.image, iconX, iconY, iconSize, iconSize);
+      });
+
+      currentY += rowHeight;
+    });
+
+    return canvas.toDataURL("image/png");
   }
 
   async function exportPng() {
@@ -220,12 +268,15 @@ export default function ExportButton({ targetRef }: Props) {
     setError(null);
 
     try {
-      const dataUrl = await captureWithRetry(el);
-      setPreviewUrl(dataUrl);
+      const rawSnapshot = buildSnapshot(el);
+      const loadedSnapshot = await loadSnapshot(rawSnapshot);
+      const fixedPreviewUrl = renderSnapshotToCanvas(loadedSnapshot, "", false);
+      setPreviewSnapshot(loadedSnapshot);
+      setPreviewUrl(fixedPreviewUrl);
       setTitleInput("");
       setIncludeTitleOnImage(false);
     } catch (e: any) {
-      setError(e?.message ?? "画像出力に失敗しました。画像読み込み完了後に再試行してください。");
+      setError(e?.message ?? "画像出力に失敗しました。");
     } finally {
       setBusy(false);
     }
@@ -233,54 +284,20 @@ export default function ExportButton({ targetRef }: Props) {
 
   function closePreview() {
     setPreviewUrl(null);
+    setPreviewSnapshot(null);
     setTitleInput("");
     setIncludeTitleOnImage(false);
   }
 
-  async function buildFinalDataUrl(baseUrl: string, title: string, includeTitle: boolean) {
-    if (!includeTitle) return baseUrl;
-    const img = new Image();
-    img.src = baseUrl;
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("プレビュー画像の読み込みに失敗しました"));
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return baseUrl;
-
-    // Mobileでも見えるように大きめ基準で開始し、はみ出すときだけ縮小する。
-    let fontSize = Math.min(56, Math.max(28, Math.round(canvas.width * 0.055)));
-    const maxTextWidth = Math.max(0, canvas.width - 24);
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    while (ctx.measureText(title).width > maxTextWidth && fontSize > 20) {
-      fontSize -= 1;
-      ctx.font = `bold ${fontSize}px sans-serif`;
-    }
-
-    const titleHeight = Math.max(56, fontSize + 16);
-    canvas.height = img.height + titleHeight;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#111827";
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(title, 12, titleHeight / 2);
-    ctx.drawImage(img, 0, titleHeight, img.width, img.height);
-    return canvas.toDataURL("image/png");
-  }
-
   async function savePreview() {
-    if (!previewUrl) return;
+    if (!previewUrl || !previewSnapshot) return;
     try {
       const title = titleInput.trim();
       if (!title) {
         setError("タイトルを入力してください。");
         return;
       }
-      const finalDataUrl = await buildFinalDataUrl(previewUrl, title, includeTitleOnImage);
+      const finalDataUrl = renderSnapshotToCanvas(previewSnapshot, title, includeTitleOnImage);
       const a = document.createElement("a");
       a.href = finalDataUrl;
       a.download = `${title}.png`;
@@ -301,7 +318,7 @@ export default function ExportButton({ targetRef }: Props) {
       {previewUrl ? (
         <div className="previewOverlay" role="dialog" aria-modal="true" aria-label="画像保存プレビュー">
           <div className="previewPanel">
-            <div className="previewTitle">画像プレビュー</div>
+            <div className="previewTitle">画像保存プレビュー</div>
             <img className="previewImage" src={previewUrl} alt="出力画像プレビュー" />
             <label className="nameLabel">
               タイトル
@@ -401,6 +418,7 @@ export default function ExportButton({ targetRef }: Props) {
           border: 1px solid #d1d5db;
           background: #ffffff;
           border-radius: 8px;
+          object-fit: contain;
         }
 
         .nameLabel {

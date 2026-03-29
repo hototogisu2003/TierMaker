@@ -98,7 +98,12 @@ export default function DraggableIcon({ id, character }: Props) {
       {...attributes}
       {...listeners}
     >
-      <img className="iconImg" src={character.iconUrl} alt={character.name} draggable={false} />
+      <img
+        className="iconImg"
+        src={character.iconUrl}
+        alt={character.name}
+        draggable={false}
+      />
       {showMobileName ? <div className="mobileNameHint">{character.name}</div> : null}
 
       <style jsx>{`
