@@ -101,6 +101,7 @@ const ELEMENT_ICON_MAP: Record<"all" | (typeof ELEMENT_OPTIONS)[number], { src: 
 };
 const FRUIT_ID_BY_NAME = new Map<string, number>(FRUIT_OPTIONS.map((option) => [option.name, option.id]));
 const FRUIT_NAME_BY_ID = new Map<number, string>(FRUIT_OPTIONS.map((option) => [option.id, option.name]));
+const KOKO_FRUIT_ID = 33;
 const CREST_NAME_BY_ID = new Map<number, string>(
   Object.entries(CREST_ID_BY_NAME).map(([name, id]) => [id, name])
 );
@@ -534,6 +535,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!currentCharacter) return { hp: 0, attack: 0, speed: 0 };
 
     const totals = { hp: 0, attack: 0, speed: 0 };
+    const sameShuzokuCount = currentCharacter.shuzoku
+      ? slots.reduce((count, otherSlot) => {
+          const otherCharacter = otherSlot.characterId ? charMap.get(otherSlot.characterId) ?? null : null;
+          return count + (otherCharacter?.shuzoku === currentCharacter.shuzoku ? 1 : 0);
+        }, 0)
+      : 0;
+    const isSoloShuzoku = sameShuzokuCount === 1;
     const sharedGroups: Array<{
       ids: number[];
       value: string;
@@ -557,6 +565,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       const option = fruitOptionByName.get(fruitName);
       if (!option) return;
       if (sharedFruitIds.has(option.id)) return;
+      if (option.id === KOKO_FRUIT_ID && !isSoloShuzoku) return;
       addBonus(option.id, slot.fruitGrades[index] ?? "L");
     });
 
@@ -667,7 +676,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     [fruitFilter]
   );
   const fruitOrderMap = useMemo(
-    () => new Map(FRUIT_OPTIONS.map((option) => [option.name, option.id])),
+    () => new Map(FRUIT_OPTIONS.map((option, index) => [option.name, index + 1])),
     []
   );
   const crestOrderMap = useMemo<Map<string, number>>(

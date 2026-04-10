@@ -10,7 +10,7 @@ const OUTPUT_WIDTH = 1280;
 const OUTPUT_TITLE_HEIGHT = 60;
 const OUTPUT_ROW_HEIGHT = 94;
 const MIN_EXPORTED_ROWS = 1;
-const EXPORT_WRAP_COLUMNS = 12;
+const EXPORT_WRAP_COLUMNS = 10;
 const EXPORT_MIN_RANK_WIDTH = 92;
 const EXPORT_RANK_FONT_SIZE = 24;
 const EXPORT_FALLBACK_FONT_FAMILY = "sans-serif";
@@ -169,11 +169,12 @@ export default function ExportButton({ targetRef }: Props) {
     }, 0);
     const rankWidth = Math.max(EXPORT_MIN_RANK_WIDTH, Math.ceil(widestRankLabel + 24));
     const iconSize = ((OUTPUT_WIDTH - rankWidth) / EXPORT_WRAP_COLUMNS) * EXPORT_ICON_SCALE;
-    const rowGap = Math.max(0, OUTPUT_ROW_HEIGHT - iconSize);
+    const exportLineHeight = Math.max(OUTPUT_ROW_HEIGHT, Math.ceil(iconSize + 6));
+    const rowGap = Math.max(0, exportLineHeight - iconSize);
 
     const rowHeights = snapshot.rows.map((row) => {
       const lineCount = Math.max(1, Math.ceil(row.icons.length / EXPORT_WRAP_COLUMNS));
-      return lineCount * OUTPUT_ROW_HEIGHT;
+      return lineCount * exportLineHeight;
     });
     const boardHeight = rowHeights.reduce((sum, height) => sum + height, 0);
     const titleHeight = includeTitle ? OUTPUT_TITLE_HEIGHT : 0;
@@ -250,7 +251,7 @@ export default function ExportButton({ targetRef }: Props) {
         const col = index % EXPORT_WRAP_COLUMNS;
         const line = Math.floor(index / EXPORT_WRAP_COLUMNS);
         const iconX = rankWidth + col * iconSize;
-        const iconY = rowTop + line * OUTPUT_ROW_HEIGHT + rowGap / 2;
+        const iconY = rowTop + line * exportLineHeight + rowGap / 2;
         ctx.drawImage(icon.image, iconX, iconY, iconSize, iconSize);
       });
 

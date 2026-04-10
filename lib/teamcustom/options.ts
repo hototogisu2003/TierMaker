@@ -28,6 +28,7 @@ export const FRUIT_OPTIONS: FruitOption[] = [
   { id: 16, name: "戦型加命", isStatus: true, bonuses: { L: { hp: 1250, attack: 0, speed: 0 }, EL: { hp: 1375, attack: 0, speed: 0 } } },
   { id: 17, name: "戦型加速", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 16.6 }, EL: { hp: 0, attack: 0, speed: 18.3 } } },
   { id: 18, name: "戦型加速命", isStatus: true, bonuses: { L: { hp: 0, attack: 0, speed: 13.2 }, EL: { hp: 0, attack: 0, speed: 14.5 } } },
+  { id: 33, name: "孤高加撃", isStatus: true, bonuses: { L: { hp: 0, attack: 3000, speed: 0 }, EL: { hp: 0, attack: 3300, speed: 0 } } },
   { id: 19, name: "友撃", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
   { id: 20, name: "ケガ減り", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
   { id: 21, name: "将命削り", isStatus: false, bonuses: { L: EMPTY_BONUS, EL: EMPTY_BONUS } },
