@@ -27,7 +27,7 @@ export default function HomePage() {
       </Link>
 
       <div style={{ marginTop: "10px" }}>
-        <Link href="/calc" style={buttonStyle}>
+        <Link href="/damage-calc" style={buttonStyle}>
           ダメージ計算ツールへ
         </Link>
       </div>

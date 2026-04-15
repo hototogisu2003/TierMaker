@@ -1,0 +1,989 @@
+.pageSurface {
+  --tool-bg: #ffffff;
+  --tool-panel: #fafafa;
+  --tool-panel-strong: #ffffff;
+  --tool-border: #dddddd;
+  --tool-text: #333333;
+  --tool-muted: #666666;
+  --tool-accent: #8bc34a;
+  --tool-accent-strong: #689f38;
+  --tool-accent-soft: #e8f5e9;
+  --tool-good: #d32f2f;
+  --tool-bad: #1976d2;
+  --tool-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  min-height: 100vh;
+  background: #f3f4f6;
+  transition: background-color 0.2s ease;
+}
+
+.pageSurfaceWithFooter {
+  padding-bottom: 110px;
+}
+
+.pageSurface[data-theme="dark"] {
+  --tool-bg: #121212;
+  --tool-panel: #1e1e1e;
+  --tool-panel-strong: #1e1e1e;
+  --tool-border: #444444;
+  --tool-text: #e0e0e0;
+  --tool-muted: #aaaaaa;
+  --tool-accent: #8bc34a;
+  --tool-accent-strong: #689f38;
+  --tool-accent-soft: rgba(139, 195, 74, 0.15);
+  --tool-good: #ff8a80;
+  --tool-bad: #82b1ff;
+  --tool-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  background: #121212;
+}
+
+.toolShell {
+  --tool-bg: #ffffff;
+  --tool-panel: #fafafa;
+  --tool-panel-strong: #ffffff;
+  --tool-border: #dddddd;
+  --tool-text: #333333;
+  --tool-muted: #666666;
+  --tool-accent: #8bc34a;
+  --tool-accent-strong: #689f38;
+  --tool-accent-soft: #e8f5e9;
+  --tool-good: #d32f2f;
+  --tool-bad: #1976d2;
+  --tool-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 16px 0 40px;
+  color: var(--tool-text);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+}
+
+.toolShell[data-theme="dark"] {
+  --tool-bg: #121212;
+  --tool-panel: #1e1e1e;
+  --tool-panel-strong: #1e1e1e;
+  --tool-border: #444444;
+  --tool-text: #e0e0e0;
+  --tool-muted: #aaaaaa;
+  --tool-accent: #8bc34a;
+  --tool-accent-strong: #689f38;
+  --tool-accent-soft: rgba(139, 195, 74, 0.15);
+  --tool-good: #ff8a80;
+  --tool-bad: #82b1ff;
+  --tool-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.toolShell :global(.uiInput) {
+  color: var(--tool-text);
+  background: #ffffff;
+  border: 1px solid var(--tool-border);
+  border-radius: 4px;
+  padding: 8px;
+  box-shadow: none;
+}
+
+.toolShell :global(.uiInput:focus) {
+  border-color: var(--tool-accent);
+  box-shadow: 0 0 0 2px rgba(139, 195, 74, 0.2);
+}
+
+.toolShell[data-theme="dark"] :global(.uiInput) {
+  background: #2c2c2c;
+}
+
+.toolShell :global(.uiBtn) {
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.hero {
+  background: var(--tool-bg);
+  border: 0;
+  border-bottom: 2px solid #eeeeee;
+  box-shadow: none;
+  padding: 6px 0 18px;
+}
+
+.heroTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.headerTitleWrap {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  gap: 12px;
+  position: relative;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.headerMenuButton {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tool-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.headerMenuButton:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.headerMenuButton svg {
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.headerMenuPanel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  min-width: 180px;
+  padding: 8px;
+  border: 1px solid var(--tool-border);
+  border-radius: 12px;
+  background: var(--tool-panel-strong);
+  box-shadow: var(--tool-shadow);
+  display: grid;
+  gap: 4px;
+  z-index: 10;
+}
+
+.headerMenuItem {
+  border: none;
+  background: transparent;
+  color: var(--tool-text);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.headerMenuItem:hover {
+  background: var(--tool-accent-soft);
+}
+
+.headerMenuItemActive {
+  background: var(--tool-accent-soft);
+  color: var(--tool-accent-strong);
+}
+
+.heroText {
+  max-width: 600px;
+}
+
+.heroDescription {
+  margin: 6px 0 0;
+  color: var(--tool-muted);
+  line-height: 1.6;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.headerIconButton,
+.resetButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  border: none;
+  padding: 0;
+}
+
+.headerIconButton:hover,
+.resetButton:hover {
+  transform: translateY(-1px);
+}
+
+.headerIconButton {
+  background: transparent;
+  color: var(--tool-text);
+}
+
+.headerIconButton:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.resetButton {
+  background: #f44336;
+  color: #ffffff;
+}
+
+.resetButton:hover {
+  background: #d32f2f;
+}
+
+.headerIconButton svg,
+.resetButton svg {
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.primaryTabBar {
+  display: flex;
+  justify-content: center;
+  margin: 18px auto 12px;
+  background: #eeeeee;
+  padding: 4px;
+  border-radius: 4px;
+  gap: 4px;
+  width: min(100%, 720px);
+}
+
+.primaryTabButton {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--tool-muted);
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+  min-height: 44px;
+}
+
+.primaryTabButton:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--tool-text);
+}
+
+.primaryTabButtonActive {
+  background: var(--tool-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+  gap: 18px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.contentGridWide {
+  grid-template-columns: 1fr;
+}
+
+.calcColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.calcColumn {
+  display: grid;
+  gap: 18px;
+}
+
+.stack {
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  background: var(--tool-panel);
+  border: 1px solid var(--tool-border);
+  border-radius: 8px;
+  box-shadow: var(--tool-shadow);
+  padding: 15px;
+}
+
+.cardTitleRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 18px;
+}
+
+.cardHint {
+  margin: 0;
+  color: var(--tool-muted);
+  font-size: 14px;
+}
+
+.modeSwitch {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin: 0 auto 20px;
+  flex-wrap: nowrap;
+  width: fit-content;
+  background: #eeeeee;
+  border-radius: 30px;
+  padding: 4px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.modeButton {
+  border: none;
+  background: transparent;
+  color: var(--tool-muted);
+  padding: 8px 25px;
+  border-radius: 30px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modeButtonActive {
+  background: var(--tool-panel);
+  color: var(--tool-accent);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.mainInputGrid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 14px;
+  justify-content: center;
+  align-items: start;
+}
+
+.mainInputGroup {
+  width: min(100%, 240px);
+  align-self: start;
+}
+
+.mainInputControl {
+  width: 100%;
+}
+
+.inputGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.inputLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.subText {
+  color: var(--tool-muted);
+  font-size: 13px;
+}
+
+.selectControl {
+  width: 100%;
+  color: var(--tool-text);
+  background: #ffffff;
+  border: 1px solid var(--tool-border);
+  border-radius: 4px;
+  padding: 8px;
+  outline: none;
+}
+
+.selectControl:focus {
+  border-color: var(--tool-accent);
+  box-shadow: 0 0 0 2px rgba(139, 195, 74, 0.2);
+}
+
+.selectControl:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleButton {
+  border: 1px solid var(--tool-border);
+  background: #f4f4f4;
+  color: #333333;
+  padding: 7px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.toolShell[data-theme="dark"] .toggleButton {
+  background: #2c2c2c;
+  color: #f5f5f5;
+  border-color: #555555;
+}
+
+.toggleBand {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.spotGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.spotCard {
+  border: 1px solid var(--tool-border);
+  background: var(--tool-bg);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.spotCardActive {
+  border-color: var(--tool-accent);
+  background: var(--tool-accent-soft);
+}
+
+.spotLabel {
+  font-weight: 700;
+}
+
+.gridFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fieldRow {
+  display: grid;
+  gap: 6px;
+  padding: 8px 6px;
+  border: 1px solid var(--tool-border);
+  border-radius: 6px;
+  background: var(--tool-bg);
+}
+
+.checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.fieldControl {
+  display: grid;
+  gap: 6px;
+}
+
+.doubleControl {
+  display: grid;
+  gap: 6px;
+}
+
+.stageGridFields {
+  align-items: start;
+}
+
+.stageFieldRow {
+  align-self: start;
+}
+
+.inlineMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px dashed var(--tool-border);
+  border-radius: 16px;
+  background: var(--tool-bg);
+}
+
+.metricPair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metricPair span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.countInput {
+  width: 72px;
+}
+
+.fruitPicker {
+  margin-top: 14px;
+  border: 1px solid var(--tool-border);
+  border-radius: 6px;
+  background: var(--tool-bg);
+  padding: 14px;
+}
+
+.fruitGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fruitBottomRow {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.fruitGroup {
+  border: 1px solid var(--tool-border);
+  border-radius: 6px;
+  background: var(--tool-panel);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.fruitLabel {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fruitOptions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.fruitButton {
+  border: none;
+  background: transparent;
+  padding: 1px;
+  width: 48px;
+  height: 48px;
+  display: inline-grid;
+  justify-items: center;
+  cursor: pointer;
+  place-items: center;
+  opacity: 0.38;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.fruitButtonActive {
+  opacity: 1;
+}
+
+.fruitImage {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.fruitButton:hover {
+  opacity: 0.68;
+}
+
+.fruitButtonActive:hover {
+  opacity: 1;
+}
+
+.fruitButton:focus-visible {
+  outline: 2px solid var(--tool-accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.spotGridInline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summaryCard {
+  display: none;
+}
+
+.mainInputCard {
+  border: 2px solid var(--tool-accent);
+}
+
+.sectionTitle {
+  background: var(--tool-accent);
+  color: #ffffff;
+  padding: 8px 15px;
+  border-radius: 5px;
+  display: inline-block;
+}
+
+.summaryValue {
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.summaryMeta {
+  display: grid;
+  gap: 8px;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--tool-muted);
+  font-size: 14px;
+}
+
+.breakdownToggle {
+  width: 100%;
+}
+
+.breakdownList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.breakdownItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  border-top: 1px solid var(--tool-border);
+  padding-top: 10px;
+}
+
+.breakdownItem:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.breakdownSeparator {
+  color: var(--tool-muted);
+  font-weight: 700;
+}
+
+.breakdownValue {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.emptySectionNote {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--tool-border);
+  border-radius: 8px;
+  color: var(--tool-muted);
+  background: var(--tool-bg);
+  text-align: center;
+}
+
+.resultFooter {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: var(--tool-panel-strong);
+  color: var(--tool-text);
+  border-top: 4px solid var(--tool-accent);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.18);
+  padding: 10px 0 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.resultFooterOpen {
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.24);
+}
+
+.resultFooterSummary {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 0 0 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.resultFooterHeader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.resultFooterLabel {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.resultFooterHint {
+  font-size: 12px;
+  color: var(--tool-muted);
+}
+
+.resultFooterValue {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
+.resultDetails {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 14px 0 20px;
+  border-top: 1px dashed var(--tool-border);
+}
+
+.detailHeader {
+  margin-bottom: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--tool-accent);
+}
+
+.judgeCard {
+  display: grid;
+  gap: 16px;
+}
+
+.judgeHighlight {
+  display: none;
+}
+
+.judgeLabel {
+  color: var(--tool-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.judgeBox {
+  border-radius: 8px;
+  padding: 18px;
+  border: 1px solid var(--tool-border);
+  background: var(--tool-bg);
+  text-align: center;
+}
+
+.judgeBoxSuccess {
+  border-color: #d32f2f;
+  background: #ffebee;
+  color: var(--tool-good);
+}
+
+.judgeBoxFail {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  color: var(--tool-bad);
+}
+
+.judgeMessage {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.richPanel {
+  display: grid;
+  gap: 18px;
+}
+
+.richPanel p,
+.richPanel li {
+  color: var(--tool-muted);
+  line-height: 1.8;
+}
+
+.richPanel ol {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.manualNote {
+  color: var(--tool-text);
+  font-size: 14px;
+}
+
+.contactCard {
+  text-align: center;
+}
+
+.contactButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+}
+
+.contactButton :global(.uiBtn) {
+  background: #ff6fae;
+  border-color: #ff6fae;
+  color: #ffffff;
+}
+
+.contactButton :global(.uiBtn:hover) {
+  background: #f25598;
+  border-color: #f25598;
+}
+
+.linkMuted {
+  color: var(--tool-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 1040px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .calcColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .toolShell {
+    width: min(100%, calc(100% - 24px));
+    padding-top: 16px;
+  }
+
+  .pageSurfaceWithFooter {
+    padding-bottom: 120px;
+  }
+
+  .hero,
+  .card {
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .mainInputGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .spotGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fruitGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fruitBottomRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 8px;
+  }
+
+  .fruitPicker {
+    padding: 8px;
+  }
+
+  .fruitGroup {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .fruitLabel {
+    font-size: 12px;
+  }
+
+  .fruitOptions {
+    gap: 4px;
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+
+  .fruitButton {
+    width: 40px;
+    height: 40px;
+    padding: 1px;
+  }
+
+  .fruitImage {
+    width: 24px;
+    height: 24px;
+  }
+
+  .spotGridInline {
+    gap: 6px;
+  }
+
+  .spotCard {
+    padding: 10px 8px;
+    gap: 4px;
+    min-height: 68px;
+  }
+
+  .gridFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroActions,
+  .modeSwitch {
+    width: 100%;
+  }
+
+  .heroActions {
+    justify-content: flex-end;
+  }
+
+  .headerMenuPanel {
+    left: 0;
+    right: auto;
+  }
+
+  .primaryTabBar {
+    width: 100%;
+  }
+
+  .primaryTabButton {
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .resultFooterSummary,
+  .resultDetails {
+    width: min(100%, calc(100% - 24px));
+  }
+}
