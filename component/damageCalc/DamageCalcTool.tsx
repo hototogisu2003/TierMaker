@@ -96,13 +96,11 @@ const CHARACTER_GROUPS = [
   {
     id: "ability-state",
     title: "アビリティ・状態倍率",
-    description: "キャラ自身のアビリティや状態変化による倍率を配置します。",
     fields: ABILITY_STATE_FIELDS,
   },
   {
     id: "support",
     title: "サポート倍率",
-    description: "バフ・フィールド・補助効果などの倍率を配置します。",
     fields: SUPPORT_FIELDS,
   },
 ] as const;
@@ -573,7 +571,6 @@ export default function DamageCalcTool() {
                   <div className={styles.cardTitleRow}>
                     <div>
                       <h2 className={cn(styles.cardTitle, styles.sectionTitle)}>{ABILITY_STATE_GROUP.title}</h2>
-                      <p className={styles.cardHint}>{ABILITY_STATE_GROUP.description}</p>
                     </div>
                   </div>
                   <div className={styles.gridFields}>{ABILITY_STATE_GROUP.fields.map((field, index) => renderField(field, `${ABILITY_STATE_GROUP.id}-${index}`))}</div>
@@ -585,7 +582,6 @@ export default function DamageCalcTool() {
                   <div className={styles.cardTitleRow}>
                     <div>
                       <h2 className={cn(styles.cardTitle, styles.sectionTitle)}>{SUPPORT_GROUP.title}</h2>
-                      <p className={styles.cardHint}>{SUPPORT_GROUP.description}</p>
                     </div>
                   </div>
                   {SUPPORT_GROUP.fields.length > 0 ? (
