@@ -230,33 +230,17 @@ export default function PoolRow({
     };
   }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount, activeItemId, iconSize]);
 
-  const visibleIdsForSortable = React.useMemo(() => {
-    if (!groupByElement) return nonGroupWindow.visibleIds;
+  const sortableIds = React.useMemo(() => {
+    if (!groupByElement) return flatIds;
     const ids: string[] = [];
     for (const row of groupedRows) {
-      const perRowCount = Math.max(1, Math.ceil(maxRenderCount / Math.max(groupedRows.length, 1)));
-      const centerIndex = Math.floor(scrollLeft / iconSize);
-      const rawStart = centerIndex - Math.floor(perRowCount / 2);
-      let startIndex = clamp(rawStart, 0, Math.max(0, row.length - perRowCount));
-      let endIndex = Math.min(row.length, startIndex + perRowCount);
-      if (activeItemId) {
-        const activeIndex = row.indexOf(activeItemId);
-        if (activeIndex >= 0 && (activeIndex < startIndex || activeIndex >= endIndex)) {
-          startIndex = clamp(
-            activeIndex - Math.floor(perRowCount / 2),
-            0,
-            Math.max(0, row.length - perRowCount)
-          );
-          endIndex = Math.min(row.length, startIndex + perRowCount);
-        }
-      }
-      ids.push(...row.slice(startIndex, endIndex));
+      ids.push(...row);
     }
     return ids;
-  }, [groupByElement, nonGroupWindow.visibleIds, groupedRows, maxRenderCount, scrollLeft, activeItemId, iconSize]);
+  }, [groupByElement, flatIds, groupedRows]);
 
   return (
-    <SortableContext id="pool" items={visibleIdsForSortable} strategy={rectSortingStrategy}>
+    <SortableContext id="pool" items={sortableIds} strategy={rectSortingStrategy}>
       <div ref={setNodeRef} className="poolRow" data-over={isOver ? "1" : "0"}>
       {isEmpty ? (
         <div className="emptyState">キャラクターを選択してください</div>
