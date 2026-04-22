@@ -1660,6 +1660,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       <div className={styles.topBand}>
         <div className={styles.topRow}>
           <div className={styles.leftGroup}>
+            <Link href="/" className={styles.homeLink} aria-label="Home">
+              <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+            </Link>
             <div className={styles.menuWrap}>
               <button type="button" className={styles.menuBtn} aria-label="メニュー" onClick={() => setIsMenuOpen((prev) => !prev)}>
                 <span />

@@ -112,6 +112,31 @@
   flex-wrap: wrap;
 }
 
+.heroLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.homeLink {
+  width: 162px;
+  height: 54px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.headerLogo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
 .headerTitleWrap {
   display: flex;
   align-items: center;
@@ -962,6 +987,15 @@
   .heroActions,
   .modeSwitch {
     width: 100%;
+  }
+
+  .heroLeft {
+    gap: 8px;
+  }
+
+  .homeLink {
+    width: 144px;
+    height: 48px;
   }
 
   .heroActions {

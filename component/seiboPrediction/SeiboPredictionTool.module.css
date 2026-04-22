@@ -14,6 +14,29 @@
   gap: 12px;
 }
 
+.headerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.homeLink {
+  width: 144px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headerLogo {
+  width: 144px;
+  height: 48px;
+  display: block;
+  object-fit: contain;
+}
+
 .title {
   margin: 0;
   font-size: clamp(18px, 2.6vw, 24px);
@@ -807,6 +830,25 @@
   .page {
     width: min(100% - 16px, 100%);
     padding-top: 16px;
+  }
+
+  .headerRow {
+    align-items: flex-start;
+  }
+
+  .headerTitleGroup {
+    flex: 1 1 auto;
+    gap: 10px;
+  }
+
+  .homeLink,
+  .headerLogo {
+    width: 126px;
+    height: 42px;
+  }
+
+  .title {
+    white-space: normal;
   }
 
   .panel {

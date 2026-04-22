@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "プライバシーポリシー | MS Optimize",
+  title: "プライバシーポリシー",
 };
 
 const pageStyle: React.CSSProperties = {

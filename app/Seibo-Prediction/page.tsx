@@ -6,7 +6,7 @@ import { fetchSeiboBossCards } from "@/lib/seiboPrediction/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "星墓クエスト予想メーカー",
+  title: "適正予想メーカー",
 };
 
 export default async function SeiboPredictionPage() {

@@ -41,7 +41,12 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
   return (
     <section className={styles.page}>
       <div className={styles.headerRow}>
-        <h1 className={styles.title}>星墓クエスト予想ランキング</h1>
+        <div className={styles.headerTitleGroup}>
+          <Link href="/" className={styles.homeLink} aria-label="Home">
+            <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+          </Link>
+          <h1 className={styles.title}>星墓クエスト予想ランキング</h1>
+        </div>
         <Link href="/Seibo-Prediction" className={styles.iconLink} aria-label="予想入力へ" title="予想入力へ">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <path

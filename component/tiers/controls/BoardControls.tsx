@@ -136,6 +136,12 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
   return (
     <div className="controlsRow">
       <div className="left">
+        <span className="homeLink">
+          <Link href="/" className="homeLinkAnchor" aria-label="Home">
+            <img className="headerLogo" src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+          </Link>
+        </span>
+
         <div className="menuWrap">
           <button
             type="button"
@@ -242,6 +248,32 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        .homeLink {
+          width: 144px;
+          height: 48px;
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        .homeLinkAnchor {
+          width: 100%;
+          height: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .headerLogo {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: contain;
         }
 
         .menuWrap {

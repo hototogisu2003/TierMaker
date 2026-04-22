@@ -685,7 +685,12 @@ export default function SeiboPredictionTool({ bossCards }: { bossCards: SeiboBos
   return (
     <section className={styles.page}>
       <div className={styles.headerRow}>
-        <h1 className={styles.title}>星墓クエスト予想メーカー</h1>
+        <div className={styles.headerTitleGroup}>
+          <Link href="/" className={styles.homeLink} aria-label="Home">
+            <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+          </Link>
+          <h1 className={styles.title}>適正予想メーカー</h1>
+        </div>
         <Link
           href="/Seibo-Prediction/ranking"
           className={styles.iconLink}

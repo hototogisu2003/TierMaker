@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import Button from "@/component/ui/button";
 import Input from "@/component/ui/Input";
 import {
@@ -335,55 +336,60 @@ export default function DamageCalcTool() {
       <section className={styles.toolShell} data-theme={theme}>
       <div className={styles.hero}>
         <div className={styles.heroTop}>
-          <div className={styles.headerTitleWrap} ref={navMenuRef}>
-            <button
-              type="button"
-              className={styles.headerMenuButton}
-              onClick={() => setShowNavMenu((prev) => !prev)}
-              aria-label="メニューを開く"
-              aria-expanded={showNavMenu}
-              title="メニュー"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="currentColor" aria-hidden="true">
-                <path d="M0 0h24v24H0V0z" fill="none" />
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-              </svg>
-            </button>
-            <h1 className={styles.heroTitle}>ダメージ計算機MS</h1>
-            {showNavMenu && (
-              <div className={styles.headerMenuPanel}>
-                <button
-                  type="button"
-                  className={cn(styles.headerMenuItem, activeTab === "calc" && styles.headerMenuItemActive)}
-                  onClick={() => {
-                    setActiveTab("calc");
-                    setShowNavMenu(false);
-                  }}
-                >
-                  計算ツール
-                </button>
-                <button
-                  type="button"
-                  className={cn(styles.headerMenuItem, activeTab === "manual" && styles.headerMenuItemActive)}
-                  onClick={() => {
-                    setActiveTab("manual");
-                    setShowNavMenu(false);
-                  }}
-                >
-                  説明書
-                </button>
-                <button
-                  type="button"
-                  className={cn(styles.headerMenuItem, activeTab === "contact" && styles.headerMenuItemActive)}
-                  onClick={() => {
-                    setActiveTab("contact");
-                    setShowNavMenu(false);
-                  }}
-                >
-                  お問い合わせ
-                </button>
-              </div>
-            )}
+          <div className={styles.heroLeft}>
+            <Link href="/" className={styles.homeLink} aria-label="Home">
+              <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+            </Link>
+            <div className={styles.headerTitleWrap} ref={navMenuRef}>
+              <button
+                type="button"
+                className={styles.headerMenuButton}
+                onClick={() => setShowNavMenu((prev) => !prev)}
+                aria-label="メニューを開く"
+                aria-expanded={showNavMenu}
+                title="メニュー"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" fill="currentColor" aria-hidden="true">
+                  <path d="M0 0h24v24H0V0z" fill="none" />
+                  <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+                </svg>
+              </button>
+              <h1 className={styles.heroTitle}>ダメージ計算機MS</h1>
+              {showNavMenu && (
+                <div className={styles.headerMenuPanel}>
+                  <button
+                    type="button"
+                    className={cn(styles.headerMenuItem, activeTab === "calc" && styles.headerMenuItemActive)}
+                    onClick={() => {
+                      setActiveTab("calc");
+                      setShowNavMenu(false);
+                    }}
+                  >
+                    計算ツール
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(styles.headerMenuItem, activeTab === "manual" && styles.headerMenuItemActive)}
+                    onClick={() => {
+                      setActiveTab("manual");
+                      setShowNavMenu(false);
+                    }}
+                  >
+                    説明書
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(styles.headerMenuItem, activeTab === "contact" && styles.headerMenuItemActive)}
+                    onClick={() => {
+                      setActiveTab("contact");
+                      setShowNavMenu(false);
+                    }}
+                  >
+                    お問い合わせ
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className={styles.heroActions}>
             <button

@@ -2,13 +2,33 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const siteTitle = "Strike-Optima |モンストお役立ちツール";
+const siteDescription =
+  "Strike-Optimaはモンスト向けのTierメーカー、ダメージ計算機、編成メモ、適正予想メーカーをまとめたお役立ちツールサイトです。";
+
 export const metadata: Metadata = {
-  title: "MSオプティマイズ",
-  description: "MSオプティマイズのツール一覧ページです。",
+  title: {
+    default: siteTitle,
+    template: `%s | ${siteTitle}`,
+  },
+  description: siteDescription,
+  applicationName: "Strike-Optima",
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    siteName: siteTitle,
+    locale: "ja_JP",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: siteTitle,
+    description: siteDescription,
+  },
   icons: {
-    icon: "/icon/icon_HP_2.png",
-    shortcut: "/icon/icon_HP_2.png",
-    apple: "/icon/icon_HP_2.png",
+    icon: "/icon/icon_HP_3.png",
+    shortcut: "/icon/icon_HP_3.png",
+    apple: "/icon/icon_HP_3.png",
   },
 };
 
