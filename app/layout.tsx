@@ -31,6 +31,9 @@ export const metadata: Metadata = {
     shortcut: "/icon/icon_HP_3.png",
     apple: "/icon/icon_HP_3.png",
   },
+  other: {
+    "google-adsense-account": "ca-pub-2860145144315315",
+  },
 };
 
 export default function RootLayout({
@@ -43,7 +46,7 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2860145144315315"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
         <main className="appMain">{children}</main>
         <footer style={{ padding: "16px", color: "#374151", fontSize: "12px", lineHeight: 1.6 }}>
