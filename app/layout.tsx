@@ -1,5 +1,6 @@
 ﻿// app/layout.tsx
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 const siteTitle = "Strike-Optima |モンストお役立ちツール";
@@ -48,6 +49,11 @@ export default function RootLayout({
         />
         <main className="appMain">{children}</main>
         <footer style={{ padding: "16px", color: "#374151", fontSize: "12px", lineHeight: 1.6 }}>
+          <div>
+            <Link href="/privacy" style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "underline" }}>
+              プライバシーポリシー
+            </Link>
+          </div>
           <div>(C)hototogisu2003 All rights reserved.</div>
           <div>当サイトは非公式のファンツールであり、mixi Inc.とは一切関係ありません。</div>
           <div>
