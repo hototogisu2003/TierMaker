@@ -1,5 +1,6 @@
 ﻿// app/layout.tsx
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 const siteTitle = "Strike-Optima |モンストお役立ちツール";
@@ -38,6 +39,12 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2860145144315315"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <main className="appMain">{children}</main>
         <footer style={{ padding: "16px", color: "#374151", fontSize: "12px", lineHeight: 1.6 }}>
           <div>(C)hototogisu2003 All rights reserved.</div>
