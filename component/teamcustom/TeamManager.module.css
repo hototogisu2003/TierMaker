@@ -1079,6 +1079,23 @@
   background: #ffffff;
 }
 
+.pickListGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-items: start;
+  align-content: start;
+  max-height: 42vh;
+}
+
+.pickListGrid .pickItem {
+  min-width: 0;
+  width: 100%;
+  flex: initial;
+}
+
 .questSearchGroup {
   display: flex;
   align-items: center;
@@ -1996,6 +2013,12 @@
   .pickList {
     min-height: 76px;
     padding: 4px;
+  }
+
+  .pickListGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 44vh;
+    padding: 6px 4px;
   }
 
   .pickItem {

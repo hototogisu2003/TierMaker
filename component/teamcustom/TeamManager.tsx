@@ -769,7 +769,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setAppliedSelectedOtherCategories(selectedObtains.has("降臨") ? new Set(selectedOtherCategories) : new Set());
     setHasSearched(true);
     setCharacterListScrollLeft(0);
-    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
+    if (characterListRef.current) {
+      characterListRef.current.scrollLeft = 0;
+      characterListRef.current.scrollTop = 0;
+    }
   }
 
   function resetFilters() {
@@ -800,7 +803,26 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setAppliedSelectedOtherCategories(defaultOtherCategories());
     setHasSearched(false);
     setCharacterListScrollLeft(0);
-    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
+    if (characterListRef.current) {
+      characterListRef.current.scrollLeft = 0;
+      characterListRef.current.scrollTop = 0;
+    }
+  }
+
+  function clearCharacterSearchState() {
+    setNameFilter("");
+    setAppliedNameFilter("");
+    setHasSearched(false);
+    setCharacterListScrollLeft(0);
+    if (characterListRef.current) {
+      characterListRef.current.scrollLeft = 0;
+      characterListRef.current.scrollTop = 0;
+    }
+  }
+
+  function activateSlot(slotIndex: number) {
+    setActiveSlotIndex(slotIndex);
+    clearCharacterSearchState();
   }
 
   function toggleElementFilter(element: CharacterItem["element"]) {
@@ -1307,21 +1329,25 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   function openCharacterModal(slotIndex: number) {
     if (!isMobileViewport) return;
+    clearCharacterSearchState();
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCharacterModalOpen(true);
     setCharacterListScrollLeft(0);
-    if (characterListRef.current) characterListRef.current.scrollLeft = 0;
+    if (characterListRef.current) {
+      characterListRef.current.scrollLeft = 0;
+      characterListRef.current.scrollTop = 0;
+    }
   }
   function openFruitModal(slotIndex: number) {
     if (!isMobileViewport) return;
-    setActiveSlotIndex(slotIndex);
+    activateSlot(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsFruitModalOpen(true);
   }
   function openCrestModal(slotIndex: number) {
     if (!isMobileViewport) return;
-    setActiveSlotIndex(slotIndex);
+    activateSlot(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCrestModalOpen(true);
   }
@@ -1379,11 +1405,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       {hasSearched ? (
         <div
           ref={characterListRef}
-          className={styles.pickList}
-          onScroll={(e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
+          className={`${styles.pickList} ${isMobileViewport ? styles.pickListGrid : ""}`}
+          onScroll={isMobileViewport ? undefined : (e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
         >
-          <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />
-          {characterVirtual.visible.map((c) => (
+          {isMobileViewport ? null : <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />}
+          {(isMobileViewport ? filteredCharacters : characterVirtual.visible).map((c) => (
             <button
               key={c.id}
               type="button"
@@ -1397,7 +1423,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <span>{c.name}</span>
             </button>
           ))}
-          <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />
+          {isMobileViewport ? null : <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />}
           {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
         </div>
       ) : null}
@@ -1777,11 +1803,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         tabIndex={0}
                         className={styles.teamBlock}
                         data-active={activeSlotIndex === slot.slotIndex ? "1" : "0"}
-                        onClick={() => setActiveSlotIndex(slot.slotIndex)}
+                        onClick={() => activateSlot(slot.slotIndex)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setActiveSlotIndex(slot.slotIndex);
+                            activateSlot(slot.slotIndex);
                           }
                         }}
                       >
@@ -1804,7 +1830,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                 e.stopPropagation();
                                 openCharacterModal(slot.slotIndex);
                               } else {
-                                setActiveSlotIndex(slot.slotIndex);
+                                activateSlot(slot.slotIndex);
                               }
                             }}
                             onKeyDown={(e) => {
@@ -1814,7 +1840,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                   e.stopPropagation();
                                   openCharacterModal(slot.slotIndex);
                                 } else {
-                                  setActiveSlotIndex(slot.slotIndex);
+                                  activateSlot(slot.slotIndex);
                                 }
                               }
                             }}
@@ -1858,7 +1884,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                         e.stopPropagation();
                                         openFruitModal(slot.slotIndex);
                                       } else {
-                                        setActiveSlotIndex(slot.slotIndex);
+                                        activateSlot(slot.slotIndex);
                                       }
                                     }}
                                   >
@@ -1878,7 +1904,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                         e.stopPropagation();
                                         openCrestModal(slot.slotIndex);
                                       } else {
-                                        setActiveSlotIndex(slot.slotIndex);
+                                        activateSlot(slot.slotIndex);
                                       }
                                     }}
                                   >
@@ -2004,11 +2030,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 {hasSearched ? (
                   <div
                     ref={characterListRef}
-                    className={styles.pickList}
-                    onScroll={(e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
+                    className={`${styles.pickList} ${isMobileViewport ? styles.pickListGrid : ""}`}
+                    onScroll={isMobileViewport ? undefined : (e) => setCharacterListScrollLeft(e.currentTarget.scrollLeft)}
                   >
-                    <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />
-                    {characterVirtual.visible.map((c) => (
+                    {isMobileViewport ? null : <div style={{ width: characterVirtual.paddingLeft, flex: "0 0 auto" }} />}
+                    {(isMobileViewport ? filteredCharacters : characterVirtual.visible).map((c) => (
                       <button
                         key={c.id}
                         type="button"
@@ -2023,7 +2049,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         <span>{c.name}</span>
                       </button>
                     ))}
-                    <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />
+                    {isMobileViewport ? null : <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />}
                     {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
                   </div>
                 ) : null}
