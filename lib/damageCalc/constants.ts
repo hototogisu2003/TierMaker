@@ -207,7 +207,7 @@ export const MANUAL_STEPS_VERIFY = [
 ];
 
 export const CONTACT_URL =
-  "https://marshmallow-qa.com/di9n1qu75lvijbl?t=ejYUls&utm_medium=url_text&utm_source=promotion";
+  "https://docs.google.com/forms/d/e/1FAIpQLSeZ7JKaFwb9q92ilmPJGnLsRUds6kXEJ9tQfhUurErLQF6vug/viewform?usp=publish-editor";
 
 export function createEmptyFruitSelection(): FruitSelection {
   return {

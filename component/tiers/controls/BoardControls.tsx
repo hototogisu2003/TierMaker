@@ -191,7 +191,7 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
                   </div>
                   <a
                     className="contactBtn"
-                    href="https://marshmallow-qa.com/di9n1qu75lvijbl?t=L0oYf4&utm_medium=url_text&utm_source=promotion"
+                    href="https://docs.google.com/forms/d/e/1FAIpQLSeZ7JKaFwb9q92ilmPJGnLsRUds6kXEJ9tQfhUurErLQF6vug/viewform?usp=publish-editor"
                     target="_blank"
                     rel="noreferrer"
                   >

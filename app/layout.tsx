@@ -49,7 +49,15 @@ export default function RootLayout({
         />
         <main className="appMain">{children}</main>
         <footer style={{ padding: "16px", color: "#374151", fontSize: "12px", lineHeight: 1.6 }}>
-          <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSeZ7JKaFwb9q92ilmPJGnLsRUds6kXEJ9tQfhUurErLQF6vug/viewform?usp=publish-editor"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "underline" }}
+            >
+              お問い合わせ
+            </a>
             <Link href="/privacy" style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "underline" }}>
               プライバシーポリシー
             </Link>
