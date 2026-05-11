@@ -2,9 +2,8 @@
 
 import React from "react";
 import type { CharacterForUI } from "@/app/tier/types";
-import DraggableIcon from "./DraggableIcon";
+import PoolDraggableIcon from "./PoolDraggableIcon";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 
 type Props = {
   itemIds: string[];
@@ -42,6 +41,7 @@ export default function PoolRow({
   const [gridTopAbs, setGridTopAbs] = React.useState(0);
   const [gridWidth, setGridWidth] = React.useState(0);
   const [iconSize, setIconSize] = React.useState(MIN_ICON_SIZE_PC);
+  const renderAllItemsWhileDragging = activeItemId !== null;
 
   React.useEffect(() => {
     const updateIconSize = () => {
@@ -230,17 +230,7 @@ export default function PoolRow({
     };
   }, [flatIds, gridWidth, gridTopAbs, viewportHeight, windowScrollY, maxRenderCount, activeItemId, iconSize]);
 
-  const sortableIds = React.useMemo(() => {
-    if (!groupByElement) return flatIds;
-    const ids: string[] = [];
-    for (const row of groupedRows) {
-      ids.push(...row);
-    }
-    return ids;
-  }, [groupByElement, flatIds, groupedRows]);
-
   return (
-    <SortableContext id="pool" items={sortableIds} strategy={rectSortingStrategy}>
       <div ref={setNodeRef} className="poolRow" data-over={isOver ? "1" : "0"}>
       {isEmpty ? (
         <div className="emptyState">キャラクターを選択してください</div>
@@ -265,7 +255,7 @@ export default function PoolRow({
                     endIndex = Math.min(row.length, startIndex + perRowCount);
                   }
                 }
-                const visibleIds = row.slice(startIndex, endIndex);
+                const visibleIds = renderAllItemsWhileDragging ? row : row.slice(startIndex, endIndex);
 
                 return (
                   <div key={`row-${rowIdx}`} className="elementRow">
@@ -273,14 +263,16 @@ export default function PoolRow({
                       {visibleIds.map((id, visibleIndex) => {
                         const c = charactersById.get(id);
                         if (!c) return null;
-                        const absoluteIndex = startIndex + visibleIndex;
+                        const absoluteIndex = renderAllItemsWhileDragging
+                          ? visibleIndex
+                          : startIndex + visibleIndex;
                         return (
                           <div
                             key={id}
                             className="virtualItem"
                             style={{ left: absoluteIndex * iconSize }}
                           >
-                            <DraggableIcon id={id} character={c} />
+                            <PoolDraggableIcon id={id} character={c} />
                           </div>
                         );
                       })}
@@ -311,15 +303,15 @@ export default function PoolRow({
         </>
       ) : (
         <div ref={gridRef} className="poolItems">
-          {nonGroupWindow.topSpacer > 0 ? (
+          {!renderAllItemsWhileDragging && nonGroupWindow.topSpacer > 0 ? (
             <div className="gridSpacer" style={{ height: nonGroupWindow.topSpacer }} />
           ) : null}
-          {nonGroupWindow.visibleIds.map((id) => {
+          {(renderAllItemsWhileDragging ? flatIds : nonGroupWindow.visibleIds).map((id) => {
             const c = charactersById.get(id);
             if (!c) return null;
-            return <DraggableIcon key={id} id={id} character={c} />;
+            return <PoolDraggableIcon key={id} id={id} character={c} />;
           })}
-          {nonGroupWindow.bottomSpacer > 0 ? (
+          {!renderAllItemsWhileDragging && nonGroupWindow.bottomSpacer > 0 ? (
             <div className="gridSpacer" style={{ height: nonGroupWindow.bottomSpacer }} />
           ) : null}
         </div>
@@ -449,6 +441,5 @@ export default function PoolRow({
         }
       `}</style>
       </div>
-    </SortableContext>
   );
 }

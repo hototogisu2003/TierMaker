@@ -662,42 +662,11 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   }
 
   function handleDragOver(e: DragOverEvent) {
-    const active = String(e.active.id);
-    const over = e.over?.id ? String(e.over.id) : null;
-    if (!over) return;
-
-    setState((prev) => {
-      const next = structuredClone(prev);
-
-      const activeContainer = findContainerOfItem(next.containers, active);
-      if (!activeContainer) return prev;
-
-      // over can be a container id (e.g., "S") or an item id (e.g., "123")
-      const overIsContainer = containerIds.includes(over as ContainerId);
-      const overContainer = overIsContainer ? over : findContainerOfItem(next.containers, over);
-
-      if (!overContainer) return prev;
-      if (activeContainer === overContainer) return prev;
-
-      // remove from old container
-      const fromItems = next.containers[activeContainer];
-      const fromIndex = fromItems.indexOf(active);
-      if (fromIndex === -1) return prev;
-      fromItems.splice(fromIndex, 1);
-
-      // insert into new container near hovered item, or at end if hovering container
-      const toItems = next.containers[overContainer];
-      let insertIndex = toItems.length;
-
-      if (!overIsContainer) {
-        const overIndex = toItems.indexOf(over);
-        insertIndex = overIndex >= 0 ? overIndex : toItems.length;
-      }
-
-      toItems.splice(insertIndex, 0, active);
-
-      return next;
-    });
+    // Keep drag-over state calculation inside dnd-kit only.
+    // We intentionally avoid mutating containers here because doing so while the
+    // pool is virtualized can unmount sortable DOM nodes mid-drag and trigger
+    // client-side exceptions.
+    void e;
   }
 
   function handleDragEnd(e: DragEndEvent) {
@@ -717,15 +686,33 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       const overContainer = overIsContainer ? over : findContainerOfItem(next.containers, over);
       if (!overContainer) return prev;
 
-      // reorder within same container
-      if (activeContainer === overContainer && !overIsContainer) {
-        const items = next.containers[activeContainer];
-        const oldIndex = items.indexOf(active);
-        const newIndex = items.indexOf(over);
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          next.containers[activeContainer] = arrayMove(items, oldIndex, newIndex);
+      if (activeContainer === overContainer) {
+        if (activeContainer === "pool") {
+          return prev;
         }
+        if (!overIsContainer) {
+          const items = next.containers[activeContainer];
+          const oldIndex = items.indexOf(active);
+          const newIndex = items.indexOf(over);
+          if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+            next.containers[activeContainer] = arrayMove(items, oldIndex, newIndex);
+          }
+        }
+        return next;
       }
+
+      const fromItems = next.containers[activeContainer];
+      const fromIndex = fromItems.indexOf(active);
+      if (fromIndex === -1) return prev;
+      fromItems.splice(fromIndex, 1);
+
+      const toItems = next.containers[overContainer];
+      let insertIndex = toItems.length;
+      if (!overIsContainer) {
+        const overIndex = toItems.indexOf(over);
+        insertIndex = overIndex >= 0 ? overIndex : toItems.length;
+      }
+      toItems.splice(insertIndex, 0, active);
 
       return next;
     });
