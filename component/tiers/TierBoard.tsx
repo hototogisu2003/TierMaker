@@ -26,6 +26,8 @@ import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 type TierMeta = { id: string; name: string; color: string };
 type YearValue = number | "";
 type Props = {
+  boardTitle: string;
+  onBoardTitleChange: (next: string) => void;
   tierMeta: TierMeta[];
   containers: Record<string, string[]>; // { pool: [...], S: [...], ... }
   charactersById: Map<string, CharacterForUI>;
@@ -74,6 +76,8 @@ type Props = {
 
 const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   {
+    boardTitle,
+    onBoardTitleChange,
     tierMeta,
     containers,
     charactersById,
@@ -200,7 +204,19 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     <div className="tierBoardRoot">
       <div className="tierBoardInner">
         <div className="topLayout">
-          <div ref={ref} className="tiersFrame" style={tiersFrameStyle}>
+          <div className="boardColumn" style={tiersFrameStyle}>
+            <label className="boardTitleField">
+              <span className="boardTitleLabel">タイトル</span>
+              <input
+                className="boardTitleInput"
+                type="text"
+                value={boardTitle}
+                onChange={(event) => onBoardTitleChange(event.target.value)}
+                placeholder="タイトルを入力"
+                aria-label="表のタイトル"
+              />
+            </label>
+            <div ref={ref} className="tiersFrame">
             {tierMeta.map((tier, index) => {
               const tierItems = containers[tier.id] ?? [];
 
@@ -229,6 +245,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
               </SortableContext>
             );
             })}
+            </div>
           </div>
 
           <div className="filterArea">
@@ -567,6 +584,36 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           max-width: 100%;
           min-width: 0;
           overflow: hidden;
+        }
+
+        .boardColumn {
+          display: grid;
+          gap: 8px;
+        }
+
+        .boardTitleField {
+          display: grid;
+          gap: 4px;
+          width: 100%;
+          max-width: 360px;
+        }
+
+        .boardTitleLabel {
+          color: #111111;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1.2;
+        }
+
+        .boardTitleInput {
+          width: 100%;
+          border: 1px solid #9ca3af;
+          border-radius: 8px;
+          padding: 8px 10px;
+          font-size: 14px;
+          color: #111111;
+          background: #ffffff;
+          box-sizing: border-box;
         }
 
         .poolArea {

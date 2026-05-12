@@ -46,7 +46,7 @@ export default function PoolRow({
   React.useEffect(() => {
     const updateIconSize = () => {
       const isMobile = window.innerWidth <= 768;
-      const raw = Math.round(window.innerWidth * (isMobile ? 0.11 : 0.035));
+        const raw = Math.round(window.innerWidth * (isMobile ? 0.11 : 0.035));
       const min = isMobile ? MIN_ICON_SIZE_MOBILE : MIN_ICON_SIZE_PC;
       const max = isMobile ? MAX_ICON_SIZE_MOBILE : MAX_ICON_SIZE_PC;
       setIconSize(clamp(raw, min, max));
@@ -272,7 +272,7 @@ export default function PoolRow({
                             className="virtualItem"
                             style={{ left: absoluteIndex * iconSize }}
                           >
-                            <PoolDraggableIcon id={id} character={c} />
+                            <PoolDraggableIcon id={id} character={c} size={iconSize} />
                           </div>
                         );
                       })}
@@ -309,7 +309,7 @@ export default function PoolRow({
           {(renderAllItemsWhileDragging ? flatIds : nonGroupWindow.visibleIds).map((id) => {
             const c = charactersById.get(id);
             if (!c) return null;
-            return <PoolDraggableIcon key={id} id={id} character={c} />;
+            return <PoolDraggableIcon key={id} id={id} character={c} size={iconSize} />;
           })}
           {!renderAllItemsWhileDragging && nonGroupWindow.bottomSpacer > 0 ? (
             <div className="gridSpacer" style={{ height: nonGroupWindow.bottomSpacer }} />

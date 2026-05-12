@@ -12,6 +12,15 @@ import type {
 } from "@/app/tier/types";
 import TierBoard from "./TierBoard";
 import BoardControls from "./controls/BoardControls";
+import {
+  BOARD_STORAGE_KEY,
+  DEFAULT_RANK_COL_WIDTH,
+  readSavedBoards,
+  writeSavedBoards,
+  type BoardState,
+  type SavedBoardRecord,
+  type TierMeta,
+} from "./boardStorage";
 
 import {
   CollisionDetection,
@@ -27,17 +36,12 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
-  SortableContext,
-  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 
 type TierId = string;
 type ContainerId = "pool" | TierId;
 type SortOrder = "asc" | "desc";
 type YearValue = number | "";
-
-type TierMeta = { id: TierId; name: string; color: string };
-type BoardState = { tierMeta: TierMeta[]; containers: Record<string, string[]> };
 
 type Props = {
   characters: CharacterForUI[];
@@ -73,9 +77,6 @@ const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
 ];
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const DEFAULT_TIER_COLORS = ["#ef4444", "#f97316", "#facc15", "#22c55e", "#3b82f6", "#a855f7"];
-const BOARD_STORAGE_KEY = "tiermaker-board-state-v1";
-const DEFAULT_RANK_COL_WIDTH = 72;
-
 function implementationYearFromNumber(n: number): number | null {
   if (n >= 8927) return 2026;
   if (n >= 8196) return 2025;
@@ -197,6 +198,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   // Active dragging item id
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [rankColWidth, setRankColWidth] = React.useState(DEFAULT_RANK_COL_WIDTH);
+  const [boardTitle, setBoardTitle] = React.useState("");
+  const [savedBoardId, setSavedBoardId] = React.useState<string | null>(null);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
     DEFAULT_INCLUDE_UNOBTAINABLE
@@ -286,9 +289,15 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     try {
       const raw = window.localStorage.getItem(BOARD_STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<BoardState & { rankColWidth?: number }>;
+      const parsed = JSON.parse(raw) as Partial<BoardState & { rankColWidth?: number; savedBoardId?: string }>;
       const normalized = normalizeBoardState(parsed, characters, initialTiers);
       setState(normalized);
+      if (typeof parsed.boardTitle === "string") {
+        setBoardTitle(parsed.boardTitle);
+      }
+      if (typeof parsed.savedBoardId === "string") {
+        setSavedBoardId(parsed.savedBoardId);
+      }
       if (typeof parsed.rankColWidth === "number" && Number.isFinite(parsed.rankColWidth)) {
         setRankColWidth(Math.max(56, Math.min(180, parsed.rankColWidth)));
       }
@@ -306,13 +315,15 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         BOARD_STORAGE_KEY,
         JSON.stringify({
           ...persistable,
+          boardTitle,
+          savedBoardId,
           rankColWidth,
         })
       );
     } catch {
       // Ignore localStorage write failures.
     }
-  }, [tierMeta, containers, rankColWidth, allCharacters, initialTiers]);
+  }, [tierMeta, containers, boardTitle, savedBoardId, rankColWidth, allCharacters, initialTiers]);
 
   const normalizedFilter = appliedNameFilter.trim().toLowerCase();
 
@@ -578,7 +589,52 @@ export default function TierMaker({ characters, initialTiers }: Props) {
 
   function resetBoard() {
     setActiveId(null);
+    setSavedBoardId(null);
     setState(buildInitialState(allCharacters, initialTiers));
+  }
+
+  function saveBoard() {
+    const title = boardTitle.trim();
+    if (!title) {
+      window.alert("タイトルを入力してください。");
+      return;
+    }
+
+    const hasLocalUploads =
+      localCharacters.length > 0 &&
+      Object.values(containers).some((ids) =>
+        ids.some((id) => characterById.get(id)?.isLocalUpload)
+      );
+
+    if (hasLocalUploads) {
+      window.alert("ローカルアップロード画像は保存対象に含まれません。");
+    }
+
+    const persistable = normalizeBoardState({ tierMeta, containers }, allCharacters, initialTiers);
+    const nextId = savedBoardId ?? `saved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const savedBoards = readSavedBoards();
+    const previousRecord = savedBoardId
+      ? savedBoards.find((record) => record.id === savedBoardId) ?? null
+      : null;
+    const nextRecord: SavedBoardRecord = {
+      id: nextId,
+      title,
+      createdAt: previousRecord?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      board: {
+        ...persistable,
+        boardTitle: title,
+        savedBoardId: nextId,
+        rankColWidth,
+      },
+    };
+
+    const nextBoards = savedBoardId
+      ? [...savedBoards.filter((record) => record.id !== savedBoardId), nextRecord]
+      : [nextRecord, ...savedBoards];
+    writeSavedBoards(nextBoards);
+    setSavedBoardId(nextId);
+    window.alert(savedBoardId ? "表を上書き保存しました。" : "表を保存しました。");
   }
 
   function uploadLocalImages(files: FileList | File[]) {
@@ -722,7 +778,12 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   return (
     <div className="stack">
       <div className="controlsBand">
-        <BoardControls onReset={resetBoard} exportTargetRef={boardRef} />
+        <BoardControls
+          onSave={saveBoard}
+          onReset={resetBoard}
+          exportTargetRef={boardRef}
+          exportTitle={boardTitle}
+        />
       </div>
 
       <DndContext
@@ -735,6 +796,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         {/* SortableContext is applied per container inside TierBoard */}
         <TierBoard
           ref={boardRef}
+          boardTitle={boardTitle}
+          onBoardTitleChange={setBoardTitle}
           tierMeta={tierMeta}
           containers={containers}
           charactersById={characterById}

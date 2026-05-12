@@ -8,9 +8,10 @@ import { useDraggable } from "@dnd-kit/core";
 type Props = {
   id: string;
   character: CharacterForUI;
+  size: number;
 };
 
-export default function PoolDraggableIcon({ id, character }: Props) {
+export default function PoolDraggableIcon({ id, character, size }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
 
   const style: React.CSSProperties = {
@@ -18,6 +19,8 @@ export default function PoolDraggableIcon({ id, character }: Props) {
     opacity: isDragging ? 0.4 : 1,
     cursor: "grab",
     touchAction: "none",
+    width: `${size}px`,
+    height: `${size}px`,
   };
 
   const LONG_PRESS_MS = 450;
@@ -108,8 +111,9 @@ export default function PoolDraggableIcon({ id, character }: Props) {
       <style jsx>{`
         .iconCard {
           position: relative;
-          width: clamp(48px, 3.5vw, 72px);
-          height: clamp(48px, 3.5vw, 72px);
+          width: 100%;
+          height: 100%;
+          box-sizing: border-box;
           border-radius: 0;
           border: 1px solid var(--border);
           background: rgba(255, 255, 255, 0.05);
@@ -148,11 +152,6 @@ export default function PoolDraggableIcon({ id, character }: Props) {
         }
 
         @media (max-width: 768px) {
-          .iconCard {
-            width: clamp(40px, 11vw, 56px);
-            height: clamp(40px, 11vw, 56px);
-          }
-
           .mobileNameHint {
             display: block;
           }

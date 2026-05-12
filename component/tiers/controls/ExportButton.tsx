@@ -4,6 +4,7 @@ import React from "react";
 
 type Props = {
   targetRef: React.RefObject<HTMLDivElement | null>;
+  title: string;
 };
 
 const OUTPUT_WIDTH = 1280;
@@ -46,12 +47,11 @@ type LoadedSnapshot = {
   rankFontFamily: string;
 };
 
-export default function ExportButton({ targetRef }: Props) {
+export default function ExportButton({ targetRef, title }: Props) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [previewSnapshot, setPreviewSnapshot] = React.useState<LoadedSnapshot | null>(null);
-  const [titleInput, setTitleInput] = React.useState("");
   const [includeTitleOnImage, setIncludeTitleOnImage] = React.useState(false);
 
   function sleep(ms: number) {
@@ -274,7 +274,6 @@ export default function ExportButton({ targetRef }: Props) {
       const fixedPreviewUrl = renderSnapshotToCanvas(loadedSnapshot, "", false);
       setPreviewSnapshot(loadedSnapshot);
       setPreviewUrl(fixedPreviewUrl);
-      setTitleInput("");
       setIncludeTitleOnImage(false);
     } catch (e: any) {
       setError(e?.message ?? "画像出力に失敗しました。");
@@ -286,22 +285,21 @@ export default function ExportButton({ targetRef }: Props) {
   function closePreview() {
     setPreviewUrl(null);
     setPreviewSnapshot(null);
-    setTitleInput("");
     setIncludeTitleOnImage(false);
   }
 
   async function savePreview() {
     if (!previewUrl || !previewSnapshot) return;
     try {
-      const title = titleInput.trim();
-      if (!title) {
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) {
         setError("タイトルを入力してください。");
         return;
       }
-      const finalDataUrl = renderSnapshotToCanvas(previewSnapshot, title, includeTitleOnImage);
+      const finalDataUrl = renderSnapshotToCanvas(previewSnapshot, trimmedTitle, includeTitleOnImage);
       const a = document.createElement("a");
       a.href = finalDataUrl;
-      a.download = `${title}.png`;
+      a.download = `${trimmedTitle}.png`;
       a.click();
       closePreview();
     } catch (e: any) {
@@ -312,24 +310,15 @@ export default function ExportButton({ targetRef }: Props) {
   return (
     <div className="exportWrap">
       <button className="btnPrimary" type="button" onClick={exportPng} disabled={busy}>
-        {busy ? "出力中..." : "画像として保存"}
+        {busy ? "出力中..." : "画像を出力"}
       </button>
       {error ? <div className="error">{error}</div> : null}
 
       {previewUrl ? (
-        <div className="previewOverlay" role="dialog" aria-modal="true" aria-label="画像保存プレビュー">
+        <div className="previewOverlay" role="dialog" aria-modal="true" aria-label="画像出力プレビュー">
           <div className="previewPanel">
-            <div className="previewTitle">画像保存プレビュー</div>
+            <div className="previewTitle">画像出力プレビュー</div>
             <img className="previewImage" src={previewUrl} alt="出力画像プレビュー" />
-            <label className="nameLabel">
-              タイトル
-              <input
-                className="nameInput"
-                type="text"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-              />
-            </label>
             <label className="titleToggle">
               <input
                 type="checkbox"
@@ -420,24 +409,6 @@ export default function ExportButton({ targetRef }: Props) {
           background: #ffffff;
           border-radius: 8px;
           object-fit: contain;
-        }
-
-        .nameLabel {
-          display: grid;
-          gap: 4px;
-          font-size: 12px;
-          color: #374151;
-          justify-items: start;
-        }
-
-        .nameInput {
-          width: min(100%, 360px);
-          border: 1px solid #9ca3af;
-          border-radius: 8px;
-          padding: 6px 8px;
-          font-size: 13px;
-          color: #111827;
-          background: #ffffff;
         }
 
         .titleToggle {

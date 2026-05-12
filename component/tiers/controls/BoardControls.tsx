@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -6,8 +6,10 @@ import ExportButton from "./ExportButton";
 import { RELEASE_NOTES, type ReleaseNoteItem } from "./releaseNotes";
 
 type Props = {
+  onSave: () => void;
   onReset: () => void;
   exportTargetRef: React.RefObject<HTMLDivElement | null>;
+  exportTitle: string;
 };
 
 function ReleaseNotesModal({
@@ -128,9 +130,8 @@ function ReleaseNotesModal({
   );
 }
 
-export default function BoardControls({ onReset, exportTargetRef }: Props) {
+export default function BoardControls({ onSave, onReset, exportTargetRef, exportTitle }: Props) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [isContactOpen, setIsContactOpen] = React.useState(false);
   const [isReleaseNotesOpen, setIsReleaseNotesOpen] = React.useState(false);
 
   return (
@@ -155,50 +156,40 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           </button>
 
           {isMenuOpen ? (
-            <div className="menuPanel">
-              <button
-                type="button"
-                className="contactToggle"
-                onClick={() => setIsContactOpen((prev) => !prev)}
-              >
-                お問い合わせ
-              </button>
-
-              <div className="menuDivider" />
-
-              <Link
-                href="/privacy"
-                className="menuItemLink"
-                style={{ color: "#111111" }}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                プライバシーポリシー
-              </Link>
-
-              {isContactOpen ? (
-                <div className="contactPanel">
-                  <div>運営者名: ほととぎす</div>
-                  <div>
-                    X(Twitter):
-                    <a
-                      className="xLink"
-                      href="https://x.com/hototogisu2003"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      @hototogisu2003
-                    </a>
-                  </div>
-                  <a
-                    className="contactBtn"
-                    href="https://docs.google.com/forms/d/e/1FAIpQLSeZ7JKaFwb9q92ilmPJGnLsRUds6kXEJ9tQfhUurErLQF6vug/viewform?usp=publish-editor"
-                    target="_blank"
-                    rel="noreferrer"
+            <div className="menuOverlay" onClick={() => setIsMenuOpen(false)}>
+              <div className="sideMenu" onClick={(event) => event.stopPropagation()}>
+                <div className="sideMenuHeader">
+                  <div className="sideMenuTitle">メニュー</div>
+                  <button
+                    type="button"
+                    className="sideMenuClose"
+                    aria-label="閉じる"
+                    onClick={() => setIsMenuOpen(false)}
                   >
-                    お問い合わせフォーム
-                  </a>
+                    ×
+                  </button>
                 </div>
-              ) : null}
+
+                <div className="sideMenuList">
+                  <Link
+                    href="/tier"
+                    className="sideMenuItem"
+                    style={{ color: "#111111" }}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    表を作成する
+                  </Link>
+
+                  <Link
+                    href="/tier/list"
+                    className="sideMenuItem"
+                    style={{ color: "#111111" }}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    表を確認する
+                  </Link>
+                </div>
+              </div>
             </div>
           ) : null}
         </div>
@@ -218,10 +209,13 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
       </div>
 
       <div className="right">
-        <button className="btn" type="button" onClick={onReset}>
-          リセット
+        <button className="btn" type="button" onClick={onSave}>
+          保存
         </button>
-        <ExportButton targetRef={exportTargetRef} />
+        <button className="btn" type="button" onClick={onReset}>
+          新規作成
+        </button>
+        <ExportButton targetRef={exportTargetRef} title={exportTitle} />
       </div>
 
       {isReleaseNotesOpen ? (
@@ -320,74 +314,78 @@ export default function BoardControls({ onReset, exportTargetRef }: Props) {
           background: #f3f4f6;
         }
 
-        .menuPanel {
-          position: absolute;
-          top: calc(100% + 6px);
-          left: 0;
-          z-index: 40;
-          min-width: 220px;
-          border: 1px solid #d1d5db;
-          border-radius: 10px;
-          background: #ffffff;
-          padding: 8px;
-          display: grid;
-          gap: 6px;
+        .menuOverlay {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          background: rgba(15, 23, 42, 0.35);
         }
 
-        .contactToggle,
-        .menuItemLink {
+        .sideMenu {
+          width: min(340px, 90vw);
+          height: 100%;
+          background: #ffffff;
+          border-right: 1px solid #d0d7e2;
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+          padding: 10px;
+          display: grid;
+          grid-template-rows: auto 1fr;
+          gap: 8px;
+        }
+
+        .sideMenuHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .sideMenuTitle {
+          font-size: 15px;
+          font-weight: 800;
+          color: #111827;
+        }
+
+        .sideMenuClose {
+          width: 30px;
+          height: 30px;
+          border: 1px solid #9ca3af;
+          border-radius: 7px;
+          background: #ffffff;
+          color: #111827;
+          cursor: pointer;
+          font-size: 18px;
+          line-height: 1;
+        }
+
+        .sideMenuList {
+          display: grid;
+          align-content: start;
+          gap: 2px;
+        }
+
+        .sideMenuItem {
           border: none;
           background: transparent;
           color: #111111;
-          border-radius: 0;
-          padding: 4px 2px;
+          padding: 8px 4px;
           font-family: inherit;
           font-size: 15px;
           font-weight: 700;
           text-align: left;
           text-decoration: none;
+          display: block;
           cursor: pointer;
         }
 
-        .contactToggle:hover,
-        .menuItemLink:hover {
+        .sideMenuItem:visited,
+        .sideMenuItem:link,
+        .sideMenuItem:active {
+          color: #111111;
+        }
+
+        .sideMenuItem:hover {
           background: transparent;
           text-decoration: underline;
-        }
-
-        .menuDivider {
-          height: 1px;
-          background: #d1d5db;
-          margin: 2px 0;
-        }
-
-        .contactPanel {
-          border: 1px solid #e5e7eb;
-          background: #f9fafb;
-          border-radius: 8px;
-          padding: 8px 10px;
-          color: #111111;
-          display: grid;
-          gap: 6px;
-          font-size: 14px;
-        }
-
-        .xLink {
-          margin-left: 4px;
-          color: #2563eb;
-          text-decoration: underline;
-        }
-
-        .contactBtn {
-          display: inline-block;
-          width: fit-content;
-          border: 1px solid #1d4ed8;
-          background: #3b82f6;
-          color: #ffffff;
-          border-radius: 8px;
-          padding: 6px 10px;
-          font-weight: 700;
-          text-decoration: none;
         }
 
         .brandText {
