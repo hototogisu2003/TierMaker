@@ -7,6 +7,12 @@
 
 export const RELEASE_NOTES: ReleaseNoteItem[] = [
   {
+    id: "2026-05-13",
+    date: "2026-05-13",
+    title: "守護獣機能を追加",
+    items: ["表示対象から守護獣を選択できるように追加しました。"],
+  },
+  {
     id: "2026-05-12",
     date: "2026-05-12",
     title: "保存機能と管理画面を追加",
