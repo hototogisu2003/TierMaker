@@ -9,6 +9,7 @@ import type {
   CharacterGacha,
   CharacterObtain,
   CharacterOtherCategory,
+  PoolSourceType,
 } from "@/app/tier/types";
 import TierRow from "./TierRow";
 import PoolRow from "./PoolRow";
@@ -31,9 +32,11 @@ type Props = {
   tierMeta: TierMeta[];
   containers: Record<string, string[]>; // { pool: [...], S: [...], ... }
   charactersById: Map<string, CharacterForUI>;
-  visibleCharacterIds: Set<string> | null;
+  visibleCharacterIds: Set<string>;
   nameFilter: string;
   onNameFilterChange: (next: string) => void;
+  selectedPoolSource: PoolSourceType;
+  onPoolSourceChange: (next: PoolSourceType) => void;
   includeUnobtainable: boolean;
   onIncludeUnobtainableChange: (next: boolean) => void;
   yearFrom: YearValue;
@@ -84,6 +87,8 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     visibleCharacterIds,
     nameFilter,
     onNameFilterChange,
+    selectedPoolSource,
+    onPoolSourceChange,
     includeUnobtainable,
     onIncludeUnobtainableChange,
     yearFrom,
@@ -128,6 +133,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const [isElementFilterOpen, setIsElementFilterOpen] = React.useState(true);
   const [isMobileViewport, setIsMobileViewport] = React.useState(false);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
+  const isShugojuMode = selectedPoolSource === "shugoju";
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
   const isOtherObtainEnabled = selectedObtains.has("降臨");
   const elementOrder: CharacterElement[] = ["火", "水", "木", "光", "闇"];
@@ -146,10 +152,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   };
 
   const filterPoolItems = React.useCallback(
-    (itemIds: string[]) => {
-      if (!visibleCharacterIds) return itemIds;
-      return itemIds.filter((id) => visibleCharacterIds.has(id));
-    },
+    (itemIds: string[]) => itemIds.filter((id) => visibleCharacterIds.has(id)),
     [visibleCharacterIds]
   );
 
@@ -253,10 +256,10 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
             <div className="filterRow">
               <Input
-                placeholder="キャラクターを検索"
+                placeholder="名前を検索"
                 value={nameFilter}
                 onChange={(e) => onNameFilterChange(e.target.value)}
-                aria-label="キャラクターを検索"
+                aria-label="名前を検索"
               />
 
               <button
@@ -276,8 +279,29 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
 
             {isElementFilterOpen ? (
               <div className="elementFilterPanel">
+                <div className="blockRow">
+                  <span className="filterLabel">表示対象</span>
+                  <div className="sourceRow">
+                    <button
+                      type="button"
+                      className="sourceBtn"
+                      data-selected={selectedPoolSource === "character" ? "1" : "0"}
+                      onClick={() => onPoolSourceChange("character")}
+                    >
+                      キャラクター
+                    </button>
+                    <button
+                      type="button"
+                      className="sourceBtn"
+                      data-selected={selectedPoolSource === "shugoju" ? "1" : "0"}
+                      onClick={() => onPoolSourceChange("shugoju")}
+                    >
+                      守護獣
+                    </button>
+                  </div>
+                </div>
                 <div className="filterColumns">
-                  <div className="filterLeftCol">
+                  <div className="filterLeftCol" data-disabled={isShugojuMode ? "1" : "0"}>
                     <div className="labelRow attributeRow">
                       <span className="filterLabel">属性</span>
                       <div className="inlineBtns">
@@ -287,6 +311,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                           data-selected={isAllElementsMode ? "1" : "0"}
                           onClick={onSelectAllElements}
                           aria-label="全属性"
+                          disabled={isShugojuMode}
                         >
                           <img className="elementBtnIcon" src="/icon/icon_全.avif" alt="全属性" />
                         </button>
@@ -301,6 +326,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               data-selected={selected ? "1" : "0"}
                               onClick={() => onToggleElement(el)}
                               aria-label={`${el}属性`}
+                              disabled={isShugojuMode}
                             >
                               <img
                                 className="elementBtnIcon"
@@ -325,6 +351,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               className="obtainBtn"
                               data-selected={selected ? "1" : "0"}
                               onClick={() => onToggleObtain(ob)}
+                              disabled={isShugojuMode}
                             >
                               {ob}
                             </button>
@@ -342,7 +369,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               type="button"
                               className="gachaBtn"
                               data-selected={selected ? "1" : "0"}
-                              disabled={!isGachaObtainEnabled}
+                              disabled={isShugojuMode || !isGachaObtainEnabled}
                               onClick={() => onToggleGacha(g)}
                             >
                               {g}
@@ -360,7 +387,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                           type="button"
                           className="otherCategoryBtn"
                           data-selected={selected ? "1" : "0"}
-                          disabled={!isOtherObtainEnabled}
+                          disabled={isShugojuMode || !isOtherObtainEnabled}
                           onClick={() => onToggleOtherCategory(category)}
                         >
                           {category}
@@ -376,7 +403,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                             type="button"
                             className="otherCategoryBtn"
                             data-selected={selected ? "1" : "0"}
-                            disabled={!isOtherObtainEnabled}
+                            disabled={isShugojuMode || !isOtherObtainEnabled}
                             onClick={() => onToggleOtherCategory(category)}
                           >
                             {category}
@@ -398,6 +425,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               className="contentBtn"
                               data-selected={selected ? "1" : "0"}
                               onClick={() => onToggleContent(content)}
+                              disabled={isShugojuMode}
                             >
                               {content}
                             </button>
@@ -418,6 +446,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               className="formBtn"
                               data-selected={selected ? "1" : "0"}
                               onClick={() => onToggleForm(form)}
+                              disabled={isShugojuMode}
                             >
                               {form}
                             </button>
@@ -427,7 +456,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                     </div>
                   </div>
 
-                  <div className="filterRightCol">
+                  <div className="filterRightCol" data-disabled={isShugojuMode ? "1" : "0"}>
                     <div className="labelRow">
                       <span className="filterLabel">実装年</span>
                       <div className="yearRow">
@@ -438,6 +467,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                             const v = e.target.value;
                             onYearFromChange(v === "" ? "" : Number(v));
                           }}
+                          disabled={isShugojuMode}
                         >
                           <option value="">開始年</option>
                           {yearOptions.map((y) => (
@@ -456,6 +486,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                             const v = e.target.value;
                             onYearToChange(v === "" ? "" : Number(v));
                           }}
+                          disabled={isShugojuMode}
                         >
                           <option value="">終了年</option>
                           {yearOptions.map((y) => (
@@ -474,6 +505,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                         className="sortBtn"
                         data-selected={isElementOrderEnabled ? "1" : "0"}
                         onClick={() => onElementOrderChange(!isElementOrderEnabled)}
+                        disabled={isShugojuMode}
                       >
                         属性順
                       </button>
@@ -483,6 +515,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                         className="sortBtn"
                         data-selected={sortOrder === "asc" ? "1" : "0"}
                         onClick={() => onSortOrderChange("asc")}
+                        disabled={isShugojuMode}
                       >
                         昇順
                       </button>
@@ -491,6 +524,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                         className="sortBtn"
                         data-selected={sortOrder === "desc" ? "1" : "0"}
                         onClick={() => onSortOrderChange("desc")}
+                        disabled={isShugojuMode}
                       >
                         降順
                       </button>
@@ -502,6 +536,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                     type="checkbox"
                     checked={includeUnobtainable}
                     onChange={(e) => onIncludeUnobtainableChange(e.target.checked)}
+                    disabled={isShugojuMode}
                   />
                   <span>入手不可能キャラ（コラボ超究極の一部ボスなど）を含む</span>
                 </label>
@@ -786,6 +821,29 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           flex-wrap: wrap;
         }
 
+        .sourceRow {
+          width: 100%;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .sourceBtn {
+          min-width: 96px;
+          border: 1px solid #9ca3af;
+          background: #ffffff;
+          color: #111111;
+          border-radius: 8px;
+          padding: 6px 12px;
+          cursor: pointer;
+          font-weight: 700;
+        }
+
+        .sourceBtn[data-selected="1"] {
+          background: #dbeafe;
+          border-color: #2563eb;
+        }
+
         .attributeRow .inlineBtns {
           flex-wrap: nowrap;
         }
@@ -910,6 +968,22 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           background: #f3f4f6;
           color: #9ca3af;
           border-color: #d1d5db;
+          cursor: not-allowed;
+        }
+
+        .filterLeftCol[data-disabled="1"],
+        .filterRightCol[data-disabled="1"] {
+          opacity: 0.5;
+        }
+
+        .elementBtn:disabled,
+        .obtainBtn:disabled,
+        .gachaBtn:disabled,
+        .contentBtn:disabled,
+        .formBtn:disabled,
+        .otherCategoryBtn:disabled,
+        .sortBtn:disabled,
+        .yearSelect:disabled {
           cursor: not-allowed;
         }
 

@@ -9,6 +9,7 @@ import type {
   CharacterGacha,
   CharacterObtain,
   CharacterOtherCategory,
+  PoolSourceType,
 } from "@/app/tier/types";
 import TierBoard from "./TierBoard";
 import BoardControls from "./controls/BoardControls";
@@ -45,10 +46,12 @@ type YearValue = number | "";
 
 type Props = {
   characters: CharacterForUI[];
+  shugoju: CharacterForUI[];
   initialTiers: TierId[]; // ["S","A","B","C"]
 };
 
 const DEFAULT_NAME_FILTER = "";
+const DEFAULT_POOL_SOURCE: PoolSourceType = "character";
 const DEFAULT_YEAR: YearValue = "";
 const DEFAULT_SORT_ORDER: SortOrder = "desc";
 const DEFAULT_ELEMENT_ORDER_ENABLED = true;
@@ -141,6 +144,14 @@ function normalizeBoardState(
   }
 
   const validIds = new Set(characters.filter((c) => !c.isLocalUpload).map((c) => c.id));
+  const legacyCharacterIdMap = new Map<string, string>();
+  for (const character of characters) {
+    if (character.isLocalUpload || character.sourceType !== "character") continue;
+    const legacyId = character.id.replace(/^character:/, "");
+    if (!legacyCharacterIdMap.has(legacyId)) {
+      legacyCharacterIdMap.set(legacyId, character.id);
+    }
+  }
   const seen = new Set<string>();
   const normalizedContainers: Record<string, string[]> = {};
 
@@ -149,9 +160,12 @@ function normalizeBoardState(
     const next: string[] = [];
     for (const item of source) {
       if (typeof item !== "string") continue;
-      if (!validIds.has(item) || seen.has(item)) continue;
-      seen.add(item);
-      next.push(item);
+      const normalizedId = validIds.has(item)
+        ? item
+        : legacyCharacterIdMap.get(item) ?? null;
+      if (!normalizedId || seen.has(normalizedId)) continue;
+      seen.add(normalizedId);
+      next.push(normalizedId);
     }
     return next;
   };
@@ -181,18 +195,18 @@ function findContainerOfItem(containers: Record<string, string[]>, itemId: strin
   return null;
 }
 
-export default function TierMaker({ characters, initialTiers }: Props) {
+export default function TierMaker({ characters, shugoju, initialTiers }: Props) {
   const boardRef = React.useRef<HTMLDivElement | null>(null);
   const localUploadUrlsRef = React.useRef<string[]>([]);
   const hasLoadedPersistedBoardRef = React.useRef(false);
   const [localCharacters, setLocalCharacters] = React.useState<CharacterForUI[]>([]);
   const allCharacters = React.useMemo(
-    () => [...characters, ...localCharacters],
-    [characters, localCharacters]
+    () => [...characters, ...shugoju, ...localCharacters],
+    [characters, shugoju, localCharacters]
   );
 
   const [{ tierMeta, containers }, setState] = React.useState(() =>
-    buildInitialState(characters, initialTiers)
+    buildInitialState(allCharacters, initialTiers)
   );
 
   // Active dragging item id
@@ -201,6 +215,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   const [boardTitle, setBoardTitle] = React.useState("");
   const [savedBoardId, setSavedBoardId] = React.useState<string | null>(null);
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [selectedPoolSource, setSelectedPoolSource] =
+    React.useState<PoolSourceType>(DEFAULT_POOL_SOURCE);
   const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
     DEFAULT_INCLUDE_UNOBTAINABLE
   );
@@ -230,6 +246,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     Set<CharacterOtherCategory>
   >(() => new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
   const [appliedNameFilter, setAppliedNameFilter] = React.useState(DEFAULT_NAME_FILTER);
+  const [appliedPoolSource, setAppliedPoolSource] =
+    React.useState<PoolSourceType>(DEFAULT_POOL_SOURCE);
   const [appliedIncludeUnobtainable, setAppliedIncludeUnobtainable] = React.useState(
     DEFAULT_INCLUDE_UNOBTAINABLE
   );
@@ -290,7 +308,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       const raw = window.localStorage.getItem(BOARD_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<BoardState & { rankColWidth?: number; savedBoardId?: string }>;
-      const normalized = normalizeBoardState(parsed, characters, initialTiers);
+      const normalized = normalizeBoardState(parsed, allCharacters, initialTiers);
       setState(normalized);
       if (typeof parsed.boardTitle === "string") {
         setBoardTitle(parsed.boardTitle);
@@ -304,7 +322,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     } catch {
       // Ignore malformed localStorage data and use defaults.
     }
-  }, [characters, initialTiers]);
+  }, [allCharacters, initialTiers]);
 
   React.useEffect(() => {
     if (!hasLoadedPersistedBoardRef.current) return;
@@ -335,7 +353,10 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     if (normalizedFilter) {
       const ids = new Set<string>();
       for (const c of allCharacters) {
-        if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
+        if (c.sourceType !== appliedPoolSource) continue;
+        if (appliedPoolSource === "character" && !appliedIncludeUnobtainable && !c.isObtainable) {
+          continue;
+        }
         const name = c.name.trim().toLowerCase();
         const nameKana = c.nameKana.trim().toLowerCase();
         if (name.includes(normalizedFilter) || nameKana.includes(normalizedFilter)) {
@@ -345,38 +366,21 @@ export default function TierMaker({ characters, initialTiers }: Props) {
       return ids;
     }
 
-    const isAllElementsSelected = appliedIsAllElementsMode;
-    const isObtainFilterInactive =
-      appliedSelectedObtains.size === 0 ||
-      OBTAIN_OPTIONS.every((o) => appliedSelectedObtains.has(o));
-    const isAllGachasSelected = GACHA_OPTIONS.every((g) => appliedSelectedGachas.has(g));
-    const isFormFilterInactive =
-      appliedSelectedForms.size === 0 ||
-      FORM_OPTIONS.every((f) => appliedSelectedForms.has(f));
-    const isAllContentsUnselected = appliedSelectedContents.size === 0;
-    const isAllOtherCategoriesSelected = OTHER_CATEGORY_OPTIONS.every((o) =>
-      appliedSelectedOtherCategories.has(o)
-    );
-    const isYearUnselected = appliedYearFrom === "" && appliedYearTo === "";
-    if (
-      !normalizedFilter &&
-      isAllElementsSelected &&
-      isObtainFilterInactive &&
-      isAllGachasSelected &&
-      isFormFilterInactive &&
-      isAllContentsUnselected &&
-      isAllOtherCategoriesSelected &&
-      isYearUnselected
-    ) {
-      return null;
+    if (appliedPoolSource === "shugoju") {
+      const ids = new Set<string>();
+      for (const c of allCharacters) {
+        if (c.sourceType === "shugoju") {
+          ids.add(c.id);
+        }
+      }
+      return ids;
     }
+
+    const isAllElementsSelected = appliedIsAllElementsMode;
 
     const ids = new Set<string>();
     for (const c of allCharacters) {
-      if (c.isLocalUpload) {
-        ids.add(c.id);
-        continue;
-      }
+      if (c.sourceType !== "character") continue;
       if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
       const isElementMatched =
         appliedIsAllElementsMode || (!!c.element && appliedSelectedElements.has(c.element));
@@ -420,6 +424,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     allCharacters,
     hasAppliedFiltersOnce,
     normalizedFilter,
+    appliedPoolSource,
     appliedIncludeUnobtainable,
     appliedSelectedElements,
     appliedIsAllElementsMode,
@@ -525,11 +530,14 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   function applyFilters() {
     setHasAppliedFiltersOnce(true);
     setAppliedNameFilter(nameFilter);
+    setAppliedPoolSource(selectedPoolSource);
     setAppliedIncludeUnobtainable(includeUnobtainable);
     setAppliedYearFrom(yearFrom);
     setAppliedYearTo(yearTo);
     setAppliedSortOrder(sortOrder);
-    setAppliedIsElementOrderEnabled(isElementOrderEnabled);
+    setAppliedIsElementOrderEnabled(
+      selectedPoolSource === "shugoju" ? false : isElementOrderEnabled
+    );
     setAppliedIsAllElementsMode(isAllElementsMode);
     setAppliedSelectedElements(new Set(selectedElements));
     setAppliedSelectedObtains(new Set(selectedObtains));
@@ -550,6 +558,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   function resetFilters() {
     setHasAppliedFiltersOnce(false);
     setNameFilter(DEFAULT_NAME_FILTER);
+    setSelectedPoolSource(DEFAULT_POOL_SOURCE);
     setIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setYearFrom(DEFAULT_YEAR);
     setYearTo(DEFAULT_YEAR);
@@ -564,6 +573,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
     setSelectedOtherCategories(new Set<CharacterOtherCategory>(DEFAULT_SELECTED_OTHER_CATEGORIES));
 
     setAppliedNameFilter(DEFAULT_NAME_FILTER);
+    setAppliedPoolSource(DEFAULT_POOL_SOURCE);
     setAppliedIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setAppliedYearFrom(DEFAULT_YEAR);
     setAppliedYearTo(DEFAULT_YEAR);
@@ -590,6 +600,10 @@ export default function TierMaker({ characters, initialTiers }: Props) {
   function resetBoard() {
     setActiveId(null);
     setSavedBoardId(null);
+    setBoardTitle("");
+    setNameFilter(DEFAULT_NAME_FILTER);
+    setAppliedNameFilter(DEFAULT_NAME_FILTER);
+    setHasAppliedFiltersOnce(false);
     setState(buildInitialState(allCharacters, initialTiers));
   }
 
@@ -660,6 +674,7 @@ export default function TierMaker({ characters, initialTiers }: Props) {
         sortNumber: Number.POSITIVE_INFINITY,
         iconPath: file.name,
         iconUrl: objectUrl,
+        sourceType: selectedPoolSource,
         isLocalUpload: true,
       } satisfies CharacterForUI;
     });
@@ -804,6 +819,8 @@ export default function TierMaker({ characters, initialTiers }: Props) {
           visibleCharacterIds={visibleCharacterIds}
           nameFilter={nameFilter}
           onNameFilterChange={setNameFilter}
+          selectedPoolSource={selectedPoolSource}
+          onPoolSourceChange={setSelectedPoolSource}
           includeUnobtainable={includeUnobtainable}
           onIncludeUnobtainableChange={setIncludeUnobtainable}
           yearFrom={yearFrom}

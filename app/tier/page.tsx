@@ -13,10 +13,14 @@ export default async function TierPage() {
   noStore();
 
   try {
-    const characters = await loadTierCharacters();
+    const { characters, shugoju } = await loadTierCharacters();
     return (
       <section className="stack">
-        <TierMaker characters={characters} initialTiers={["S", "A", "B", "C", "D", "E"]} />
+        <TierMaker
+          characters={characters}
+          shugoju={shugoju}
+          initialTiers={["S", "A", "B", "C", "D", "E"]}
+        />
       </section>
     );
   } catch (error) {
@@ -24,4 +28,3 @@ export default async function TierPage() {
     return <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(error, null, 2)}</pre>;
   }
 }
-

@@ -13,8 +13,8 @@ export default async function TierSavedPage() {
   noStore();
 
   try {
-    const characters = await loadTierCharacters();
-    return <SavedBoardsPage characters={characters} />;
+    const { characters, shugoju } = await loadTierCharacters();
+    return <SavedBoardsPage characters={[...characters, ...shugoju]} />;
   } catch (error) {
     console.error("Saved tier boards load error:", error);
     return <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(error, null, 2)}</pre>;
