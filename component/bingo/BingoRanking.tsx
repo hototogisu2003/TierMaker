@@ -31,7 +31,7 @@ export default function BingoRanking({ ranking }: { ranking: BingoRankingData })
 
       <div className={styles.panel}>
         <div className={styles.rankingHead}>
-          <h2 className={styles.rankingTitle}>キャラ単体ランキング</h2>
+          <h2 className={styles.rankingTitle}>予想ランキング</h2>
           <div className={styles.totalCount}>投稿数 {ranking.totalSubmissions}</div>
         </div>
 

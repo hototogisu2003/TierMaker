@@ -692,4 +692,42 @@
     grid-template-rows: auto 32px;
     padding: 6px;
   }
+
+  .rankingGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .rankingCard {
+    padding: 6px 4px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "rank"
+      "icon"
+      "name"
+      "count";
+    justify-items: center;
+    gap: 4px;
+  }
+
+  .rankingIndex {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .rankingIcon {
+    width: min(52px, 100%);
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .rankingName {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .rankingCount {
+    font-size: 10px;
+  }
 }

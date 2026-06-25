@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   BINGO_ELEMENTS,
   BINGO_EXCEPTION_CHARACTER_IDS,
@@ -367,7 +367,7 @@ export async function insertBingoSubmission(
 ): Promise<{ stored: boolean; message?: string }> {
   const payload = normalizeBingoSubmissionPayload(input);
   const tableName = getBingoPredictionTableName();
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServiceRoleClient();
   const tokenHash = hashDeviceToken(deviceToken.trim());
   const characterIds = payload.characters.map((character) => character.id);
   const eligibleCharacters = await fetchBingoCharactersByIds(characterIds);

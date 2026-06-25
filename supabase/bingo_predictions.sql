@@ -48,64 +48,19 @@ create trigger bingo_predictions_set_updated_at
 alter table public.bingo_predictions enable row level security;
 
 grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on public.bingo_predictions to anon, authenticated;
-grant usage, select on sequence public.bingo_predictions_id_seq to anon, authenticated;
+revoke insert, update, delete on public.bingo_predictions from anon, authenticated;
+revoke usage, select on sequence public.bingo_predictions_id_seq from anon, authenticated;
+grant select on public.bingo_predictions to anon, authenticated;
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'bingo_predictions'
-      and policyname = 'bingo_predictions_select_all'
-  ) then
-    create policy bingo_predictions_select_all
-      on public.bingo_predictions
-      for select
-      using (true);
-  end if;
+drop policy if exists bingo_predictions_insert_all on public.bingo_predictions;
+drop policy if exists bingo_predictions_update_all on public.bingo_predictions;
+drop policy if exists bingo_predictions_delete_all on public.bingo_predictions;
+drop policy if exists bingo_predictions_select_all on public.bingo_predictions;
 
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'bingo_predictions'
-      and policyname = 'bingo_predictions_insert_all'
-  ) then
-    create policy bingo_predictions_insert_all
-      on public.bingo_predictions
-      for insert
-      with check (true);
-  end if;
-
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'bingo_predictions'
-      and policyname = 'bingo_predictions_update_all'
-  ) then
-    create policy bingo_predictions_update_all
-      on public.bingo_predictions
-      for update
-      using (true)
-      with check (true);
-  end if;
-
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'public'
-      and tablename = 'bingo_predictions'
-      and policyname = 'bingo_predictions_delete_all'
-  ) then
-    create policy bingo_predictions_delete_all
-      on public.bingo_predictions
-      for delete
-      using (true);
-  end if;
-end $$;
+create policy bingo_predictions_select_all
+  on public.bingo_predictions
+  for select
+  using (true);
 
 create table if not exists public.bingo_submission_locks (
   token_hash text primary key,

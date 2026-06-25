@@ -20,3 +20,16 @@ export function getSupabaseServerClient() {
     auth: { persistSession: false },
   });
 }
+
+/**
+ * Server-only Supabase client for writes that must bypass public RLS.
+ * Never expose SUPABASE_SERVICE_ROLE_KEY with a NEXT_PUBLIC_ prefix.
+ */
+export function getSupabaseServiceRoleClient() {
+  const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseServiceRoleKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false },
+  });
+}
