@@ -20,7 +20,6 @@ export default function BingoRanking({ ranking }: { ranking: BingoRankingData })
           <Link href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
-          <h1 className={styles.title}>予想ビンゴランキング</h1>
         </div>
         <Link href="/bingo" className={styles.iconLink} aria-label="入力へ" title="入力へ">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
