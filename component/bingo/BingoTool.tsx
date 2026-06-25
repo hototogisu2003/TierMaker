@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toBlob } from "html-to-image";
 import Button from "@/component/ui/button";
@@ -29,6 +30,14 @@ type CharacterResponse = {
 type SubmissionResponse = {
   stored?: boolean;
   message?: string;
+};
+
+type BoardPointerDrag = {
+  sourceIndex: number;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  isDragging: boolean;
 };
 
 const STORAGE_KEY = "bingo:draft:v1";
@@ -150,7 +159,7 @@ function CharacterTile({ character }: { character: BingoCharacterSummary }) {
 }
 
 function BoardCharacterTile({ character }: { character: BingoCharacterSummary }) {
-  return <img className={styles.boardCharacterIcon} src={character.iconUrl} alt={character.name} />;
+  return <img className={styles.boardCharacterIcon} src={character.iconUrl} alt={character.name} draggable={false} />;
 }
 
 function CharacterPicker({
@@ -508,7 +517,11 @@ export default function BingoTool() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportPreview, setExportPreview] = useState<{ url: string; fileName: string } | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
+  const skipNextCellClickRef = useRef(false);
+  const pointerDragRef = useRef<BoardPointerDrag | null>(null);
 
   useEffect(() => {
     writeStoredBoard(board);
@@ -535,6 +548,102 @@ export default function BingoTool() {
 
   function clearCell(index: number) {
     setBoard((current) => current.map((entry, currentIndex) => (currentIndex === index ? null : entry)));
+  }
+
+  function moveBoardCharacter(sourceIndex: number, targetIndex: number) {
+    if (
+      !Number.isInteger(sourceIndex) ||
+      !Number.isInteger(targetIndex) ||
+      sourceIndex < 0 ||
+      targetIndex < 0 ||
+      sourceIndex >= BINGO_GRID_SIZE ||
+      targetIndex >= BINGO_GRID_SIZE ||
+      sourceIndex === targetIndex
+    ) {
+      return;
+    }
+
+    setBoard((current) => {
+      const next = current.slice();
+      const movingCharacter = next[sourceIndex];
+      if (!movingCharacter) return current;
+      next[sourceIndex] = next[targetIndex];
+      next[targetIndex] = movingCharacter;
+      return next;
+    });
+    setNotice(null);
+  }
+
+  function handleCellClick(index: number) {
+    if (skipNextCellClickRef.current) return;
+    setActiveIndex(index);
+  }
+
+  function findBoardIndexAtPoint(clientX: number, clientY: number): number | null {
+    const element = document.elementFromPoint(clientX, clientY);
+    const cell = element instanceof HTMLElement ? element.closest<HTMLElement>("[data-bingo-index]") : null;
+    if (!cell) return null;
+    const index = Number(cell.dataset.bingoIndex);
+    return Number.isInteger(index) && index >= 0 && index < BINGO_GRID_SIZE ? index : null;
+  }
+
+  function suppressNextCellClick() {
+    skipNextCellClickRef.current = true;
+    window.setTimeout(() => {
+      skipNextCellClickRef.current = false;
+    }, 0);
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<HTMLButtonElement>, index: number) {
+    if (!board[index]) {
+      return;
+    }
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    pointerDragRef.current = {
+      sourceIndex: index,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      isDragging: false,
+    };
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = pointerDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+    if (!drag.isDragging && distance < 8) return;
+
+    if (!drag.isDragging) {
+      drag.isDragging = true;
+      setDraggingIndex(drag.sourceIndex);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+
+    event.preventDefault();
+    const targetIndex = findBoardIndexAtPoint(event.clientX, event.clientY);
+    if (targetIndex !== null) setDragOverIndex(targetIndex);
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = pointerDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    pointerDragRef.current = null;
+    setDraggingIndex(null);
+    setDragOverIndex(null);
+
+    if (!drag.isDragging) return;
+
+    event.preventDefault();
+    suppressNextCellClick();
+    const targetIndex = findBoardIndexAtPoint(event.clientX, event.clientY);
+    if (targetIndex !== null) moveBoardCharacter(drag.sourceIndex, targetIndex);
+  }
+
+  function handlePointerCancel() {
+    pointerDragRef.current = null;
+    setDraggingIndex(null);
+    setDragOverIndex(null);
   }
 
   async function handleExport() {
@@ -645,7 +754,19 @@ export default function BingoTool() {
         <div className={styles.board} aria-label="予想ビンゴ盤">
           {board.map((character, index) => (
             <div key={index} className={styles.cellWrap}>
-              <button type="button" className={styles.cell} onClick={() => setActiveIndex(index)}>
+              <button
+                type="button"
+                className={`${styles.cell} ${character ? styles.cellDraggable : ""} ${
+                  draggingIndex === index ? styles.cellDragging : dragOverIndex === index ? styles.cellDropTarget : ""
+                }`}
+                data-bingo-index={index}
+                aria-grabbed={draggingIndex === index ? "true" : "false"}
+                onClick={() => handleCellClick(index)}
+                onPointerDown={(event) => handlePointerDown(event, index)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+              >
                 {character ? (
                   <BoardCharacterTile character={character} />
                 ) : (

@@ -153,6 +153,26 @@
   background: #f8fafc;
 }
 
+.cellDraggable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cellDraggable:active {
+  cursor: grabbing;
+}
+
+.cellDragging {
+  opacity: 0.48;
+}
+
+.cellDropTarget {
+  background: #eff6ff;
+  outline: 3px solid #2563eb;
+  outline-offset: -3px;
+}
+
 .emptyCell {
   font-size: 48px;
   line-height: 1;
