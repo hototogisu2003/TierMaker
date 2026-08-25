@@ -28,6 +28,19 @@ import FieldRow from "./FieldRow";
 import FruitPicker from "./FruitPicker";
 import styles from "./DamageCalcTool.module.css";
 
+type DamageCalcCharacter = {
+  id: string;
+  name: string;
+  nameKana: string;
+  attack: number;
+  iconUrl: string;
+};
+
+type CharacterSearchResponse = {
+  characters?: DamageCalcCharacter[];
+  message?: string;
+};
+
 type BooleanField = {
   [K in keyof DamageCalcState]: DamageCalcState[K] extends boolean ? K : never;
 }[keyof DamageCalcState];
@@ -153,6 +166,12 @@ export default function DamageCalcTool() {
   const [showNavMenu, setShowNavMenu] = React.useState(false);
   const [showFruitDetails, setShowFruitDetails] = React.useState(false);
   const [showBreakdown, setShowBreakdown] = React.useState(false);
+  const [showCharacterPicker, setShowCharacterPicker] = React.useState(false);
+  const [characterQuery, setCharacterQuery] = React.useState("");
+  const [characterResults, setCharacterResults] = React.useState<DamageCalcCharacter[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = React.useState<DamageCalcCharacter | null>(null);
+  const [isLoadingCharacters, setIsLoadingCharacters] = React.useState(false);
+  const [characterError, setCharacterError] = React.useState("");
   const navMenuRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
@@ -176,6 +195,45 @@ export default function DamageCalcTool() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [showNavMenu]);
 
+  React.useEffect(() => {
+    if (!showCharacterPicker) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setIsLoadingCharacters(true);
+      setCharacterError("");
+      try {
+        const response = await fetch(
+          `/api/damage-calc/characters?query=${encodeURIComponent(characterQuery)}&limit=30`,
+          { cache: "no-store" }
+        );
+        const data = (await response.json()) as CharacterSearchResponse;
+        if (!active) return;
+        if (!response.ok) throw new Error(data.message ?? "キャラクターの取得に失敗しました");
+        setCharacterResults(data.characters ?? []);
+      } catch (error) {
+        if (!active) return;
+        setCharacterResults([]);
+        setCharacterError(error instanceof Error ? error.message : "キャラクターの取得に失敗しました");
+      } finally {
+        if (active) setIsLoadingCharacters(false);
+      }
+    }, characterQuery.trim() ? 250 : 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [characterQuery, showCharacterPicker]);
+
+  React.useEffect(() => {
+    if (!showCharacterPicker) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowCharacterPicker(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showCharacterPicker]);
+
   const result = React.useMemo(() => computeDamage(state), [state]);
   const oneShot = React.useMemo(() => judgeOneShot(result.finalDamage, state), [result.finalDamage, state]);
   const stageOptions = React.useMemo(() => getStageMagnitudeOptions(state.stageType), [state.stageType]);
@@ -187,6 +245,12 @@ export default function DamageCalcTool() {
   const updateBooleanField = React.useCallback((field: BooleanField, value: boolean) => {
     setState((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  const selectCharacter = React.useCallback((character: DamageCalcCharacter) => {
+    setSelectedCharacter(character);
+    updateStringField("baseAttack", String(character.attack));
+    setShowCharacterPicker(false);
+  }, [updateStringField]);
 
   const updateAttackMode = React.useCallback((mode: AttackMode) => {
     setState((prev) => ({ ...prev, attackMode: mode }));
@@ -236,6 +300,8 @@ export default function DamageCalcTool() {
     setShowNavMenu(false);
     setShowFruitDetails(false);
     setShowBreakdown(false);
+    setSelectedCharacter(null);
+    setShowCharacterPicker(false);
   }, []);
 
   const renderField = React.useCallback(
@@ -530,10 +596,32 @@ export default function DamageCalcTool() {
                   </div>
 
                   <div className={styles.mainInputGrid}>
-                    <label className={cn(styles.inputGroup, styles.mainInputGroup)}>
+                    <div className={cn(styles.inputGroup, styles.mainInputGroup)}>
                       <span className={styles.inputLabel}>{state.attackMode === "direct" ? "攻撃力" : "友情威力"}</span>
-                      <Input className={styles.mainInputControl} value={state.baseAttack} onChange={(event) => updateStringField("baseAttack", event.target.value)} />
-                    </label>
+                      <Input
+                        className={styles.mainInputControl}
+                        value={state.baseAttack}
+                        onChange={(event) => {
+                          updateStringField("baseAttack", event.target.value);
+                          setSelectedCharacter(null);
+                        }}
+                      />
+                      {state.attackMode === "direct" ? (
+                        <>
+                          <button
+                            type="button"
+                            className={cn(styles.toggleButton, styles.mainInputControl, styles.characterSelectButton)}
+                            onClick={() => {
+                              setCharacterQuery("");
+                              setShowCharacterPicker(true);
+                            }}
+                          >
+                            キャラを選択
+                          </button>
+                          {selectedCharacter ? <span className={styles.selectedCharacterName}>{selectedCharacter.name}</span> : null}
+                        </>
+                      ) : null}
+                    </div>
 
                     {state.attackMode === "direct" ? (
                       <label className={cn(styles.inputGroup, styles.mainInputGroup)}>
@@ -770,6 +858,54 @@ export default function DamageCalcTool() {
         </div>
       )}
       </section>
+      {showCharacterPicker ? (
+        <div className={styles.characterModalOverlay} onClick={() => setShowCharacterPicker(false)}>
+          <section
+            className={styles.characterModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="character-picker-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.characterModalHeader}>
+              <h2 id="character-picker-title" className={styles.characterModalTitle}>キャラを選択</h2>
+              <button type="button" className={styles.characterModalClose} onClick={() => setShowCharacterPicker(false)} aria-label="閉じる">×</button>
+            </div>
+            <Input
+              className={styles.characterSearchInput}
+              value={characterQuery}
+              onChange={(event) => setCharacterQuery(event.target.value)}
+              placeholder="キャラクター名を検索"
+              autoFocus
+            />
+            {characterError ? <p className={styles.characterMessage}>{characterError}</p> : null}
+            {isLoadingCharacters ? <p className={styles.characterMessage}>読み込み中...</p> : null}
+            {!isLoadingCharacters && !characterError && characterResults.length === 0 ? (
+              <p className={styles.characterMessage}>該当するキャラクターが見つかりません。</p>
+            ) : null}
+            <div className={styles.characterResults}>
+              {characterResults.map((character) => (
+                <button
+                  key={character.id}
+                  type="button"
+                  className={styles.characterResult}
+                  onClick={() => selectCharacter(character)}
+                >
+                  {character.iconUrl ? (
+                    <img className={styles.characterResultIcon} src={character.iconUrl} alt="" />
+                  ) : (
+                    <span className={styles.characterResultFallback}>画像なし</span>
+                  )}
+                  <span className={styles.characterResultText}>
+                    <strong>{character.name}</strong>
+                  </span>
+                  <span className={styles.characterAttack}>攻撃力 {character.attack.toLocaleString("ja-JP")}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
       {activeTab === "calc" && (
         <div className={cn(styles.resultFooter, showBreakdown && styles.resultFooterOpen)} data-theme={theme}>
           <button
