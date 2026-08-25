@@ -1154,6 +1154,11 @@
     gap: 8px;
   }
 
+  .heroTitle {
+    font-size: clamp(13px, 3.7vw, 16px);
+    white-space: nowrap;
+  }
+
   .homeLink {
     width: 144px;
     height: 48px;
