@@ -44,6 +44,20 @@ export type SpotKey = "火" | "水" | "木" | "光" | "闇" | "王者";
 export type FruitGrade = "L" | "EL";
 export type CrestGrade = 0 | 1 | 2;
 
+export type CustomCharacter = {
+  id: string;
+  name: string;
+  element: CharacterItem["element"];
+  shuzoku: string;
+  gekishu: string;
+  senkei: string;
+  hp: number;
+  attack: number;
+  speed: number;
+  hasGauge: boolean;
+  iconUrl: string;
+};
+
 export type TeamSlot = {
   slotIndex: number;
   characterId: string;
@@ -55,6 +69,7 @@ export type TeamSlot = {
   crests: string[];
   crestGrades?: Record<string, CrestGrade>;
   slotMemo?: string;
+  customCharacter?: CustomCharacter;
 };
 
 export type TeamRecord = {
@@ -68,6 +83,7 @@ export type TeamRecord = {
   shugojuIconUrl?: string | null;
   mainSpot?: SpotKey | null;
   subSpot?: SpotKey | null;
+  hpItemUsed?: boolean;
   slots: TeamSlot[];
   memoText?: string;
   createdAt: string;

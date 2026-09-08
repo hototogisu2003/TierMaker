@@ -8,7 +8,7 @@ import styles from "./TeamManager.module.css";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
 import { CREST_AVAILABLE_GRADES_BY_ID, CREST_GRADE_LABEL, CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, CrestGrade, FruitGrade, QuestItem, ShugojuItem, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import type { CharacterItem, CrestGrade, CustomCharacter, FruitGrade, QuestItem, ShugojuItem, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -23,6 +23,13 @@ type DraftSlot = {
   crests: string[];
   crestGrades: Record<string, CrestGrade>;
   slotMemo: string;
+  customCharacter?: CustomCharacter;
+};
+
+type CustomCharacterDraft = Omit<CustomCharacter, "id" | "hp" | "attack" | "speed"> & {
+  hp: string;
+  attack: string;
+  speed: string;
 };
 
 type SharePayload = {
@@ -36,6 +43,7 @@ type SharePayload = {
   shugojuIconUrl?: string;
   mainSpot?: SpotKey;
   subSpot?: SpotKey;
+  hpItemUsed?: boolean;
   memoText?: string;
   slots?: Array<{
     slotIndex?: number;
@@ -46,10 +54,12 @@ type SharePayload = {
     crests?: string[];
     crestGrades?: Record<string, CrestGrade>;
     slotMemo?: string;
+    customCharacter?: CustomCharacter;
   }>;
 };
 
-type CompactShareSlot = [string?, number[]?, number[]?, string?];
+type CompactCustomCharacter = [string, CharacterItem["element"], string, string, string, number, number, number, 0 | 1];
+type CompactShareSlot = [string?, number[]?, number[]?, string?, CompactCustomCharacter?];
 type CompactSharePayloadV2 = {
   v: 2;
   t?: string;
@@ -57,11 +67,14 @@ type CompactSharePayloadV2 = {
   s?: string;
   pm?: SpotKey;
   ps?: SpotKey;
+  h?: 1;
   m?: string;
   a?: CompactShareSlot[];
 };
 
 const ELEMENT_OPTIONS = ["火", "水", "木", "光", "闇"] as const;
+const GEKISHU_OPTIONS = ["反射", "貫通"] as const;
+const SENKEI_OPTIONS = ["バランス", "スピード", "砲撃", "パワー"] as const;
 const OBTAIN_OPTIONS = ["ガチャ", "降臨", "コラボパック"] as const;
 const GACHA_OPTIONS = ["限定", "α", "恒常", "コラボ"] as const;
 const FORM_OPTIONS = ["進化/神化", "獣神化", "獣神化改", "真獣神化"] as const;
@@ -82,6 +95,9 @@ const SHUGOJU_VISIBLE_ROWS = 5;
 const SPOT_OPTIONS = ["火", "水", "木", "光", "闇", "王者"] as const satisfies readonly SpotKey[];
 const SPOT_MAIN_BONUS = { hp: 2000, attack: 2000, speed: 40.8 } as const;
 const SPOT_SUB_BONUS = { hp: 1500, attack: 1500, speed: 30.6 } as const;
+const HP_ITEM_BONUS = 10000;
+const CUSTOM_ICON_SIZE = 256;
+const CUSTOM_ICON_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
 const SLOT_LABELS = ["1st", "2nd", "3rd", "4th"] as const;
 const ELEMENT_HEADER_COLOR: Record<NonNullable<CharacterItem["element"]>, string> = {
@@ -106,6 +122,81 @@ const KOKO_FRUIT_ID = 33;
 const CREST_NAME_BY_ID = new Map<number, string>(
   Object.entries(CREST_ID_BY_NAME).map(([name, id]) => [id, name])
 );
+
+function emptyCustomCharacterDraft(): CustomCharacterDraft {
+  return { name: "", element: "", shuzoku: "", gekishu: "", senkei: "", hp: "", attack: "", speed: "", hasGauge: false, iconUrl: "" };
+}
+
+async function imageFileToSquareDataUrl(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("画像ファイルを選択してください");
+  if (file.size > CUSTOM_ICON_MAX_FILE_SIZE) throw new Error("画像は10MB以下のファイルを選択してください");
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const loadedImage = new Image();
+      loadedImage.onload = () => resolve(loadedImage);
+      loadedImage.onerror = () => reject(new Error("画像を読み込めませんでした"));
+      loadedImage.src = objectUrl;
+    });
+    if (!image.naturalWidth || !image.naturalHeight) throw new Error("画像サイズを取得できませんでした");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = CUSTOM_ICON_SIZE;
+    canvas.height = CUSTOM_ICON_SIZE;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("画像を変換できませんでした");
+
+    context.clearRect(0, 0, CUSTOM_ICON_SIZE, CUSTOM_ICON_SIZE);
+    const scale = Math.min(CUSTOM_ICON_SIZE / image.naturalWidth, CUSTOM_ICON_SIZE / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    context.drawImage(image, (CUSTOM_ICON_SIZE - width) / 2, (CUSTOM_ICON_SIZE - height) / 2, width, height);
+    return canvas.toDataURL("image/webp", 0.88);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function normalizeCustomCharacter(raw: unknown): CustomCharacter | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const value = raw as Record<string, unknown>;
+  const name = typeof value.name === "string" ? value.name.trim() : "";
+  const hp = Number(value.hp);
+  const attack = Number(value.attack);
+  const speed = Number(value.speed);
+  if (!name || !Number.isFinite(hp) || !Number.isFinite(attack) || !Number.isFinite(speed)) return undefined;
+  return {
+    id: typeof value.id === "string" && value.id ? value.id : `custom-${makeId()}`,
+    name,
+    element: ELEMENT_OPTIONS.includes(value.element as (typeof ELEMENT_OPTIONS)[number]) ? (value.element as CharacterItem["element"]) : "",
+    shuzoku: typeof value.shuzoku === "string" ? value.shuzoku.trim() : "",
+    gekishu: typeof value.gekishu === "string" ? value.gekishu.trim() : "",
+    senkei: typeof value.senkei === "string" ? value.senkei.trim() : "",
+    hp,
+    attack,
+    speed,
+    hasGauge: value.hasGauge === true || value.hasGauge === 1,
+    iconUrl: typeof value.iconUrl === "string" ? value.iconUrl : "",
+  };
+}
+
+function customCharacterFromTuple(raw: unknown, characterId: string): CustomCharacter | undefined {
+  if (!Array.isArray(raw) || raw.length < 8) return undefined;
+  const hasElement = raw.length >= 9;
+  return normalizeCustomCharacter({
+    id: characterId || `custom-${makeId()}`,
+    name: raw[0],
+    element: hasElement ? raw[1] : "",
+    shuzoku: raw[hasElement ? 2 : 1],
+    gekishu: raw[hasElement ? 3 : 2],
+    senkei: raw[hasElement ? 4 : 3],
+    hp: raw[hasElement ? 5 : 4],
+    attack: raw[hasElement ? 6 : 5],
+    speed: raw[hasElement ? 7 : 6],
+    hasGauge: raw[hasElement ? 8 : 7] === 1,
+  });
+}
 
 function emptySlots(): DraftSlot[] {
   return [0, 1, 2, 3].map((slotIndex) => ({
@@ -223,6 +314,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
       shugojuId: typeof v2.s === "string" ? v2.s : "",
       mainSpot: SPOT_OPTIONS.includes(v2.pm as SpotKey) ? (v2.pm as SpotKey) : undefined,
       subSpot: SPOT_OPTIONS.includes(v2.ps as SpotKey) ? (v2.ps as SpotKey) : undefined,
+      hpItemUsed: v2.h === 1,
       memoText: typeof v2.m === "string" ? v2.m : "",
       slots: [0, 1, 2, 3].map((slotIndex) => {
         const tuple = slots[slotIndex];
@@ -230,6 +322,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
         const fruitNums = Array.isArray(tuple) && Array.isArray(tuple[1]) ? tuple[1] : [];
         const crestNums = Array.isArray(tuple) && Array.isArray(tuple[2]) ? tuple[2] : [];
         const slotMemo = Array.isArray(tuple) && typeof tuple[3] === "string" ? tuple[3] : "";
+        const customCharacter = Array.isArray(tuple) ? customCharacterFromTuple(tuple[4], characterId) : undefined;
         const fruits: string[] = [];
         const fruitGradesList: FruitGrade[] = [];
         for (const n of fruitNums) {
@@ -262,6 +355,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
           crests,
           crestGrades,
           slotMemo,
+          customCharacter,
         };
       }),
     };
@@ -357,6 +451,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isShugojuModalOpen, setIsShugojuModalOpen] = useState(false);
   const [mainSpot, setMainSpot] = useState<SpotKey | "">("");
   const [subSpot, setSubSpot] = useState<SpotKey | "">("");
+  const [hpItemUsed, setHpItemUsed] = useState(false);
   const [isSpotModalOpen, setIsSpotModalOpen] = useState(false);
   const [shugojuListScrollTop, setShugojuListScrollTop] = useState(0);
   const [memoText, setMemoText] = useState("");
@@ -394,6 +489,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
+  const [isCustomCharacterOpen, setIsCustomCharacterOpen] = useState(false);
+  const [customCharacterDraft, setCustomCharacterDraft] = useState<CustomCharacterDraft>(emptyCustomCharacterDraft);
   const [isFruitModalOpen, setIsFruitModalOpen] = useState(false);
   const [isCrestModalOpen, setIsCrestModalOpen] = useState(false);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
@@ -501,6 +598,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     for (const c of characters) map.set(c.id, c);
     return map;
   }, [characters]);
+  const characterOf = (slot: DraftSlot): CharacterItem | CustomCharacter | null => {
+    if (slot.customCharacter) return slot.customCharacter;
+    return slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+  };
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
   const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
@@ -532,13 +633,13 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   };
   const fruitOptionByName = useMemo(() => new Map(FRUIT_OPTIONS.map((option) => [option.name, option])), []);
   const fruitBonusTotalsOf = (slot: DraftSlot) => {
-    const currentCharacter = slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+    const currentCharacter = characterOf(slot);
     if (!currentCharacter) return { hp: 0, attack: 0, speed: 0 };
 
     const totals = { hp: 0, attack: 0, speed: 0 };
     const sameShuzokuCount = currentCharacter.shuzoku
       ? slots.reduce((count, otherSlot) => {
-          const otherCharacter = otherSlot.characterId ? charMap.get(otherSlot.characterId) ?? null : null;
+          const otherCharacter = characterOf(otherSlot);
           return count + (otherCharacter?.shuzoku === currentCharacter.shuzoku ? 1 : 0);
         }, 0)
       : 0;
@@ -546,7 +647,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     const sharedGroups: Array<{
       ids: number[];
       value: string;
-      getValue: (character: CharacterItem) => string;
+      getValue: (character: Pick<CharacterItem, "shuzoku" | "gekishu" | "senkei">) => string;
     }> = [
       { ids: [1, 2, 3, 10, 11, 12], value: currentCharacter.shuzoku, getValue: (character) => character.shuzoku },
       { ids: [4, 5, 6, 13, 14, 15], value: currentCharacter.gekishu, getValue: (character) => character.gekishu },
@@ -574,7 +675,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       if (!group.value) return;
       const bestById = new Map<number, FruitGrade>();
       slots.forEach((otherSlot) => {
-        const otherCharacter = otherSlot.characterId ? charMap.get(otherSlot.characterId) ?? null : null;
+        const otherCharacter = characterOf(otherSlot);
         if (!otherCharacter || group.getValue(otherCharacter) !== group.value) return;
         otherSlot.fruits.forEach((fruitName, index) => {
           const option = fruitOptionByName.get(fruitName);
@@ -592,7 +693,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     return totals;
   };
   const spotBonusTotalsOf = (slot: DraftSlot) => {
-    const currentCharacter = slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+    const currentCharacter = characterOf(slot);
     if (!currentCharacter || !currentCharacter.element) return { hp: 0, attack: 0, speed: 0 };
 
     const mainApplies = Boolean(mainSpot) && (mainSpot === "王者" || mainSpot === currentCharacter.element);
@@ -627,6 +728,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     const text = label === "スピード" ? formatSpeedText(value, 1) : String(Math.round(value));
     return `(+${text})`;
   };
+  const totalTeamHp = slots.reduce((total, slot) => {
+    const character = characterOf(slot);
+    if (!character) return total;
+    return total + Math.round(character.hp + statusBonusTotalsOf(slot).hp);
+  }, 0);
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
     const keyword = appliedQuestKeyword.trim().toLowerCase();
@@ -822,7 +928,81 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   function activateSlot(slotIndex: number) {
     setActiveSlotIndex(slotIndex);
+    setIsCustomCharacterOpen(false);
     clearCharacterSearchState();
+  }
+
+  function openCustomCharacterEditor() {
+    const current = slots.find((slot) => slot.slotIndex === editorSlotIndex)?.customCharacter;
+    setCustomCharacterDraft(
+      current
+        ? {
+            name: current.name,
+            element: current.element,
+            shuzoku: current.shuzoku,
+            gekishu: current.gekishu,
+            senkei: current.senkei,
+            hp: String(current.hp),
+            attack: String(current.attack),
+            speed: String(current.speed),
+            hasGauge: current.hasGauge,
+            iconUrl: current.iconUrl,
+          }
+        : emptyCustomCharacterDraft()
+    );
+    setIsCustomCharacterOpen(true);
+    setHasSearched(false);
+    setIsFilterOpen(false);
+  }
+
+  function applyCustomCharacter() {
+    const hp = Number(customCharacterDraft.hp);
+    const attack = Number(customCharacterDraft.attack);
+    const speed = Number(customCharacterDraft.speed);
+    if (!customCharacterDraft.name.trim()) {
+      setMessage("手入力キャラクターの名前を入力してください");
+      return;
+    }
+    if (
+      !GEKISHU_OPTIONS.includes(customCharacterDraft.gekishu as (typeof GEKISHU_OPTIONS)[number]) ||
+      !SENKEI_OPTIONS.includes(customCharacterDraft.senkei as (typeof SENKEI_OPTIONS)[number])
+    ) {
+      setMessage("撃種と戦型を選択してください");
+      return;
+    }
+    const statInputs = [customCharacterDraft.hp, customCharacterDraft.attack, customCharacterDraft.speed];
+    if (statInputs.some((value) => !value.trim()) || ![hp, attack, speed].every((value) => Number.isFinite(value) && value >= 0)) {
+      setMessage("HP・攻撃・スピードは0以上の数値で入力してください");
+      return;
+    }
+    const existing = slots.find((slot) => slot.slotIndex === editorSlotIndex)?.customCharacter;
+    const customCharacter: CustomCharacter = {
+      id: existing?.id ?? `custom-${makeId()}`,
+      name: customCharacterDraft.name.trim(),
+      element: customCharacterDraft.element,
+      shuzoku: customCharacterDraft.shuzoku.trim(),
+      gekishu: customCharacterDraft.gekishu.trim(),
+      senkei: customCharacterDraft.senkei.trim(),
+      hp,
+      attack,
+      speed,
+      hasGauge: customCharacterDraft.hasGauge,
+      iconUrl: customCharacterDraft.iconUrl,
+    };
+    updateSlot(editorSlotIndex, { characterId: customCharacter.id, customCharacter });
+    setIsCustomCharacterOpen(false);
+    if (isCharacterModalOpen) setIsCharacterModalOpen(false);
+  }
+
+  async function setCustomCharacterImage(file: File | undefined) {
+    if (!file) return;
+    try {
+      const iconUrl = await imageFileToSquareDataUrl(file);
+      setCustomCharacterDraft((prev) => ({ ...prev, iconUrl }));
+      setMessage("画像を1:1に変換しました");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "画像の読み込みに失敗しました");
+    }
   }
 
   function toggleElementFilter(element: CharacterItem["element"]) {
@@ -902,6 +1082,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: to.characterId,
+            customCharacter: to.customCharacter ? { ...to.customCharacter } : undefined,
             fruits: [...to.fruits],
             fruitGrades: [...to.fruitGrades],
             crests: [...to.crests],
@@ -913,6 +1094,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: from.characterId,
+            customCharacter: from.customCharacter ? { ...from.customCharacter } : undefined,
             fruits: [...from.fruits],
             fruitGrades: [...from.fruitGrades],
             crests: [...from.crests],
@@ -930,7 +1112,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setSlots((prev) =>
       prev.map((slot) =>
         slot.slotIndex === slotIndex
-          ? { ...slot, characterId: "", fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
+          ? { ...slot, characterId: "", customCharacter: undefined, fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
           : slot
       )
     );
@@ -1034,12 +1216,15 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsShugojuModalOpen(false);
     setMainSpot("");
     setSubSpot("");
+    setHpItemUsed(false);
     setIsSpotModalOpen(false);
     setMemoText("");
     setSlots(emptySlots());
     setActiveSlotIndex(0);
     setModalSlotIndex(null);
     setIsCharacterModalOpen(false);
+    setIsCustomCharacterOpen(false);
+    setCustomCharacterDraft(emptyCustomCharacterDraft());
     setIsFruitModalOpen(false);
     setIsCrestModalOpen(false);
     if (typeof window !== "undefined") {
@@ -1065,6 +1250,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsShugojuModalOpen(false);
     setMainSpot(record.mainSpot ?? "");
     setSubSpot(record.subSpot ?? "");
+    setHpItemUsed(Boolean(record.hpItemUsed));
     setIsSpotModalOpen(false);
     setMemoText(record.memoText ?? "");
     setSlots(
@@ -1073,6 +1259,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         return {
           slotIndex,
           characterId: found?.characterId ?? "",
+          customCharacter: normalizeCustomCharacter(found?.customCharacter),
           fruits: found?.fruits ?? [],
           fruitGrades: normalizeFruitGradeList(found?.fruits ?? [], found?.fruitGradesList, found?.fruitGrades),
           crests: found?.crests ?? [],
@@ -1098,10 +1285,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setShugojuKeyword(payload.shugojuName ?? "");
     setMainSpot(payload.mainSpot ?? "");
     setSubSpot(payload.subSpot ?? "");
+    setHpItemUsed(Boolean(payload.hpItemUsed));
     setMemoText(payload.memoText ?? "");
     setActiveSlotIndex(0);
     setModalSlotIndex(null);
     setIsCharacterModalOpen(false);
+    setIsCustomCharacterOpen(false);
     setIsFruitModalOpen(false);
     setIsCrestModalOpen(false);
 
@@ -1123,6 +1312,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         return {
           slotIndex,
           characterId: (found?.characterId ?? "").toString(),
+          customCharacter: normalizeCustomCharacter(found?.customCharacter),
           fruits,
           fruitGrades,
           crests,
@@ -1153,7 +1343,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     }
 
     const finalSlots: TeamSlot[] = slots.map((slot) => {
-      const c = charMap.get(slot.characterId);
+      const c = characterOf(slot);
       return {
         slotIndex: slot.slotIndex,
         characterId: slot.characterId,
@@ -1165,6 +1355,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         crests: slot.crests.slice(0, 4),
         crestGrades: Object.fromEntries(slot.crests.slice(0, 4).map((name) => [name, slot.crestGrades[name] ?? crestDefaultGradeOf(name)])),
         slotMemo: slot.slotMemo,
+        customCharacter: slot.customCharacter,
       };
     });
 
@@ -1180,6 +1371,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       shugojuIconUrl: selectedShugoju?.iconUrl ?? null,
       mainSpot: mainSpot || null,
       subSpot: subSpot || null,
+      hpItemUsed,
       slots: finalSlots,
       memoText,
       createdAt: currentEditing?.createdAt ?? nowText(),
@@ -1268,8 +1460,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             return id * 10 + grade;
           })
           .filter((v): v is number => v !== null);
-        const tuple: CompactShareSlot = [slot.characterId, fruits, crests];
-        if (slot.slotMemo.trim()) tuple.push(slot.slotMemo);
+        const tuple: CompactShareSlot = [slot.characterId, fruits, crests, slot.slotMemo.trim() || undefined];
+        if (slot.customCharacter) {
+          const custom = slot.customCharacter;
+          tuple[4] = [custom.name, custom.element, custom.shuzoku, custom.gekishu, custom.senkei, custom.hp, custom.attack, custom.speed, custom.hasGauge ? 1 : 0];
+        }
         return tuple;
       });
       const payload: CompactSharePayloadV2 = {
@@ -1279,6 +1474,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         s: selectedShugoju?.id || undefined,
         pm: mainSpot || undefined,
         ps: subSpot || undefined,
+        h: hpItemUsed ? 1 : undefined,
         m: memoText.trim() || undefined,
         a: compactSlots,
       };
@@ -1333,6 +1529,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setActiveSlotIndex(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCharacterModalOpen(true);
+    setIsCustomCharacterOpen(false);
     setCharacterListScrollLeft(0);
     if (characterListRef.current) {
       characterListRef.current.scrollLeft = 0;
@@ -1355,16 +1552,106 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const editorSlotIndex = activeSlotIndex;
   const editorSlot = slots[editorSlotIndex] ?? slots[0];
   const modalSlot = modalSlotIndex !== null ? slots.find((s) => s.slotIndex === modalSlotIndex) ?? null : null;
-  const editorCharacter = editorSlot.characterId ? charMap.get(editorSlot.characterId) ?? null : null;
+  const editorCharacter = characterOf(editorSlot);
   const isGachaObtainEnabled = selectedObtains.has("ガチャ");
   const isQuestObtainEnabled = selectedObtains.has("降臨");
+
+  const renderCustomCharacterForm = () => (
+    <div className={styles.customCharacterPanel}>
+      <div className={styles.customCharacterGrid}>
+        <label className={styles.customCharacterField}>
+          <span>名前</span>
+          <input className={styles.input} value={customCharacterDraft.name} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, name: e.target.value }))} />
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>属性</span>
+          <select
+            className={styles.select}
+            value={customCharacterDraft.element}
+            onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, element: e.target.value as CharacterItem["element"] }))}
+          >
+            <option value="">選択してください</option>
+            {ELEMENT_OPTIONS.map((element) => <option key={element} value={element}>{element}</option>)}
+          </select>
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>種族</span>
+          <input className={styles.input} value={customCharacterDraft.shuzoku} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, shuzoku: e.target.value }))} />
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>撃種</span>
+          <select className={styles.select} value={customCharacterDraft.gekishu} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, gekishu: e.target.value }))}>
+            <option value="">選択してください</option>
+            {GEKISHU_OPTIONS.map((gekishu) => <option key={gekishu} value={gekishu}>{gekishu}</option>)}
+          </select>
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>戦型</span>
+          <select className={styles.select} value={customCharacterDraft.senkei} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, senkei: e.target.value }))}>
+            <option value="">選択してください</option>
+            {SENKEI_OPTIONS.map((senkei) => <option key={senkei} value={senkei}>{senkei}</option>)}
+          </select>
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>HP</span>
+          <input className={styles.input} type="number" min="0" inputMode="numeric" value={customCharacterDraft.hp} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, hp: e.target.value }))} />
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>攻撃</span>
+          <input className={styles.input} type="number" min="0" inputMode="numeric" value={customCharacterDraft.attack} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, attack: e.target.value }))} />
+        </label>
+        <label className={styles.customCharacterField}>
+          <span>スピード</span>
+          <input className={styles.input} type="number" min="0" step="0.01" inputMode="decimal" value={customCharacterDraft.speed} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, speed: e.target.value }))} />
+        </label>
+        <label className={`${styles.customCharacterField} ${styles.customCharacterGauge}`}>
+          <span>ゲージ可否</span>
+          <span><input type="checkbox" checked={customCharacterDraft.hasGauge} onChange={(e) => setCustomCharacterDraft((prev) => ({ ...prev, hasGauge: e.target.checked }))} /> ゲージあり</span>
+        </label>
+        <div className={`${styles.customCharacterField} ${styles.customCharacterImageField}`}>
+          <span>画像</span>
+          <div className={styles.customCharacterImageControls}>
+            {customCharacterDraft.iconUrl ? (
+              <img className={styles.customCharacterImagePreview} src={customCharacterDraft.iconUrl} alt="手入力キャラクター画像のプレビュー" />
+            ) : (
+              <span className={styles.customCharacterImagePlaceholder}>画像なし</span>
+            )}
+            <label className={`${styles.btn} ${styles.customCharacterImageButton}`}>
+              画像を選択
+              <input
+                className={styles.visuallyHidden}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  e.currentTarget.value = "";
+                  void setCustomCharacterImage(file);
+                }}
+              />
+            </label>
+            {customCharacterDraft.iconUrl ? (
+              <button className={styles.btn} type="button" onClick={() => setCustomCharacterDraft((prev) => ({ ...prev, iconUrl: "" }))}>画像を削除</button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className={styles.customCharacterActions}>
+        <button className={`${styles.btn} ${styles.primary}`} type="button" onClick={applyCustomCharacter}>表に入れる</button>
+        <button className={styles.btn} type="button" onClick={() => setIsCustomCharacterOpen(false)}>キャンセル</button>
+      </div>
+    </div>
+  );
 
   const renderEditorPane = (className: string) => (
     <div className={className}>
       <div className={`${styles.label} ${styles.editorHeader}`}>{editorSlotIndex + 1}体目を編集</div>
       {editorCharacter ? (
         <div className={styles.editorSelectedChar}>
-          <img className={styles.editorSelectedCharImg} src={editorCharacter.iconUrl} alt={editorCharacter.name} />
+          {editorCharacter.iconUrl ? (
+            <img className={styles.editorSelectedCharImg} src={editorCharacter.iconUrl} alt={editorCharacter.name} />
+          ) : (
+            <span className={styles.customCharacterBadge}>手入力</span>
+          )}
           <span>{editorCharacter.name}</span>
         </div>
       ) : null}
@@ -1400,7 +1687,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </svg>
         </button>
         <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
+        <button className={`${styles.btn} ${styles.customCharacterButton}`} type="button" onClick={openCustomCharacterEditor}>
+          ステータスを手入力
+        </button>
       </div>
+
+      {isCustomCharacterOpen ? renderCustomCharacterForm() : null}
 
       {hasSearched ? (
         <div
@@ -1415,8 +1707,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               type="button"
               className={styles.pickItem}
               onClick={() => {
-                updateSlot(editorSlotIndex, { characterId: c.id });
+                updateSlot(editorSlotIndex, { characterId: c.id, customCharacter: undefined });
                 setHasSearched(false);
+                setIsCustomCharacterOpen(false);
               }}
             >
               <img className={styles.pickItemImg} src={c.iconUrl} alt={c.name} />
@@ -1786,7 +2079,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
               <div className={styles.teamSheet}>
                 {slots.map((slot) => {
-                  const c = slot.characterId ? charMap.get(slot.characterId) : null;
+                  const c = characterOf(slot);
                   const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
                   const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
                   const fruitBonusTotals = statusBonusTotalsOf(slot);
@@ -1848,7 +2141,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                             {c?.iconUrl ? (
                               <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
                             ) : (
-                              <span className={styles.sheetSelectText}>キャラを選択</span>
+                              <span className={styles.sheetSelectText}>{c ? "手入力" : "キャラを選択"}</span>
                             )}
                           </div>
                           <div className={styles.detailWrap}>
@@ -1974,6 +2267,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
             {renderEditorPane(styles.rightPane)}
           </div>
+          <div className={styles.totalHpRow}>
+            <span>合計HP</span>
+            <strong>{(totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0)).toLocaleString("ja-JP")}</strong>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.hpItemButton}`}
+              data-selected={hpItemUsed ? "1" : "0"}
+              aria-pressed={hpItemUsed}
+              onClick={() => setHpItemUsed((current) => !current)}
+            >
+              HPアイテムを使用
+            </button>
+          </div>
           <div>
                 <div className={styles.supportRow}>
               <button
@@ -2007,8 +2313,14 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           {isCharacterModalOpen && modalSlot ? (
             <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsCharacterModalOpen(false)}>
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>{modalSlot.slotIndex + 1}体目 キャラ選択</div>
-                <div className={styles.row}>
+                <div className={styles.characterModalHeader}>
+                  <div className={styles.label}>{modalSlot.slotIndex + 1}体目 キャラ選択</div>
+                  <button className={`${styles.btn} ${styles.customCharacterButton}`} type="button" onClick={openCustomCharacterEditor}>
+                    ステータス手入力
+                  </button>
+                </div>
+                {isCustomCharacterOpen ? renderCustomCharacterForm() : <>
+                  <div className={styles.row}>
                   <input
                     className={styles.input}
                     value={nameFilter}
@@ -2026,8 +2338,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     placeholder="キャラ名検索"
                   />
                   <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
-                </div>
-                {hasSearched ? (
+                  </div>
+                  {hasSearched ? (
                   <div
                     ref={characterListRef}
                     className={`${styles.pickList} ${isMobileViewport ? styles.pickListGrid : ""}`}
@@ -2040,7 +2352,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         type="button"
                         className={styles.pickItem}
                         onClick={() => {
-                          updateSlot(modalSlot.slotIndex, { characterId: c.id });
+                          updateSlot(modalSlot.slotIndex, { characterId: c.id, customCharacter: undefined });
                           setIsCharacterModalOpen(false);
                           setHasSearched(false);
                         }}
@@ -2052,7 +2364,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     {isMobileViewport ? null : <div style={{ width: characterVirtual.paddingRight, flex: "0 0 auto" }} />}
                     {filteredCharacters.length === 0 ? <div className={styles.helper}>該当キャラがいません</div> : null}
                   </div>
-                ) : null}
+                  ) : null}
+                </>}
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>
                   <button className={styles.btn} type="button" onClick={() => setIsCharacterModalOpen(false)}>閉じる</button>
                 </div>
@@ -2445,7 +2758,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 {exportColumns.map((columnSlots, columnIndex) => (
                   <div key={`export-column-${columnIndex}`} className={styles.exportTeamColumn}>
                     {columnSlots.map((slot) => {
-                      const c = slot.characterId ? charMap.get(slot.characterId) : null;
+                      const c = characterOf(slot);
                       const fruitRows = Array.from({ length: 4 }, (_, i) => slot.fruits[i] ?? "");
                       const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
                       const fruitBonusTotals = statusBonusTotalsOf(slot);
@@ -2470,7 +2783,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                               {c?.iconUrl ? (
                                 <img className={styles.sheetIcon} src={c.iconUrl} alt={c.name} />
                               ) : (
-                                <span className={styles.sheetSelectText}>選択</span>
+                                <span className={styles.sheetSelectText}>{c ? "手入力" : "選択"}</span>
                               )}
                             </div>
                             <div className={styles.detailWrap}>
