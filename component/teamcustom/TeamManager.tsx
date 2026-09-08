@@ -999,7 +999,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     try {
       const iconUrl = await imageFileToSquareDataUrl(file);
       setCustomCharacterDraft((prev) => ({ ...prev, iconUrl }));
-      setMessage("画像を1:1に変換しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "画像の読み込みに失敗しました");
     }
