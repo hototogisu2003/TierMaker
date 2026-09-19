@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   BINGO_ELEMENTS,
-  BINGO_EXCEPTION_CHARACTER_IDS,
   BINGO_EXCLUDED_CHARACTER_IDS,
   BINGO_FORMS,
   BINGO_GRID_SIZE,
@@ -105,8 +104,7 @@ function toCharacterSummary(
 
 function buildEligibleCharacterFilter(): string {
   const gachaFilter = BINGO_TARGET_GACHAS.map((value) => `"${value}"`).join(",");
-  const exceptionFilter = BINGO_EXCEPTION_CHARACTER_IDS.join(",");
-  return `and(obtain.eq.ガチャ,gacha.in.(${gachaFilter})),id.in.(${exceptionFilter})`;
+  return `and(obtain.eq.ガチャ,gacha.in.(${gachaFilter}))`;
 }
 
 function isExcludedCharacterId(id: string): boolean {
