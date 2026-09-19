@@ -351,10 +351,10 @@
 
 .optionGrid .crestOptionBtn {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 15px minmax(0, 1fr);
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .crestOptionBtn > span {
@@ -363,8 +363,8 @@
 }
 
 .crestOptionIcon {
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   object-fit: contain;
   justify-self: start;
 }
@@ -2248,6 +2248,7 @@
   .optionGrid .crestOptionBtn {
     grid-template-columns: 16px minmax(0, 1fr);
     gap: 3px;
+    font-size: 10px;
   }
 
   .crestOptionIcon {
