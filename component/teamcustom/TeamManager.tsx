@@ -626,7 +626,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (typeof grade === "number") return grade;
     return crestDefaultGradeOf(crestName);
   };
-  const crestLabel = (crestName: string, grade: CrestGrade): string => `${crestName}${CREST_GRADE_LABEL[grade]}`;
+  const crestDisplayName = (crestName: string): string => crestName === "ハートパネルマスター" ? "HPマスター" : crestName;
+  const crestLabel = (crestName: string, grade: CrestGrade): string => `${crestDisplayName(crestName)}${CREST_GRADE_LABEL[grade]}`;
   const crestIconSrc = (crestName: string, grade: CrestGrade) => {
     const id = crestIdOf(crestName);
     return id ? `/soulskill/skill_${id}_${grade}.png` : "";
@@ -776,7 +777,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, TEAM_RECORD_LIMIT),
     [arrangeIds, records]
   );
-  const exportColumns = useMemo(() => [slots.slice(0, 2), slots.slice(2, 4)], [slots]);
+  const exportColumns = useMemo(() => [[slots[0], slots[2]], [slots[1], slots[3]]], [slots]);
 
   const filteredFruitOptions = useMemo(
     () => FRUIT_OPTIONS.filter((option) => (fruitFilter === "status" ? option.isStatus : !option.isStatus)),
@@ -1916,15 +1917,16 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         <div className={styles.editorColumn}>
           <div className={styles.helper} style={{ marginBottom: 6 }}>紋章 (最大4つ)</div>
           <div className={`${styles.row} ${styles.optionGrid}`}>
-            {CREST_OPTIONS.map((value) => (
+            {CREST_OPTIONS.map((value, index) => (
               <button
                 key={value}
-                className={`${styles.btn} ${styles.optionBtn}`}
+                className={`${styles.btn} ${styles.optionBtn} ${styles.crestOptionBtn}`}
                 type="button"
                 style={{ background: editorSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
                 onClick={() => toggleOption(editorSlotIndex, "crests", value, 4)}
               >
-                {value}
+                <img className={styles.crestOptionIcon} src={`/soulskill/skill_${index + 1}_0.png`} alt="" aria-hidden="true" />
+                <span>{crestDisplayName(value)}</span>
               </button>
             ))}
           </div>
@@ -2453,15 +2455,16 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
                 <div className={styles.label}>{modalSlot.slotIndex + 1}体目 紋章</div>
                 <div className={`${styles.row} ${styles.optionGrid}`}>
-                  {CREST_OPTIONS.map((value) => (
+                  {CREST_OPTIONS.map((value, index) => (
                     <button
                       key={value}
-                      className={`${styles.btn} ${styles.optionBtn}`}
+                      className={`${styles.btn} ${styles.optionBtn} ${styles.crestOptionBtn}`}
                       type="button"
                       style={{ background: modalSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
                       onClick={() => toggleOption(modalSlot.slotIndex, "crests", value, 4)}
                     >
-                      {value}
+                      <img className={styles.crestOptionIcon} src={`/soulskill/skill_${index + 1}_0.png`} alt="" aria-hidden="true" />
+                      <span>{crestDisplayName(value)}</span>
                     </button>
                   ))}
                 </div>

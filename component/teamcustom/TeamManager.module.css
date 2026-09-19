@@ -18,7 +18,7 @@
 }
 
 .exportSheet .slotMemoCell {
-  grid-template-columns: 46px 1fr;
+  grid-template-columns: 60px 1fr;
 }
 
 .exportSheet .teamRank,
@@ -86,17 +86,17 @@
 }
 
 .exportSheet .slotMemoLabel {
-  min-height: 44px;
+  min-height: 30px;
   font-size: 15px;
   line-height: 1.2;
-  padding: 6px 8px;
+  padding: 1px 8px;
 }
 
 .exportSheet .slotMemoText {
-  min-height: 44px;
+  min-height: 30px;
   font-size: 22px;
   line-height: 1.2;
-  padding: 6px 8px;
+  padding: 1px 8px;
 }
 
 .topBand {
@@ -347,6 +347,26 @@
   min-width: 0;
   justify-content: center;
   text-align: center;
+}
+
+.optionGrid .crestOptionBtn {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.crestOptionBtn > span {
+  min-width: 0;
+  text-align: center;
+}
+
+.crestOptionIcon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  justify-self: start;
 }
 
 .iconBtn {
@@ -1839,14 +1859,14 @@
 }
 
 .exportSheet .slotMemoCell {
-  grid-template-columns: 46px 1fr;
+  grid-template-columns: 60px 1fr;
 }
 
 .exportSheet .slotMemoLabel,
 .exportSheet .slotMemoText {
-  min-height: 44px;
+  min-height: 30px;
   line-height: 1.2;
-  padding: 6px 8px;
+  padding: 1px 8px;
 }
 
 .exportSheet .slotMemoLabel {
@@ -2223,6 +2243,16 @@
     padding: 6px 4px;
     justify-content: center;
     text-align: center;
+  }
+
+  .optionGrid .crestOptionBtn {
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .crestOptionIcon {
+    width: 16px;
+    height: 16px;
   }
 
   .arrangeRow {
