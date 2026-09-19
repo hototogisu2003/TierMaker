@@ -188,6 +188,9 @@ function CharacterPicker({
   const [searchError, setSearchError] = useState("");
   const [viewport, setViewport] = useState({ width: 0, height: 0, scrollTop: 0 });
   const bodyRef = useRef<HTMLDivElement>(null);
+  const resultsControllerRef = useRef<AbortController | null>(null);
+  const pageLoadingRef = useRef(false);
+  const firstPageReadyRef = useRef(false);
 
   const columns = Math.max(1, Math.floor((viewport.width + VIRTUAL_GAP) / (VIRTUAL_ITEM_WIDTH + VIRTUAL_GAP)));
   const rowHeight = VIRTUAL_ITEM_HEIGHT + VIRTUAL_GAP;
@@ -211,8 +214,11 @@ function CharacterPicker({
       elements?: BingoElement[];
       gachas?: BingoGacha[];
       forms?: BingoForm[];
-      signal?: AbortSignal;
     }) => {
+      const controller = resultsControllerRef.current;
+      if (!controller || controller.signal.aborted || pageLoadingRef.current) return;
+      if (!params.reset && !firstPageReadyRef.current) return;
+      pageLoadingRef.current = true;
       setIsLoading(true);
       setSearchError("");
       try {
@@ -234,13 +240,15 @@ function CharacterPicker({
         }
         const response = await fetch(`/api/bingo/characters?${requestParams.toString()}`, {
           cache: "no-store",
-          signal: params.signal,
+          signal: controller.signal,
         });
         const data = (await response.json()) as CharacterResponse;
+        if (controller.signal.aborted || resultsControllerRef.current !== controller) return;
         if (!response.ok) {
           throw new Error(data.message ?? "キャラクター検索に失敗しました");
         }
         setResults((current) => {
+          if (controller.signal.aborted || resultsControllerRef.current !== controller) return current;
           const merged = params.reset ? [] : current.slice();
           const seen = new Set(merged.map((character) => character.id));
           const seenNames = new Set(merged.map((character) => character.name));
@@ -255,23 +263,34 @@ function CharacterPicker({
         });
         setNextOffset(data.nextOffset ?? params.offsetValue + (data.characters?.length ?? 0));
         setHasMore(Boolean(data.hasMore));
+        firstPageReadyRef.current = true;
       } catch (error) {
+        if (controller.signal.aborted || resultsControllerRef.current !== controller) return;
         if ((error as { name?: string }).name === "AbortError") return;
         setSearchError(error instanceof Error ? error.message : "キャラクター検索に失敗しました");
       } finally {
-        setIsLoading(false);
+        if (resultsControllerRef.current === controller && !controller.signal.aborted) {
+          pageLoadingRef.current = false;
+          setIsLoading(false);
+        }
       }
     };
   }, [appliedElements, appliedForms, appliedGachas]);
 
   useEffect(() => {
     const controller = new AbortController();
+    resultsControllerRef.current = controller;
+    pageLoadingRef.current = false;
+    firstPageReadyRef.current = false;
+    setResults([]);
+    setNextOffset(0);
+    setHasMore(false);
+    setSearchError("");
+    setIsLoading(true);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    setViewport((current) => ({ ...current, scrollTop: 0 }));
     const timer = window.setTimeout(async () => {
-      setResults([]);
-      setNextOffset(0);
-      setHasMore(true);
-      if (bodyRef.current) bodyRef.current.scrollTop = 0;
-      await loadPage({ reset: true, queryValue: query, offsetValue: 0, signal: controller.signal });
+      await loadPage({ reset: true, queryValue: query, offsetValue: 0 });
     }, 220);
 
     return () => {
@@ -337,6 +356,7 @@ function CharacterPicker({
   }
 
   function applyFilters() {
+    resultsControllerRef.current?.abort();
     const nextElements = [...selectedElements];
     const nextGachas = [...selectedGachas];
     const nextForms = [...selectedForms];
@@ -345,19 +365,13 @@ function CharacterPicker({
     setAppliedForms(nextForms);
     setResults([]);
     setNextOffset(0);
-    setHasMore(true);
+    setHasMore(false);
+    setIsLoading(true);
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-    void loadPage({
-      reset: true,
-      queryValue: query,
-      offsetValue: 0,
-      elements: nextElements,
-      gachas: nextGachas,
-      forms: nextForms,
-    });
   }
 
   function clearFilters() {
+    resultsControllerRef.current?.abort();
     setSelectedElements(new Set());
     setSelectedGachas(new Set());
     setSelectedForms(new Set());
@@ -366,16 +380,9 @@ function CharacterPicker({
     setAppliedForms([]);
     setResults([]);
     setNextOffset(0);
-    setHasMore(true);
+    setHasMore(false);
+    setIsLoading(true);
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
-    void loadPage({
-      reset: true,
-      queryValue: query,
-      offsetValue: 0,
-      elements: [],
-      gachas: [],
-      forms: [],
-    });
   }
 
   return (
