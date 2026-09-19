@@ -67,7 +67,10 @@ function getCharacterOtherTableName(): string {
   return process.env.NEXT_PUBLIC_CHARA_OTHER_TABLE ?? "chara_other";
 }
 
-function getBingoPredictionTableName(): string {
+export type BingoEvent = "dd4" | "13th";
+
+function getBingoPredictionTableName(event: BingoEvent): string {
+  if (event === "13th") return "bingo_13th_predictions";
   return process.env.NEXT_PUBLIC_BINGO_PREDICTIONS_TABLE ?? "bingo_predictions";
 }
 
@@ -171,7 +174,7 @@ function dedupeRowsByNameKeepingSmallestNumber(rows: GenericRow[]): GenericRow[]
   });
 }
 
-async function fetchEligibleCharacterRowsByIds(
+async function fetchCharacterRowsByIds(
   ids: string[],
   filters?: Partial<BingoCharacterFilters>
 ): Promise<GenericRow[]> {
@@ -182,8 +185,7 @@ async function fetchEligibleCharacterRowsByIds(
   const query = supabase
     .from(getCharactersTableName())
     .select("id,name,name_kana,icon_path,number,element,obtain,gacha,form")
-    .in("id", uniqueIds)
-    .or(buildEligibleCharacterFilter());
+    .in("id", uniqueIds);
   const { data, error } = await applyCharacterFilters(query, filters);
 
   if (error) {
@@ -287,7 +289,6 @@ export async function searchBingoCharacters(
     .from(getCharactersTableName())
     .select("id,number")
     .or(`name.ilike.${like},name_kana.ilike.${like}`)
-    .or(buildEligibleCharacterFilter())
     .order("number", { ascending: true });
 
   const [otherResult, characterResult] = await Promise.all([
@@ -316,12 +317,12 @@ export async function searchBingoCharacters(
   for (const row of (characterResult.data ?? []) as GenericRow[]) pushId(toText(row.id));
   if (orderedIds.length === 0) return [];
 
-  const eligibleRows = await fetchEligibleCharacterRowsByIds(orderedIds, filters);
+  const matchingRows = await fetchCharacterRowsByIds(orderedIds, filters);
   const orderIndex = new Map<string, number>(orderedIds.map((id, index) => [id, index]));
 
-  return eligibleRows
+  return matchingRows
     .slice()
-    .filter((row) => !isExcludedCharacterId(toText(row.id)) && matchesAppliedFilters(row, filters))
+    .filter((row) => matchesAppliedFilters(row, filters))
     .sort((a, b) => {
       const byNumber = toNumber(a.number) - toNumber(b.number);
       if (byNumber !== 0) return byNumber;
@@ -329,7 +330,6 @@ export async function searchBingoCharacters(
       const bId = toText(b.id);
       return (orderIndex.get(aId) ?? Number.POSITIVE_INFINITY) - (orderIndex.get(bId) ?? Number.POSITIVE_INFINITY);
     })
-    .filter((row, index, rows) => rows.findIndex((entry) => toText(entry.name) === toText(row.name)) === index)
     .slice(0, limit)
     .map((row) => toCharacterSummary(row, supabase, r2BaseUrl))
     .filter((row): row is BingoCharacterSummary => Boolean(row));
@@ -341,10 +341,9 @@ async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, BingoC
 
   const supabase = getSupabaseServerClient();
   const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-  const rows = await fetchEligibleCharacterRowsByIds(uniqueIds);
+  const rows = await fetchCharacterRowsByIds(uniqueIds);
   const result = new Map<string, BingoCharacterSummary>();
   for (const row of rows) {
-    if (isExcludedCharacterId(toText(row.id))) continue;
     const summary = toCharacterSummary(row, supabase, r2BaseUrl);
     if (summary) result.set(summary.id, summary);
   }
@@ -363,17 +362,18 @@ export async function fetchBingoCharactersByIds(ids: string[]): Promise<BingoCha
 
 export async function insertBingoSubmission(
   input: unknown,
-  deviceToken: string
+  deviceToken: string,
+  event: BingoEvent = "dd4"
 ): Promise<{ stored: boolean; message?: string }> {
   const payload = normalizeBingoSubmissionPayload(input);
-  const tableName = getBingoPredictionTableName();
+  const tableName = getBingoPredictionTableName(event);
   const supabase = getSupabaseServiceRoleClient();
   const tokenHash = hashDeviceToken(deviceToken.trim());
   const characterIds = payload.characters.map((character) => character.id);
-  const eligibleCharacters = await fetchBingoCharactersByIds(characterIds);
+  const existingCharacters = await fetchBingoCharactersByIds(characterIds);
 
-  if (eligibleCharacters.length !== BINGO_GRID_SIZE) {
-    throw new Error("ランキング対象外のキャラクターが含まれています");
+  if (existingCharacters.length !== BINGO_GRID_SIZE) {
+    throw new Error("DBに存在しないキャラクターが含まれています");
   }
 
   const { error } = await supabase.from(tableName).upsert(
@@ -391,7 +391,7 @@ export async function insertBingoSubmission(
     if (isMissingTableError(error.message)) {
       return {
         stored: false,
-        message: "Supabaseにビンゴ集計テーブルがありません。TierMaker/supabase/bingo_predictions.sql を実行してください。",
+        message: `Supabaseにビンゴ集計テーブルがありません。supabase/${event === "13th" ? "bingo_13th_predictions" : "bingo_predictions"}.sql を実行してください。`,
       };
     }
     throw new Error(`ビンゴ予想の保存に失敗しました: ${error.message}`);
@@ -403,9 +403,9 @@ export async function insertBingoSubmission(
   };
 }
 
-export async function fetchBingoRanking(): Promise<BingoRanking> {
+export async function fetchBingoRanking(event: BingoEvent = "dd4"): Promise<BingoRanking> {
   const supabase = getSupabaseServerClient();
-  const tableName = getBingoPredictionTableName();
+  const tableName = getBingoPredictionTableName(event);
   const { data, error } = await supabase.from(tableName).select("character_ids");
 
   if (error) {

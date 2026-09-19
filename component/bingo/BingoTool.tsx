@@ -69,10 +69,10 @@ function normalizeStoredBoard(input: unknown): Array<BingoCharacterSummary | nul
   });
 }
 
-function readStoredBoard(): Array<BingoCharacterSummary | null> | null {
+function readStoredBoard(storageKey: string): Array<BingoCharacterSummary | null> | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     return normalizeStoredBoard(JSON.parse(raw));
   } catch {
@@ -80,10 +80,10 @@ function readStoredBoard(): Array<BingoCharacterSummary | null> | null {
   }
 }
 
-function writeStoredBoard(board: Array<BingoCharacterSummary | null>) {
+function writeStoredBoard(board: Array<BingoCharacterSummary | null>, storageKey: string) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(board));
+    window.localStorage.setItem(storageKey, JSON.stringify(board));
   } catch {
     // ignore localStorage write failures
   }
@@ -245,7 +245,7 @@ function CharacterPicker({
           const seen = new Set(merged.map((character) => character.id));
           const seenNames = new Set(merged.map((character) => character.name));
           for (const character of data.characters ?? []) {
-            if (!seen.has(character.id) && !seenNames.has(character.name)) {
+            if (!seen.has(character.id) && (params.queryValue.trim() || !seenNames.has(character.name))) {
               merged.push(character);
               seen.add(character.id);
               seenNames.add(character.name);
@@ -412,6 +412,8 @@ function CharacterPicker({
           </Button>
         </div>
 
+        <p className={styles.searchCaption}>ガチャ限を古い順に表示</p>
+
         {isFilterOpen ? (
           <div className={styles.filterPanel}>
             <div className={styles.filterBlock}>
@@ -510,8 +512,18 @@ function CharacterPicker({
   );
 }
 
-export default function BingoTool() {
-  const [board, setBoard] = useState<Array<BingoCharacterSummary | null>>(() => readStoredBoard() ?? createEmptyBoard());
+export default function BingoTool({
+  title = "DD4獣神化予想ビンゴ",
+  storageKey = STORAGE_KEY,
+  submissionUrl = "/api/bingo",
+  rankingUrl = "/bingo/ranking",
+}: {
+  title?: string;
+  storageKey?: string;
+  submissionUrl?: string;
+  rankingUrl?: string;
+}) {
+  const [board, setBoard] = useState<Array<BingoCharacterSummary | null>>(() => readStoredBoard(storageKey) ?? createEmptyBoard());
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ tone: NoticeTone; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -524,8 +536,8 @@ export default function BingoTool() {
   const pointerDragRef = useRef<BoardPointerDrag | null>(null);
 
   useEffect(() => {
-    writeStoredBoard(board);
-  }, [board]);
+    writeStoredBoard(board, storageKey);
+  }, [board, storageKey]);
 
   useEffect(() => {
     return () => {
@@ -692,7 +704,7 @@ export default function BingoTool() {
     try {
       const characters = board.filter((character): character is BingoCharacterSummary => Boolean(character));
       const payload = validateBingoSubmissionPayload({ characters });
-      const response = await fetch("/api/bingo", {
+      const response = await fetch(submissionUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -719,9 +731,9 @@ export default function BingoTool() {
           <Link href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
-          <h1 className={styles.title}>DD4獣神化予想ビンゴ</h1>
+          <h1 className={styles.title}>{title}</h1>
         </div>
-        <Link href="/bingo/ranking" className={styles.iconLink} aria-label="ランキング" title="ランキング">
+        <Link href={rankingUrl} className={styles.iconLink} aria-label="ランキング" title="ランキング">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <path fill="currentColor" d="M5 21h14v-2H5v2Zm1-4h3V9H6v8Zm5 0h3V3h-3v14Zm5 0h3V6h-3v11Z" />
           </svg>
