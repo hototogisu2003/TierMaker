@@ -739,6 +739,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!character) return total;
     return total + Math.round(character.hp + statusBonusTotalsOf(slot).hp);
   }, 0);
+  const displayedTotalHp = totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0) + (maxUsageUsed ? MAX_USAGE_BONUS : 0);
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
     const keyword = appliedQuestKeyword.trim().toLowerCase();
@@ -2280,7 +2281,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </div>
           <div className={styles.totalHpRow}>
             <span>合計HP</span>
-            <strong>{(totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0) + (maxUsageUsed ? MAX_USAGE_BONUS : 0)).toLocaleString("ja-JP")}</strong>
+            <strong>{displayedTotalHp.toLocaleString("ja-JP")}</strong>
             <div className={styles.totalHpButtons}>
               <button
                 type="button"
@@ -2768,6 +2769,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     <img className={styles.exportQuestIcon} src={selectedQuest.iconUrl} alt={selectedQuest.name} />
                   ) : null}
                   <div className={styles.exportTitle}>{title.trim() || "編成"}</div>
+                  <div className={styles.exportTotalHp}>HP：{displayedTotalHp.toLocaleString("ja-JP")}</div>
                 </div>
                 <div className={styles.exportHeaderIcons}>
                   {mainSpot ? <img className={styles.exportSpotIcon} src={spotIconSrc(mainSpot, "main")} alt={`${mainSpot}メイン`} /> : null}

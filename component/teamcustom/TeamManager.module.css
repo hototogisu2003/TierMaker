@@ -1734,6 +1734,14 @@
   text-overflow: ellipsis;
 }
 
+.exportTotalHp {
+  flex: 0 0 auto;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
 .exportQuestIcon {
   width: 64px;
   height: 64px;
