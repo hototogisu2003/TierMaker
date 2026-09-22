@@ -1111,6 +1111,12 @@
   font-size: 12px;
 }
 
+.totalHpButtons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .hpItemButton {
   padding: 2px 7px;
   min-height: 0;

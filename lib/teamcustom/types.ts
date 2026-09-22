@@ -84,6 +84,7 @@ export type TeamRecord = {
   mainSpot?: SpotKey | null;
   subSpot?: SpotKey | null;
   hpItemUsed?: boolean;
+  maxUsageUsed?: boolean;
   slots: TeamSlot[];
   memoText?: string;
   createdAt: string;

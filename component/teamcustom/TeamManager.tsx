@@ -44,6 +44,7 @@ type SharePayload = {
   mainSpot?: SpotKey;
   subSpot?: SpotKey;
   hpItemUsed?: boolean;
+  maxUsageUsed?: boolean;
   memoText?: string;
   slots?: Array<{
     slotIndex?: number;
@@ -68,6 +69,7 @@ type CompactSharePayloadV2 = {
   pm?: SpotKey;
   ps?: SpotKey;
   h?: 1;
+  u?: 1;
   m?: string;
   a?: CompactShareSlot[];
 };
@@ -96,6 +98,7 @@ const SPOT_OPTIONS = ["火", "水", "木", "光", "闇", "王者"] as const sati
 const SPOT_MAIN_BONUS = { hp: 2000, attack: 2000, speed: 40.8 } as const;
 const SPOT_SUB_BONUS = { hp: 1500, attack: 1500, speed: 30.6 } as const;
 const HP_ITEM_BONUS = 10000;
+const MAX_USAGE_BONUS = 4000;
 const CUSTOM_ICON_SIZE = 256;
 const CUSTOM_ICON_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
@@ -315,6 +318,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
       mainSpot: SPOT_OPTIONS.includes(v2.pm as SpotKey) ? (v2.pm as SpotKey) : undefined,
       subSpot: SPOT_OPTIONS.includes(v2.ps as SpotKey) ? (v2.ps as SpotKey) : undefined,
       hpItemUsed: v2.h === 1,
+      maxUsageUsed: v2.u === 1,
       memoText: typeof v2.m === "string" ? v2.m : "",
       slots: [0, 1, 2, 3].map((slotIndex) => {
         const tuple = slots[slotIndex];
@@ -452,6 +456,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [mainSpot, setMainSpot] = useState<SpotKey | "">("");
   const [subSpot, setSubSpot] = useState<SpotKey | "">("");
   const [hpItemUsed, setHpItemUsed] = useState(false);
+  const [maxUsageUsed, setMaxUsageUsed] = useState(false);
   const [isSpotModalOpen, setIsSpotModalOpen] = useState(false);
   const [shugojuListScrollTop, setShugojuListScrollTop] = useState(0);
   const [memoText, setMemoText] = useState("");
@@ -1217,6 +1222,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot("");
     setSubSpot("");
     setHpItemUsed(false);
+    setMaxUsageUsed(false);
     setIsSpotModalOpen(false);
     setMemoText("");
     setSlots(emptySlots());
@@ -1251,6 +1257,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot(record.mainSpot ?? "");
     setSubSpot(record.subSpot ?? "");
     setHpItemUsed(Boolean(record.hpItemUsed));
+    setMaxUsageUsed(Boolean(record.maxUsageUsed));
     setIsSpotModalOpen(false);
     setMemoText(record.memoText ?? "");
     setSlots(
@@ -1286,6 +1293,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot(payload.mainSpot ?? "");
     setSubSpot(payload.subSpot ?? "");
     setHpItemUsed(Boolean(payload.hpItemUsed));
+    setMaxUsageUsed(Boolean(payload.maxUsageUsed));
     setMemoText(payload.memoText ?? "");
     setActiveSlotIndex(0);
     setModalSlotIndex(null);
@@ -1372,6 +1380,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       mainSpot: mainSpot || null,
       subSpot: subSpot || null,
       hpItemUsed,
+      maxUsageUsed,
       slots: finalSlots,
       memoText,
       createdAt: currentEditing?.createdAt ?? nowText(),
@@ -1475,6 +1484,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         pm: mainSpot || undefined,
         ps: subSpot || undefined,
         h: hpItemUsed ? 1 : undefined,
+        u: maxUsageUsed ? 1 : undefined,
         m: memoText.trim() || undefined,
         a: compactSlots,
       };
@@ -2270,16 +2280,27 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </div>
           <div className={styles.totalHpRow}>
             <span>合計HP</span>
-            <strong>{(totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0)).toLocaleString("ja-JP")}</strong>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.hpItemButton}`}
-              data-selected={hpItemUsed ? "1" : "0"}
-              aria-pressed={hpItemUsed}
-              onClick={() => setHpItemUsed((current) => !current)}
-            >
-              HPアイテムを使用
-            </button>
+            <strong>{(totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0) + (maxUsageUsed ? MAX_USAGE_BONUS : 0)).toLocaleString("ja-JP")}</strong>
+            <div className={styles.totalHpButtons}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.hpItemButton}`}
+                data-selected={hpItemUsed ? "1" : "0"}
+                aria-pressed={hpItemUsed}
+                onClick={() => setHpItemUsed((current) => !current)}
+              >
+                HPアイテム
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.hpItemButton}`}
+                data-selected={maxUsageUsed ? "1" : "0"}
+                aria-pressed={maxUsageUsed}
+                onClick={() => setMaxUsageUsed((current) => !current)}
+              >
+                使用回数最大
+              </button>
+            </div>
           </div>
           <div>
                 <div className={styles.supportRow}>
