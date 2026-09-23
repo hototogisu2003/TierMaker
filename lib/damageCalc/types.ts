@@ -117,6 +117,7 @@ export type DamageCalcState = {
 export type DamageCalcResult = {
   actualAttack: number;
   finalDamage: number;
+  effectiveMultiplier: number;
   breakdown: BreakdownItem[];
   stageRealRate: number;
 };

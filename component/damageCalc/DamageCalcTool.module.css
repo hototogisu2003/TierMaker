@@ -996,6 +996,33 @@
   font-weight: 800;
 }
 
+.requiredAttackResult {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--tool-border);
+  border-radius: 8px;
+  background: var(--tool-bg);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.requiredAttackResult strong {
+  color: var(--tool-accent-strong);
+  font-size: 24px;
+}
+
+.requiredAttackMessage {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--tool-border);
+  border-radius: 8px;
+  background: var(--tool-bg);
+  color: var(--tool-muted);
+}
+
 .richPanel {
   display: grid;
   gap: 18px;

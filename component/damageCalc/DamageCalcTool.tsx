@@ -21,7 +21,7 @@ import {
   resolveStageMagnitude,
   type SelectOption,
 } from "@/lib/damageCalc/constants";
-import { computeDamage, judgeOneShot } from "@/lib/damageCalc/calculator";
+import { calculateRequiredAttackBonus, computeDamage, judgeOneShot } from "@/lib/damageCalc/calculator";
 import { createDefaultDamageCalcState } from "@/lib/damageCalc/defaultState";
 import type { AttackMode, DamageCalcState, FruitGroupId, FruitSelection, StageType, ThemeMode, ToolTab } from "@/lib/damageCalc/types";
 import FieldRow from "./FieldRow";
@@ -236,6 +236,10 @@ export default function DamageCalcTool() {
 
   const result = React.useMemo(() => computeDamage(state), [state]);
   const oneShot = React.useMemo(() => judgeOneShot(result.finalDamage, state), [result.finalDamage, state]);
+  const requiredAttackBonus = React.useMemo(
+    () => calculateRequiredAttackBonus(state, oneShot.realHp, result.effectiveMultiplier),
+    [oneShot.realHp, result.effectiveMultiplier, state]
+  );
   const stageOptions = React.useMemo(() => getStageMagnitudeOptions(state.stageType), [state.stageType]);
 
   const updateStringField = React.useCallback((field: StringField, value: string) => {
@@ -815,6 +819,16 @@ export default function DamageCalcTool() {
                 <div className={cn(styles.judgeBox, oneShot.success === true && styles.judgeBoxSuccess, oneShot.success === false && styles.judgeBoxFail)}>
                   <div className={styles.judgeMessage}>{oneShot.message}</div>
                 </div>
+              </section>
+              <section aria-label="必要加撃量">
+                {state.attackMode === "direct" ? (
+                  <div className={styles.requiredAttackResult}>
+                    <span>必要加撃量</span>
+                    <strong>{requiredAttackBonus === null ? "-" : requiredAttackBonus.toLocaleString("ja-JP")}</strong>
+                  </div>
+                ) : (
+                  <p className={styles.requiredAttackMessage}>必要加撃量は直殴りモードで計算できます。</p>
+                )}
               </section>
             </div>
           )}

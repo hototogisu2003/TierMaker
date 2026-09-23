@@ -206,6 +206,7 @@ export function computeDamage(state: DamageCalcState): DamageCalcResult {
   if (state.gimmickEnabled) apply("ギミック倍率", parseNumber(state.gimmickRate, 1.0));
 
   let finalDamage = 0;
+  let effectiveMultiplier = totalMultiplier;
   if (isMultiMode) {
     const commonDamage = actualAttack * totalMultiplier;
     const damageToBody = Math.floor(commonDamage * bodyRate);
@@ -216,6 +217,10 @@ export function computeDamage(state: DamageCalcState): DamageCalcResult {
     const judgeCount = parseNumber(state.weakJudgeCount, 0);
     const judgeUnitDamage = Math.floor(commonDamage * weakPointRate);
     const judgeTotalDamage = judgeUnitDamage * judgeCount;
+
+    effectiveMultiplier = totalMultiplier * (
+      bodyRate + weakTotalRate * weakCount + weakPointRate * judgeCount
+    );
 
     finalDamage = damageToBody + weakTotalDamage + judgeTotalDamage;
     breakdown.push({ name: "--- 複数判定内訳 ---", val: "" });
@@ -239,9 +244,27 @@ export function computeDamage(state: DamageCalcState): DamageCalcResult {
   return {
     actualAttack,
     finalDamage,
+    effectiveMultiplier,
     breakdown,
     stageRealRate: Math.floor(stageMultiplier * 1_000_000) / 1_000_000,
   };
+}
+
+export function calculateRequiredAttackBonus(
+  state: DamageCalcState,
+  targetHp: number | null,
+  effectiveMultiplier: number
+): number | null {
+  if (state.attackMode !== "direct" || targetHp === null || targetHp <= 0) return null;
+
+  const baseAttack = Number.parseFloat(state.baseAttack);
+  if (!Number.isFinite(baseAttack) || baseAttack < 0 || !Number.isFinite(effectiveMultiplier) || effectiveMultiplier <= 0) {
+    return null;
+  }
+
+  const rawRequiredBonus = targetHp / effectiveMultiplier - baseAttack;
+  const floatingPointTolerance = Number.EPSILON * Math.max(1, Math.abs(rawRequiredBonus)) * 16;
+  return Math.max(0, Math.ceil(rawRequiredBonus - floatingPointTolerance));
 }
 
 export function judgeOneShot(totalDamage: number, state: DamageCalcState): OneShotResult {
