@@ -240,6 +240,14 @@ export default function DamageCalcTool() {
     () => calculateRequiredAttackBonus(state, oneShot.realHp, result.effectiveMultiplier),
     [oneShot.realHp, result.effectiveMultiplier, state]
   );
+  const baseAttackForDisplay = React.useMemo(() => {
+    const value = Number.parseFloat(state.baseAttack);
+    return Number.isFinite(value) ? value.toLocaleString("ja-JP") : "-";
+  }, [state.baseAttack]);
+  const multiplierForDisplay = React.useMemo(
+    () => result.effectiveMultiplier.toLocaleString("ja-JP", { maximumFractionDigits: 6 }),
+    [result.effectiveMultiplier]
+  );
   const stageOptions = React.useMemo(() => getStageMagnitudeOptions(state.stageType), [state.stageType]);
 
   const updateStringField = React.useCallback((field: StringField, value: string) => {
@@ -823,8 +831,14 @@ export default function DamageCalcTool() {
               <section aria-label="必要加撃量">
                 {state.attackMode === "direct" ? (
                   <div className={styles.requiredAttackResult}>
-                    <span>必要加撃量</span>
-                    <strong>{requiredAttackBonus === null ? "-" : requiredAttackBonus.toLocaleString("ja-JP")}</strong>
+                    <div className={styles.requiredAttackMain}>
+                      <span>必要加撃量</span>
+                      <strong>{requiredAttackBonus === null ? "-" : requiredAttackBonus.toLocaleString("ja-JP")}</strong>
+                    </div>
+                    <div className={styles.requiredAttackDetails}>
+                      <span>キャラ攻撃力 {baseAttackForDisplay}</span>
+                      <span>倍率 ×{multiplierForDisplay}</span>
+                    </div>
                   </div>
                 ) : (
                   <p className={styles.requiredAttackMessage}>必要加撃量は直殴りモードで計算できます。</p>
