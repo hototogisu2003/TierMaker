@@ -69,6 +69,7 @@ export type TeamSlot = {
   crests: string[];
   crestGrades?: Record<string, CrestGrade>;
   slotMemo?: string;
+  superSenkeiEnabled?: boolean;
   customCharacter?: CustomCharacter;
 };
 

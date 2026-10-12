@@ -23,6 +23,7 @@ type DraftSlot = {
   crests: string[];
   crestGrades: Record<string, CrestGrade>;
   slotMemo: string;
+  superSenkeiEnabled: boolean;
   customCharacter?: CustomCharacter;
 };
 
@@ -55,12 +56,13 @@ type SharePayload = {
     crests?: string[];
     crestGrades?: Record<string, CrestGrade>;
     slotMemo?: string;
+    superSenkeiEnabled?: boolean;
     customCharacter?: CustomCharacter;
   }>;
 };
 
 type CompactCustomCharacter = [string, CharacterItem["element"], string, string, string, number, number, number, 0 | 1];
-type CompactShareSlot = [string?, number[]?, number[]?, string?, CompactCustomCharacter?];
+type CompactShareSlot = [string?, number[]?, number[]?, string?, CompactCustomCharacter?, 0?];
 type CompactSharePayloadV2 = {
   v: 2;
   t?: string;
@@ -210,6 +212,7 @@ function emptySlots(): DraftSlot[] {
     crests: [],
     crestGrades: {},
     slotMemo: "",
+    superSenkeiEnabled: true,
   }));
 }
 
@@ -327,6 +330,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
         const crestNums = Array.isArray(tuple) && Array.isArray(tuple[2]) ? tuple[2] : [];
         const slotMemo = Array.isArray(tuple) && typeof tuple[3] === "string" ? tuple[3] : "";
         const customCharacter = Array.isArray(tuple) ? customCharacterFromTuple(tuple[4], characterId) : undefined;
+        const superSenkeiEnabled = !Array.isArray(tuple) || tuple[5] !== 0;
         const fruits: string[] = [];
         const fruitGradesList: FruitGrade[] = [];
         for (const n of fruitNums) {
@@ -359,6 +363,7 @@ function normalizeSharePayload(raw: unknown): SharePayload {
           crests,
           crestGrades,
           slotMemo,
+          superSenkeiEnabled,
           customCharacter,
         };
       }),
@@ -498,6 +503,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [customCharacterDraft, setCustomCharacterDraft] = useState<CustomCharacterDraft>(emptyCustomCharacterDraft);
   const [isFruitModalOpen, setIsFruitModalOpen] = useState(false);
   const [isCrestModalOpen, setIsCrestModalOpen] = useState(false);
+  const [superSenkeiSlotIndex, setSuperSenkeiSlotIndex] = useState<number | null>(null);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
   const [arrangeRemoveId, setArrangeRemoveId] = useState("");
   const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
@@ -606,6 +612,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const characterOf = (slot: DraftSlot): CharacterItem | CustomCharacter | null => {
     if (slot.customCharacter) return slot.customCharacter;
     return slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+  };
+  const senkeiLabelOf = (slot: DraftSlot, character: CharacterItem | CustomCharacter | null): string => {
+    const senkei = character?.senkei.replace(/^超/, "") ?? "";
+    return senkei && slot.superSenkeiEnabled ? `超${senkei}` : senkei;
   };
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
@@ -996,7 +1006,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       hasGauge: customCharacterDraft.hasGauge,
       iconUrl: customCharacterDraft.iconUrl,
     };
-    updateSlot(editorSlotIndex, { characterId: customCharacter.id, customCharacter });
+    updateSlot(editorSlotIndex, { characterId: customCharacter.id, customCharacter, superSenkeiEnabled: existing ? slots[editorSlotIndex].superSenkeiEnabled : true });
     setIsCustomCharacterOpen(false);
     if (isCharacterModalOpen) setIsCharacterModalOpen(false);
   }
@@ -1088,6 +1098,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: to.characterId,
+            superSenkeiEnabled: to.superSenkeiEnabled,
             customCharacter: to.customCharacter ? { ...to.customCharacter } : undefined,
             fruits: [...to.fruits],
             fruitGrades: [...to.fruitGrades],
@@ -1100,6 +1111,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: from.characterId,
+            superSenkeiEnabled: from.superSenkeiEnabled,
             customCharacter: from.customCharacter ? { ...from.customCharacter } : undefined,
             fruits: [...from.fruits],
             fruitGrades: [...from.fruitGrades],
@@ -1118,7 +1130,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setSlots((prev) =>
       prev.map((slot) =>
         slot.slotIndex === slotIndex
-          ? { ...slot, characterId: "", customCharacter: undefined, fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
+          ? { ...slot, characterId: "", customCharacter: undefined, superSenkeiEnabled: true, fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
           : slot
       )
     );
@@ -1234,6 +1246,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setCustomCharacterDraft(emptyCustomCharacterDraft());
     setIsFruitModalOpen(false);
     setIsCrestModalOpen(false);
+    setSuperSenkeiSlotIndex(null);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("edit");
@@ -1267,6 +1280,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         return {
           slotIndex,
           characterId: found?.characterId ?? "",
+          superSenkeiEnabled: found?.superSenkeiEnabled !== false,
           customCharacter: normalizeCustomCharacter(found?.customCharacter),
           fruits: found?.fruits ?? [],
           fruitGrades: normalizeFruitGradeList(found?.fruits ?? [], found?.fruitGradesList, found?.fruitGrades),
@@ -1302,6 +1316,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setIsCustomCharacterOpen(false);
     setIsFruitModalOpen(false);
     setIsCrestModalOpen(false);
+    setSuperSenkeiSlotIndex(null);
 
     const sharedSlots = Array.isArray(payload.slots) ? payload.slots : [];
     setSlots(
@@ -1321,6 +1336,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         return {
           slotIndex,
           characterId: (found?.characterId ?? "").toString(),
+          superSenkeiEnabled: found?.superSenkeiEnabled !== false,
           customCharacter: normalizeCustomCharacter(found?.customCharacter),
           fruits,
           fruitGrades,
@@ -1364,6 +1380,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         crests: slot.crests.slice(0, 4),
         crestGrades: Object.fromEntries(slot.crests.slice(0, 4).map((name) => [name, slot.crestGrades[name] ?? crestDefaultGradeOf(name)])),
         slotMemo: slot.slotMemo,
+        superSenkeiEnabled: slot.superSenkeiEnabled,
         customCharacter: slot.customCharacter,
       };
     });
@@ -1475,6 +1492,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           const custom = slot.customCharacter;
           tuple[4] = [custom.name, custom.element, custom.shuzoku, custom.gekishu, custom.senkei, custom.hp, custom.attack, custom.speed, custom.hasGauge ? 1 : 0];
         }
+        if (!slot.superSenkeiEnabled) tuple[5] = 0;
         return tuple;
       });
       const payload: CompactSharePayloadV2 = {
@@ -1698,9 +1716,20 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           </svg>
         </button>
         <button className={styles.btn} type="button" onClick={resetFilters}>リセット</button>
-        <button className={`${styles.btn} ${styles.customCharacterButton}`} type="button" onClick={openCustomCharacterEditor}>
-          ステータスを手入力
-        </button>
+        <div className={styles.editorManualControls}>
+          <label className={styles.editorSuperSenkeiCheckbox} data-disabled={!editorCharacter?.senkei ? "1" : "0"}>
+            <input
+              type="checkbox"
+              checked={editorSlot.superSenkeiEnabled}
+              disabled={!editorCharacter?.senkei}
+              onChange={(event) => updateSlot(editorSlotIndex, { superSenkeiEnabled: event.target.checked })}
+            />
+            超戦型解放
+          </label>
+          <button className={`${styles.btn} ${styles.customCharacterButton}`} type="button" onClick={openCustomCharacterEditor}>
+            ステータスを手入力
+          </button>
+        </div>
       </div>
 
       {isCustomCharacterOpen ? renderCustomCharacterForm() : null}
@@ -1718,7 +1747,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               type="button"
               className={styles.pickItem}
               onClick={() => {
-                updateSlot(editorSlotIndex, { characterId: c.id, customCharacter: undefined });
+                updateSlot(editorSlotIndex, { characterId: c.id, customCharacter: undefined, superSenkeiEnabled: true });
                 setHasSearched(false);
                 setIsCustomCharacterOpen(false);
               }}
@@ -2123,7 +2152,23 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                           </div>
                           <div className={styles.teamMetaCell}>{c?.shuzoku || ""}</div>
                           <div className={styles.teamMetaCell}>{c?.gekishu || ""}</div>
-                          <div className={styles.teamMetaCell}>{c?.senkei || ""}</div>
+                          <div
+                            className={`${styles.teamMetaCell} ${isMobileViewport && c?.senkei ? styles.senkeiToggleCell : ""}`}
+                            role={isMobileViewport && c?.senkei ? "button" : undefined}
+                            tabIndex={isMobileViewport && c?.senkei ? 0 : undefined}
+                            aria-label={isMobileViewport && c?.senkei ? `${SLOT_LABELS[slot.slotIndex]}の超戦型解放を設定` : undefined}
+                            onClick={(event) => {
+                              if (!isMobileViewport || !c?.senkei) return;
+                              event.stopPropagation();
+                              setSuperSenkeiSlotIndex(slot.slotIndex);
+                            }}
+                            onKeyDown={(event) => {
+                              if (!isMobileViewport || !c?.senkei || (event.key !== "Enter" && event.key !== " ")) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setSuperSenkeiSlotIndex(slot.slotIndex);
+                            }}
+                          >{senkeiLabelOf(slot, c)}</div>
                         </div>
                         <div className={styles.teamBody}>
                           <div
@@ -2325,6 +2370,22 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               {subSpot ? <img className={styles.icon} src={spotIconSrc(subSpot, "sub")} alt={`${subSpot}サブ`} style={{ width: 32, height: 32 }} /> : null}
             </div>
           </div>
+          {superSenkeiSlotIndex !== null ? (
+            <div className={styles.arrangeOverlay} onClick={() => setSuperSenkeiSlotIndex(null)}>
+              <div className={`${styles.arrangeDialog} ${styles.superSenkeiDialog}`} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.label}>{SLOT_LABELS[superSenkeiSlotIndex]} 戦型</div>
+                <label className={styles.superSenkeiCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={slots[superSenkeiSlotIndex]?.superSenkeiEnabled !== false}
+                    onChange={(event) => updateSlot(superSenkeiSlotIndex, { superSenkeiEnabled: event.target.checked })}
+                  />
+                  超戦型解放
+                </label>
+                <button className={styles.btn} type="button" onClick={() => setSuperSenkeiSlotIndex(null)}>閉じる</button>
+              </div>
+            </div>
+          ) : null}
           <div>
             <textarea
               className={styles.memoTextarea}
@@ -2375,7 +2436,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         type="button"
                         className={styles.pickItem}
                         onClick={() => {
-                          updateSlot(modalSlot.slotIndex, { characterId: c.id, customCharacter: undefined });
+                          updateSlot(modalSlot.slotIndex, { characterId: c.id, customCharacter: undefined, superSenkeiEnabled: true });
                           setIsCharacterModalOpen(false);
                           setHasSearched(false);
                         }}
@@ -2801,7 +2862,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                           </div>
                           <div className={styles.teamMetaCell}>{c?.shuzoku || ""}</div>
                           <div className={styles.teamMetaCell}>{c?.gekishu || ""}</div>
-                          <div className={styles.teamMetaCell}>{c?.senkei || ""}</div>
+                          <div className={styles.teamMetaCell}>{senkeiLabelOf(slot, c)}</div>
                         </div>
                           <div className={styles.teamBody}>
                             <div className={styles.iconCell}>

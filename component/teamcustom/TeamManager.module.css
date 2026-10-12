@@ -8,7 +8,7 @@
 
 /* Keep export rendering fixed across device sizes */
 .exportSheet .teamHeader {
-  grid-template-columns: 76px minmax(0, 2.6fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 0.85fr);
+  grid-template-columns: 76px minmax(0, 2.345fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 1.105fr);
   min-height: 34px;
 }
 
@@ -467,7 +467,7 @@
 
 .teamHeader {
   display: grid;
-  grid-template-columns: 60px minmax(0, 2.1fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 0.9fr);
+  grid-template-columns: 60px minmax(0, 1.83fr) minmax(0, 0.9fr) minmax(0, 0.7fr) minmax(0, 1.17fr);
   background: #d6b2d7;
   border-bottom: 1px solid #8f8f8f;
 }
@@ -509,6 +509,15 @@
 
 .teamMetaCell:last-child {
   border-right: 0;
+}
+
+.senkeiToggleCell {
+  cursor: pointer;
+}
+
+.senkeiToggleCell:focus-visible {
+  outline: 2px solid #1f6feb;
+  outline-offset: -2px;
 }
 
 .mobileEditBtn {
@@ -773,6 +782,27 @@
 .customCharacterButton {
   margin-left: auto;
   background: #eef7ff;
+}
+
+.editorManualControls {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.editorSuperSenkeiCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.editorSuperSenkeiCheckbox[data-disabled="1"] {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .customCharacterPanel {
@@ -1546,6 +1576,17 @@
   overscroll-behavior: contain;
 }
 
+.superSenkeiDialog {
+  width: min(320px, calc(100% - 24px));
+}
+
+.superSenkeiCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
 .modalTopRow {
   display: flex;
   align-items: center;
@@ -1814,7 +1855,7 @@
 }
 
 .exportSheet .teamHeader {
-  grid-template-columns: 76px minmax(0, 2.6fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 0.85fr);
+  grid-template-columns: 76px minmax(0, 2.345fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 1.105fr);
   min-height: 34px;
 }
 
@@ -2033,7 +2074,7 @@
   }
 
   .teamHeader {
-    grid-template-columns: 42px minmax(0, 1.85fr) minmax(0, 0.75fr) minmax(0, 0.58fr) minmax(0, 0.75fr);
+    grid-template-columns: 42px minmax(0, 1.625fr) minmax(0, 0.75fr) minmax(0, 0.58fr) minmax(0, 0.975fr);
   }
 
   .teamBody {
