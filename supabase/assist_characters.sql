@@ -4,6 +4,7 @@ create table if not exists public.assist_characters (
   name text not null check (length(trim(name)) > 0),
   file_path text not null,
   assist_skill text not null check (length(trim(assist_skill)) > 0),
+  ratio numeric,
   attack_up smallint not null default 0 check (attack_up in (0, 1)),
   friendship_up smallint not null default 0 check (friendship_up in (0, 1)),
   hp_up smallint not null default 0 check (hp_up in (0, 1)),

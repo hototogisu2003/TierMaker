@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ASSIST_FILTERS, filterAssistCharacters, type AssistCharacter, type AssistFilter } from "@/lib/assist/characters";
+import { ASSIST_FILTERS, filterAssistCharacters, type AssistCharacter, type AssistFilter, type AssistSort } from "@/lib/assist/characters";
 import styles from "./AssistSearch.module.css";
 
 function CharacterIcon({ src, name }: { src: string; name: string }) {
@@ -22,6 +22,8 @@ export default function AssistSearch() {
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<AssistFilter[]>([]);
   const [draft, setDraft] = useState<AssistFilter[]>([]);
+  const [sort, setSort] = useState<AssistSort>("number");
+  const [draftSort, setDraftSort] = useState<AssistSort>("number");
   const [modalOpen, setModalOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const filterButton = useRef<HTMLButtonElement>(null);
@@ -56,7 +58,7 @@ export default function AssistSearch() {
     return () => clearTimeout(timer);
   }, [input]);
 
-  const results = useMemo(() => filterAssistCharacters(characters, query, filters), [characters, query, filters]);
+  const results = useMemo(() => filterAssistCharacters(characters, query, filters, sort), [characters, query, filters, sort]);
 
   function closeFilters() {
     dialog.current?.close();
@@ -64,6 +66,7 @@ export default function AssistSearch() {
 
   function openFilters() {
     setDraft([...filters]);
+    setDraftSort(sort);
     dialog.current?.showModal();
     setModalOpen(true);
   }
@@ -88,8 +91,8 @@ export default function AssistSearch() {
           <div className={styles.search}>
             <input id="assist-query" type="search" aria-label="説明文を検索" value={input} onChange={(event) => setInput(event.target.value)} placeholder="説明文を検索" />
           </div>
-          <button ref={filterButton} className={styles.filterButton} type="button" onClick={openFilters} aria-haspopup="dialog">絞り込み{filters.length > 0 ? `（${filters.length}）` : ""}</button>
-          <button className={styles.resetButton} type="button" onClick={() => { setInput(""); setQuery(""); setFilters([]); }}>条件をリセット</button>
+          <button ref={filterButton} className={styles.filterButton} type="button" onClick={openFilters} aria-haspopup="dialog">絞り込み・並び替え{filters.length > 0 ? `（${filters.length}）` : ""}</button>
+          <button className={styles.resetButton} type="button" onClick={() => { setInput(""); setQuery(""); setFilters([]); setSort("number"); }}>条件をリセット</button>
         </div>
 
         <div aria-live="polite" role="status" className={styles.status}>
@@ -105,22 +108,44 @@ export default function AssistSearch() {
           </ul>}
 
         <dialog ref={dialog} className={styles.dialog} aria-labelledby="assist-filter-title"
-          onClose={() => { setModalOpen(false); setDraft([...filters]); filterButton.current?.focus(); }}
+          onClose={() => {
+            if (dialog.current?.open) return;
+            setModalOpen(false);
+            filterButton.current?.focus();
+          }}
           onClick={(event) => {
             if (event.target !== event.currentTarget) return;
             const box = event.currentTarget.getBoundingClientRect();
             if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeFilters();
           }}>
           <div className={styles.dialogHeader}>
-            <h2 id="assist-filter-title">絞り込み</h2>
-            <button className={styles.applyButton} type="button" onClick={() => { setFilters([...draft]); closeFilters(); }}>検索</button>
+            <h2 id="assist-filter-title">絞り込み・並び替え</h2>
+            <button className={styles.applyButton} type="button" onClick={() => { setFilters([...draft]); setSort(draft.includes("attack_up") ? draftSort : "number"); closeFilters(); }}>検索</button>
             <button type="button" onClick={closeFilters} autoFocus>閉じる</button>
           </div>
           <p id="assist-filter-help">選択したスキルをすべて持つキャラクターを表示します。</p>
           <div className={styles.filterGrid} role="group" aria-label="スキル分類" aria-describedby="assist-filter-help">
             {ASSIST_FILTERS.map(({ key, label }) => <button type="button" key={key} aria-pressed={draft.includes(key)}
-              onClick={() => setDraft((current) => current.includes(key) ? current.filter((value) => value !== key) : [...current, key])}>{label}</button>)}
+              onClick={() => {
+                if (key === "attack_up" && draft.includes(key)) setDraftSort("number");
+                setDraft((current) => current.includes(key) ? current.filter((value) => value !== key) : [...current, key]);
+              }}>{label}</button>)}
           </div>
+          <fieldset className={styles.sortOptions}>
+            <legend>並び替え</legend>
+            <div className={styles.sortChoices}>
+              <label>
+                <input type="radio" name="assist-sort" value="number" checked={draftSort === "number"} onChange={() => setDraftSort("number")} />
+                番号順
+              </label>
+              <label className={!draft.includes("attack_up") ? styles.disabledSort : undefined}>
+                <input type="radio" name="assist-sort" value="ratio" checked={draftSort === "ratio"}
+                  disabled={!draft.includes("attack_up")} aria-describedby="assist-sort-help" onChange={() => setDraftSort("ratio")} />
+                倍率順
+              </label>
+            </div>
+            <p id="assist-sort-help">倍率順は「攻撃アップ」選択時に利用できます。大きい順に表示します。</p>
+          </fieldset>
         </dialog>
       </div>
     </section>

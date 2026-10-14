@@ -32,6 +32,7 @@ function parseCsv(source) {
 }
 const source = parseCsv(fs.readFileSync(path.join(root, "supabase/assist_characters.csv"), "utf8"));
 const characters = source.map((row) => ({ ...row, number: Number(row.number), iconUrl: row.file_path,
+  ratio: row.ratio ? Number(row.ratio) : null,
   ...Object.fromEntries(ASSIST_FILTERS.map(({ key }) => [key, Number(row[key])])),
 }));
 
@@ -42,10 +43,40 @@ test("initial data has 87 unique characters and the corrected classifications", 
   assert.equal(filterAssistCharacters(characters, "", ["ss_shortening"]).length, 8);
   assert.equal(characters.find((c) => c.number === 8487).ss_shortening, 1);
   assert.equal(characters.find((c) => c.number === 8921).attack_up, 1);
+  assert.equal(characters.filter((c) => c.ratio != null).length, 45);
+  assert.equal(characters.find((c) => c.number === 7322).ratio, 106);
   for (const character of characters) {
     assert.match(character.file_path, new RegExp(`^${character.number}\\.jpg$`));
     for (const { key } of ASSIST_FILTERS) assert.ok(character[key] === 0 || character[key] === 1);
   }
+});
+
+test("ratio order is numeric descending, breaks ties by number and puts missing ratios last", () => {
+  const fixture = [
+    { ...characters[0], number: 900, ratio: null },
+    { ...characters[0], number: 800, ratio: 9 },
+    { ...characters[0], number: 700, ratio: 25 },
+    { ...characters[0], number: 600, ratio: 106 },
+    { ...characters[0], number: 750, ratio: 25 },
+    { ...characters[0], number: 950, ratio: null },
+    { ...characters[0], number: 100, ratio: 0 },
+    { ...characters[0], number: 300, ratio: 25.5 },
+  ];
+  assert.deepEqual(Array.from(filterAssistCharacters(fixture, "", ["attack_up"], "ratio"), (c) => c.number),
+    [600, 300, 750, 700, 800, 100, 950, 900]);
+  assert.deepEqual(fixture.map((c) => c.number), [900, 800, 700, 600, 750, 950, 100, 300]);
+});
+
+test("ratio order requires attack_up and combines with text and multiple classifications", () => {
+  const byRatio = filterAssistCharacters(characters, "25%", ["attack_up", "friendship_up"], "ratio");
+  assert.ok(byRatio.length > 0);
+  assert.ok(byRatio.every((c) => c.attack_up === 1 && c.friendship_up === 1 && c.assist_skill.includes("25%")));
+  assert.deepEqual(Array.from(filterAssistCharacters(characters, "", [], "ratio"), (c) => c.number),
+    Array.from(filterAssistCharacters(characters, "", [], "number"), (c) => c.number));
+  const allAttack = filterAssistCharacters(characters, "", ["attack_up"], "ratio");
+  assert.equal(allAttack[0].number, 8921);
+  assert.equal(allAttack[0].ratio, 107);
+  assert.ok(allAttack.every((c, i) => i === 0 || allAttack[i - 1].ratio >= c.ratio));
 });
 
 test("empty conditions return all characters in numeric descending order without mutating the input", () => {

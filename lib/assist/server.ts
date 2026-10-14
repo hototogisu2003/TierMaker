@@ -12,7 +12,7 @@ export async function loadAssistCharacters(): Promise<AssistCharacter[]> {
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase
       .from("assist_characters")
-      .select(`number,name,file_path,assist_skill,${ASSIST_FILTERS.map(({ key }) => key).join(",")}`)
+      .select(`number,name,file_path,assist_skill,ratio,${ASSIST_FILTERS.map(({ key }) => key).join(",")}`)
       .order("number", { ascending: false })
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
@@ -24,6 +24,7 @@ export async function loadAssistCharacters(): Promise<AssistCharacter[]> {
         : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
       characters.push({
         number: row.number,
+        ratio: row.ratio != null && Number.isFinite(Number(row.ratio)) ? Number(row.ratio) : null,
         name: row.name,
         assist_skill: row.assist_skill,
         iconUrl,

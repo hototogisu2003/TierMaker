@@ -37,9 +37,9 @@ async function main() {
   }
   const flags = { attack_up: 0, friendship_up: 0, hp_up: 0, ss_shortening: 0, damage_reduction: 0, recovery: 0, barrier_grant: 0, status_grant: 0 };
   const characters = [
-    { ...flags, number: 10, name: "名前のみ", assist_skill: "HPが50%アップ", iconUrl: "", hp_up: 1 },
-    { ...flags, number: 100, name: "複合スキル", assist_skill: "攻撃力と友情コンボの威力が25%アップ", iconUrl: `${base}/missing-assist-icon.jpg`, attack_up: 1, friendship_up: 1 },
-    { ...flags, number: 20, name: "長文キャラ", assist_skill: "攻撃力が20%アップ。".repeat(35), iconUrl: "", attack_up: 1 },
+    { ...flags, number: 10, ratio: null, name: "名前のみ", assist_skill: "HPが50%アップ", iconUrl: "", hp_up: 1 },
+    { ...flags, number: 100, ratio: 25, name: "複合スキル", assist_skill: "攻撃力と友情コンボの威力が25%アップ", iconUrl: `${base}/missing-assist-icon.jpg`, attack_up: 1, friendship_up: 1 },
+    { ...flags, number: 20, ratio: 106, name: "長文キャラ", assist_skill: "攻撃力が20%アップ。".repeat(35), iconUrl: "", attack_up: 1 },
   ];
   socket.onmessage = ({ data }) => {
     const event = JSON.parse(data);
@@ -94,10 +94,39 @@ async function main() {
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: 1, y: 1, button: "left", clickCount: 1 });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: 1, y: 1, button: "left", clickCount: 1 });
   await waitFor("!document.querySelector('dialog').open"); await countIs(3);
+  const ratioInput = "document.querySelector('input[value=ratio]')";
+  const numberInput = "document.querySelector('input[value=number]')";
+  const names = () => evaluate("Array.from(document.querySelectorAll('li h2'),e=>e.textContent)");
+  await open();
+  assert.equal(await evaluate(`${ratioInput}.disabled`), true);
+  await click("攻撃アップ");
+  assert.equal(await evaluate(`${ratioInput}.disabled`), false);
+  await evaluate(`${ratioInput}.click()`); await click("閉じる"); await countIs(3);
+  await open(); assert.equal(await evaluate(`${numberInput}.checked && ${ratioInput}.disabled`), true);
+  await click("攻撃アップ"); await evaluate(`${ratioInput}.click()`); await click("検索"); await countIs(2);
+  assert.deepEqual(await names(), ["長文キャラ", "複合スキル"]);
+  await open(); assert.equal(await evaluate(`${ratioInput}.checked`), true);
+  await click("攻撃アップ");
+  assert.equal(await evaluate(`${numberInput}.checked && ${ratioInput}.disabled`), true);
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor("!document.querySelector('dialog').open");
+  assert.deepEqual(await names(), ["長文キャラ", "複合スキル"]);
+  await open(); await click("友情アップ"); await click("検索"); await countIs(1);
+  await click("条件をリセット"); await countIs(3);
+  await open(); assert.equal(await evaluate(`${numberInput}.checked && ${ratioInput}.disabled`), true);
+  await click("攻撃アップ"); await evaluate(`${ratioInput}.click()`); await click("攻撃アップ"); await click("攻撃アップ");
+  assert.equal(await evaluate(`${numberInput}.checked`), true);
+  await click("検索"); await countIs(2);
+  assert.deepEqual(await names(), ["複合スキル", "長文キャラ"]);
+  await click("条件をリセット"); await countIs(3);
   await send("Emulation.setDeviceMetricsOverride", { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
   assert.equal(await evaluate("document.documentElement.scrollWidth <= window.innerWidth"), true);
   await open();
   await waitFor("document.querySelector('dialog').open");
+  assert.equal(await evaluate("document.querySelector('dialog').scrollWidth <= document.querySelector('dialog').clientWidth"), true);
+  const modalScreenshot = await send("Page.captureScreenshot", { format: "png" });
+  fs.writeFileSync(path.join(__dirname, "../.next/assist-sort-mobile.png"), Buffer.from(modalScreenshot.data, "base64"));
   await evaluate("document.querySelector('dialog button:last-of-type').focus()");
   for (let i = 0; i < 14; i++) {
     await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
@@ -111,7 +140,7 @@ async function main() {
   await send("Page.reload", { ignoreCache: true });
   await waitFor("document.querySelector('[role=alert]') !== null");
   failedApi = false; await click("再試行"); await countIs(3);
-  console.log("PASS: sorting, image fallback, AND search, debounce, reset, modal apply/discard/Escape/backdrop, focus, mobile layout, API error/retry");
+  console.log("PASS: numeric ratio sort, disabled/reenabled controls, apply/discard/reset, image fallback, AND search, debounce, Escape/backdrop, focus, mobile layout, API error/retry");
   await send("Browser.close");
 }
 
