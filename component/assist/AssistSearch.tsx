@@ -144,7 +144,7 @@ export default function AssistSearch() {
                 倍率順
               </label>
             </div>
-            <p id="assist-sort-help">倍率順は「攻撃アップ」選択時に利用できます。大きい順に表示します。</p>
+            <p id="assist-sort-help">倍率順は「攻撃アップ」選択時に利用できます。<br />可変倍率→固定倍率→ステータスUPの順に表示</p>
           </fieldset>
         </dialog>
       </div>
