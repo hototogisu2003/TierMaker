@@ -3,7 +3,10 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { ASSIST_FILTERS, type AssistCharacter } from "./characters";
 
 export async function loadAssistCharacters(): Promise<AssistCharacter[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient({
+    // Opt out of the server-side data cache as well as the API/browser cache.
+    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+  });
   const r2Base = (process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL ?? "").trim().replace(/\/+$/, "");
   const bucket = process.env.NEXT_PUBLIC_ICON_BUCKET ?? "characters";
   const characters: AssistCharacter[] = [];

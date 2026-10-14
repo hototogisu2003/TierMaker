@@ -12,12 +12,13 @@ function requireEnv(name: string): string {
  * - We only use it for reading public data (characters list, public storage URL).
  * - Auth session persistence is disabled.
  */
-export function getSupabaseServerClient() {
+export function getSupabaseServerClient(options?: { fetch?: typeof fetch }) {
   const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseAnonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
+    ...(options?.fetch ? { global: { fetch: options.fetch } } : {}),
   });
 }
 
