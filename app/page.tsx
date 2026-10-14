@@ -30,6 +30,13 @@ const tools = [
     cta: "適正予想メーカーへ",
     accent: "#9333ea",
   },
+  {
+    title: "アシストスキル検索",
+    description: "真獣神化のアシストスキルを効果別に絞り込めるツール。",
+    href: "/assist",
+    cta: "アシストスキル検索へ",
+    accent: "#eab308",
+  },
 ] as const;
 
 export default function HomePage() {
