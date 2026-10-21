@@ -251,24 +251,51 @@ export function computeDamage(state: DamageCalcState): DamageCalcResult {
 }
 
 export function calculateRequiredAttackBonus(
-  state: DamageCalcState,
-  targetHp: number | null,
-  effectiveMultiplier: number
+  states: DamageCalcState[],
+  targetHp: number | null
 ): number | null {
-  if (state.attackMode !== "direct" || targetHp === null || targetHp <= 0) return null;
-
-  const baseAttack = Number.parseFloat(state.baseAttack);
-  if (!Number.isFinite(baseAttack) || baseAttack < 0 || !Number.isFinite(effectiveMultiplier) || effectiveMultiplier <= 0) {
-    return null;
+  if (targetHp === null || !Number.isFinite(targetHp) || targetHp <= 0) return null;
+  const directAttacks = states.filter((state) => state.attackMode === "direct");
+  if (directAttacks.length === 0) return null;
+  for (const state of directAttacks) {
+    const baseAttack = Number.parseFloat(state.baseAttack);
+    const multiplier = computeDamage(state).effectiveMultiplier;
+    if (!Number.isFinite(baseAttack) || baseAttack < 0 || !Number.isFinite(multiplier) || multiplier <= 0) return null;
   }
 
-  const rawRequiredBonus = targetHp / effectiveMultiplier - baseAttack;
-  const floatingPointTolerance = Number.EPSILON * Math.max(1, Math.abs(rawRequiredBonus)) * 16;
-  return Math.max(0, Math.ceil(rawRequiredBonus - floatingPointTolerance));
+  const fixedDamage = states.filter((state) => state.attackMode === "friend")
+    .reduce((sum, state) => sum + computeDamage(state).finalDamage, 0);
+  // Replace each attack's current bonus with the same x. Use the normal damage
+  // calculation so per-attack and multi-hit rounding also match the judgment.
+  const reachesTarget = (bonus: number) => fixedDamage + directAttacks.reduce(
+    (sum, state) => sum + computeDamage({ ...state, attackBonus: String(bonus) }).finalDamage,
+    0
+  ) >= targetHp;
+  if (reachesTarget(0)) return 0;
+
+  let lower = 0;
+  let upper = 1;
+  while (!reachesTarget(upper)) {
+    if (upper === Number.MAX_SAFE_INTEGER) return null;
+    lower = upper;
+    upper = Math.min(upper * 2, Number.MAX_SAFE_INTEGER);
+  }
+  while (upper - lower > 1) {
+    const middle = lower + Math.floor((upper - lower) / 2);
+    if (reachesTarget(middle)) upper = middle;
+    else lower = middle;
+  }
+  return upper;
+}
+
+export function getEnemyHp(state: DamageCalcState): number {
+  return state.bossHpEnabled
+    ? state.bossHps.reduce((sum, hp) => sum + Math.max(0, parseNumber(hp, 0)), 0)
+    : parseNumber(state.enemyHp, Number.NaN);
 }
 
 export function judgeOneShot(totalDamage: number, state: DamageCalcState): OneShotResult {
-  const maxHp = parseNumber(state.enemyHp, Number.NaN);
+  const maxHp = getEnemyHp(state);
   if (!Number.isFinite(maxHp) || maxHp <= 0) {
     return { realHp: null, success: null, message: "HPを入力してください" };
   }
@@ -277,7 +304,9 @@ export function judgeOneShot(totalDamage: number, state: DamageCalcState): OneSh
   if (state.reduceAbEnabled) reduceRate += parseNumber(state.reduceAbGrade, 0);
   if (state.reduceTenPercent) reduceRate += 0.1;
 
-  const realHp = Math.floor(maxHp * (1 - reduceRate));
+  const realHp = state.bossHpEnabled
+    ? Math.floor(maxHp - Math.max(0, parseNumber(state.bossHps[0], 0)) * reduceRate)
+    : Math.floor(maxHp * (1 - reduceRate));
   const success = totalDamage >= realHp;
   return {
     realHp,

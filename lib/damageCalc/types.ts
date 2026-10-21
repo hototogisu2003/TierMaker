@@ -2,7 +2,7 @@ export type AttackMode = "direct" | "friend";
 export type ToolTab = "calc" | "verify" | "manual" | "contact";
 export type ThemeMode = "light" | "dark";
 export type StageType = "advantage" | "none" | "disadvantage";
-export type SpotBonus = "none" | "main" | "sub";
+export type SpotBonus = "none" | "main" | "mainOrSubPlus" | "sub";
 
 export type FruitGroupId =
   | "sameAttack"
@@ -109,6 +109,8 @@ export type DamageCalcState = {
   gimmickEnabled: boolean;
   gimmickRate: string;
   enemyHp: string;
+  bossHpEnabled: boolean;
+  bossHps: [string, string, string, string];
   reduceAbEnabled: boolean;
   reduceAbGrade: string;
   reduceTenPercent: boolean;

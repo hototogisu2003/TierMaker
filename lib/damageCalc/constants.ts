@@ -18,6 +18,14 @@ export const GRADE_4_OPTIONS: SelectOption[] = [
   { label: "EL (x3.0)", value: "3.0" },
 ];
 
+export const WEAK_KILLER_OPTIONS: SelectOption[] = [
+  { label: "S (×1.25)", value: "1.25" },
+  { label: "無印 (×1.5)", value: "1.5" },
+  { label: "M (×2.0)", value: "2.0" },
+  { label: "L (×2.5)", value: "2.5" },
+  { label: "EL (×3.0)", value: "3.0" },
+];
+
 export const GRADE_3_OPTIONS: SelectOption[] = [
   { label: "無印 (x1.5)", value: "1.5" },
   { label: "M (x2.0)", value: "2.0" },

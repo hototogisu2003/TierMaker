@@ -8,7 +8,7 @@ type FruitPickerProps = {
   selectedFruits: FruitSelection;
   onToggle: (groupId: FruitGroupId, amount: number) => void;
   spotBonus: SpotBonus;
-  onToggleSpot: (spot: "main" | "sub") => void;
+  onToggleSpot: (spot: Exclude<SpotBonus, "none">) => void;
 };
 
 function cn(...classes: Array<string | undefined | false | null>) {
@@ -68,16 +68,23 @@ export default function FruitPicker({ selectedFruits, onToggle, spotBonus, onTog
           </section>
         ) : null}
 
-        <div className={styles.spotGridInline}>
-          <button type="button" className={cn(styles.spotCard, spotBonus === "main" && styles.spotCardActive)} onClick={() => onToggleSpot("main")}>
-            <span className={styles.spotLabel}>スポットメイン</span>
-            <span>+2,000</span>
-          </button>
-          <button type="button" className={cn(styles.spotCard, spotBonus === "sub" && styles.spotCardActive)} onClick={() => onToggleSpot("sub")}>
-            <span className={styles.spotLabel}>スポットサブ</span>
-            <span>+1,500</span>
-          </button>
-        </div>
+        <section className={cn(styles.fruitGroup, styles.spotGroup)}>
+          <div className={styles.fruitLabel}>スポット</div>
+          <div className={styles.spotGridInline}>
+            <button type="button" className={cn(styles.spotCard, spotBonus === "main" && styles.spotCardActive)} onClick={() => onToggleSpot("main")} aria-pressed={spotBonus === "main"}>
+              <span>メイン+</span>
+              <span>+2,000</span>
+            </button>
+            <button type="button" className={cn(styles.spotCard, spotBonus === "mainOrSubPlus" && styles.spotCardActive)} onClick={() => onToggleSpot("mainOrSubPlus")} aria-pressed={spotBonus === "mainOrSubPlus"}>
+              <span>メイン/サブ+</span>
+              <span>+1,500</span>
+            </button>
+            <button type="button" className={cn(styles.spotCard, spotBonus === "sub" && styles.spotCardActive)} onClick={() => onToggleSpot("sub")} aria-pressed={spotBonus === "sub"}>
+              <span>サブ</span>
+              <span>+500</span>
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

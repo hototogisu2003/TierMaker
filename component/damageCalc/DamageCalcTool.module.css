@@ -97,11 +97,17 @@
 }
 
 .hero {
-  background: var(--tool-bg);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: #f3f4f6;
   border: 0;
-  border-bottom: 2px solid #eeeeee;
   box-shadow: none;
-  padding: 6px 0 18px;
+  padding: 6px 0 8px;
+}
+
+.toolShell[data-theme="dark"] .hero {
+  background: #121212;
 }
 
 .heroTop {
@@ -143,13 +149,6 @@
   min-height: 36px;
   gap: 12px;
   position: relative;
-}
-
-.heroTitle {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.2;
-  font-weight: 700;
 }
 
 .headerMenuButton {
@@ -277,7 +276,7 @@
 .primaryTabBar {
   display: flex;
   justify-content: center;
-  margin: 18px auto 12px;
+  margin: 18px auto 0;
   background: #eeeeee;
   padding: 4px;
   border-radius: 4px;
@@ -303,17 +302,116 @@
   color: var(--tool-text);
 }
 
-.primaryTabButtonActive {
-  background: var(--tool-accent);
+.primaryTabButtonActive,
+.primaryTabButtonActive:hover {
+  background: #2e7d32;
   color: #ffffff;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.attackWorkspace {
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid var(--tool-border);
+  border-radius: 8px;
+  background: var(--tool-panel-strong);
+  box-shadow: var(--tool-shadow);
+}
+
+.attackWorkspace > .contentGrid:first-child {
+  margin-top: 0;
+}
+
+.attackToolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 0;
+}
+
+.attackNumbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px;
+}
+
+.attackNumber {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--tool-border);
+  border-radius: 50%;
+  background: var(--tool-panel);
+  color: var(--tool-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.attackNumberActive {
+  border-color: var(--tool-accent);
+  background: var(--tool-accent);
+  color: #ffffff;
+}
+
+.addAttackButton {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: 1px solid var(--tool-border);
+  border-radius: 18px;
+  background: var(--tool-panel-strong);
+  color: var(--tool-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.removeAttackButton {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ffebee;
+  color: #d32f2f;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.attackNumber:focus-visible,
+.addAttackButton:focus-visible,
+.removeAttackButton:focus-visible {
+  outline: 2px solid var(--tool-accent-strong);
+  outline-offset: 2px;
+}
+
+.attackBreakdown + .attackBreakdown {
+  margin-top: 24px;
+}
+
+.attackBreakdownTitle {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--tool-accent-soft);
+  font-size: 16px;
 }
 
 .contentGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
   gap: 18px;
-  margin-top: 18px;
+  margin-top: 6px;
   align-items: start;
 }
 
@@ -324,13 +422,13 @@
 .calcColumns {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
+  gap: 6px;
   align-items: start;
 }
 
 .calcColumn {
   display: grid;
-  gap: 18px;
+  gap: 6px;
 }
 
 .stack {
@@ -344,6 +442,14 @@
   border-radius: 8px;
   box-shadow: var(--tool-shadow);
   padding: 15px;
+}
+
+.card.multiplierCard {
+  padding: 6px;
+}
+
+.multiplierCard .cardTitleRow {
+  margin-bottom: 6px;
 }
 
 .cardTitleRow {
@@ -426,7 +532,7 @@
 .characterModalOverlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 1100;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -454,6 +560,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.fruitModal {
+  margin: auto;
+}
+
+.fruitModal::backdrop {
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.fruitModalBody {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.fruitModalBody .fruitPicker {
+  margin-top: 0;
 }
 
 .characterModalTitle {
@@ -634,10 +758,16 @@
 .spotCard {
   border: 1px solid var(--tool-border);
   background: var(--tool-bg);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  width: 100%;
+  color: var(--tool-text);
+  font: inherit;
+  font-size: 13px;
   display: grid;
-  gap: 6px;
+  gap: 2px;
+  text-align: center;
+  cursor: pointer;
 }
 
 .spotCardActive {
@@ -652,7 +782,7 @@
 .gridFields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 4px;
 }
 
 .fieldRow {
@@ -733,7 +863,7 @@
 .fruitBottomRow {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   align-items: start;
 }
@@ -799,8 +929,12 @@
 
 .spotGridInline {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.spotGroup {
+  grid-column: 1 / -1;
 }
 
 .summaryCard {
@@ -814,7 +948,7 @@
 .sectionTitle {
   background: var(--tool-accent);
   color: #ffffff;
-  padding: 8px 15px;
+  padding: 6px;
   border-radius: 5px;
   display: inline-block;
 }
@@ -847,7 +981,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+  gap: 4px;
 }
 
 .breakdownItem {
@@ -856,7 +990,7 @@
   gap: 12px;
   font-size: 14px;
   border-top: 1px solid var(--tool-border);
-  padding-top: 10px;
+  padding-top: 4px;
 }
 
 .breakdownItem:first-child {
@@ -900,8 +1034,60 @@
   overflow-y: auto;
 }
 
-.resultFooterOpen {
-  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.24);
+.resultModal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  height: 100dvh;
+  max-height: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 4px solid var(--tool-accent);
+  background: var(--tool-panel-strong);
+  color: var(--tool-text);
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-size: 13px;
+}
+
+.resultModal[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.resultModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--tool-border);
+}
+
+.resultModalContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.resultModalSummary {
+  display: grid;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.resultAttackSwitch {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .resultFooterSummary {
@@ -930,8 +1116,10 @@
   font-weight: 700;
 }
 
-.resultFooterHint {
-  font-size: 12px;
+.resultFooterChevron {
+  width: 12px;
+  height: 6px;
+  flex-shrink: 0;
   color: var(--tool-muted);
 }
 
@@ -956,6 +1144,24 @@
   color: var(--tool-accent);
 }
 
+.enemyHpHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bossHpInputs {
+  display: grid;
+  gap: 6px;
+}
+
+.toggleButton.bossHpButtonActive {
+  border-color: var(--tool-accent);
+  background: var(--tool-accent-soft);
+  color: var(--tool-accent-strong);
+}
+
 .judgeCard {
   display: grid;
   gap: 16px;
@@ -973,7 +1179,7 @@
 
 .judgeBox {
   border-radius: 8px;
-  padding: 18px;
+  padding: 6px 18px;
   border: 1px solid var(--tool-border);
   background: var(--tool-bg);
   text-align: center;
@@ -992,7 +1198,7 @@
 }
 
 .judgeMessage {
-  font-size: 28px;
+  font-size: 17px;
   font-weight: 800;
 }
 
@@ -1111,7 +1317,6 @@
     padding-bottom: 120px;
   }
 
-  .hero,
   .card {
     padding: 16px;
     border-radius: 8px;
@@ -1134,11 +1339,6 @@
 
   .fruitGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .fruitBottomRow {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 8px;
   }
 
@@ -1173,31 +1373,24 @@
   }
 
   .spotGridInline {
-    gap: 6px;
+    gap: 4px;
   }
 
   .spotCard {
-    padding: 10px 8px;
-    gap: 4px;
-    min-height: 68px;
+    padding: 6px 4px;
+    font-size: 12px;
   }
 
   .gridFields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .heroActions,
   .modeSwitch {
     width: 100%;
   }
 
   .heroLeft {
     gap: 8px;
-  }
-
-  .heroTitle {
-    font-size: clamp(13px, 3.7vw, 16px);
-    white-space: nowrap;
   }
 
   .homeLink {
