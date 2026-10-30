@@ -4,9 +4,9 @@ export type Spot = "none" | "main" | "mainOrSubPlus" | "sub";
 export type Grade = "L" | "EL";
 
 export const CHARACTERS = {
+  C: { name: "カグヤ", stages: [{ k: 1.15, cap: 2 }, { k: 1.5, cap: 2.25 }] },
   A: { name: "いろは", stages: [{ k: 0.75, cap: 1.65 }, { k: 1.5, cap: 2.25 }] },
   B: { name: "ローレライα", stages: [{ k: 0.35, cap: 1.25 }, { k: 1.35, cap: 2 }] },
-  C: { name: "カグヤ", stages: [{ k: 1.15, cap: 2 }, { k: 1.5, cap: 2.25 }] },
 } as const;
 
 export const SPOTS = {
@@ -50,7 +50,7 @@ export type BuffState = Inputs & {
   fruits: Record<Stat, Record<string, Grade | undefined>>;
 };
 
-export function createInitialState(character: Character = "A"): BuffState {
+export function createInitialState(character: Character = "C"): BuffState {
   return { character, atk: "", spd: "", atkBonus: "", spdBonus: "", spot: "none", fruits: { atk: {}, spd: {} } };
 }
 
