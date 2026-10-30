@@ -132,6 +132,7 @@ function normalizeContent(raw: string | null | undefined): CharacterContent | ""
 
 function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherCategory | "" {
   const value = (raw ?? "").trim().toLowerCase();
+  if (value === "滅絶") return "滅絶";
   if (value === "黎絶") return "黎絶";
   if (value === "轟絶") return "轟絶";
   if (value === "爆絶") return "爆絶";

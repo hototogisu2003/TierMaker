@@ -141,7 +141,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const gachaOrder: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
   const formOrder: CharacterForm[] = ["進化/神化", "獣神化", "獣神化改", "真獣神化"];
   const contentOrder: CharacterContent[] = ["破界の星墓", "天魔の孤城", "禁忌の獄"];
-  const otherCategoryRow1: CharacterOtherCategory[] = ["黎絶", "轟絶", "爆絶", "超絶"];
+  const otherCategoryRow1: CharacterOtherCategory[] = ["滅絶", "黎絶", "轟絶", "爆絶", "超絶"];
   const otherCategoryRow2: CharacterOtherCategory[] = ["超究極", "コラボ", "その他"];
   const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
     火: { src: iconFire.src, alt: "火属性" },

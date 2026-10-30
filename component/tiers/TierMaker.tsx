@@ -70,6 +70,7 @@ const ELEMENT_OPTIONS: CharacterElement[] = ["火", "水", "木", "光", "闇"];
 const OBTAIN_OPTIONS: CharacterObtain[] = ["ガチャ", "降臨", "コラボパック"];
 const GACHA_OPTIONS: CharacterGacha[] = ["限定", "α", "恒常", "コラボ"];
 const OTHER_CATEGORY_OPTIONS: CharacterOtherCategory[] = [
+  "滅絶",
   "黎絶",
   "轟絶",
   "爆絶",

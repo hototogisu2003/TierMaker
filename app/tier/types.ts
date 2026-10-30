@@ -4,6 +4,7 @@ export type CharacterGacha = "限定" | "α" | "恒常" | "コラボ";
 export type CharacterForm = "進化/神化" | "獣神化" | "獣神化改" | "真獣神化";
 export type CharacterContent = "破界の星墓" | "天魔の孤城" | "禁忌の獄";
 export type CharacterOtherCategory =
+  | "滅絶"
   | "黎絶"
   | "轟絶"
   | "爆絶"
