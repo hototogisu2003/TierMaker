@@ -27,15 +27,9 @@ import { createDefaultDamageCalcState } from "@/lib/damageCalc/defaultState";
 import type { AttackMode, DamageCalcState, FruitGroupId, FruitSelection, SpotBonus, StageType, ThemeMode, ToolTab } from "@/lib/damageCalc/types";
 import FieldRow from "./FieldRow";
 import FruitPicker from "./FruitPicker";
+import CharacterPicker from "./CharacterPicker";
+import type { DamageCalcCharacter } from "@/lib/damageCalc/characterTypes";
 import styles from "./DamageCalcTool.module.css";
-
-type DamageCalcCharacter = {
-  id: string;
-  name: string;
-  nameKana: string;
-  attack: number;
-  iconUrl: string;
-};
 
 type AttackEntry = {
   id: number;
@@ -56,11 +50,6 @@ function createAttackCollection(): AttackCollection {
     nextId: 2,
   };
 }
-
-type CharacterSearchResponse = {
-  characters?: DamageCalcCharacter[];
-  message?: string;
-};
 
 type BooleanField = {
   [K in keyof DamageCalcState]: DamageCalcState[K] extends boolean ? K : never;
@@ -247,10 +236,6 @@ export default function DamageCalcTool() {
   const [showBreakdown, setShowBreakdown] = React.useState(false);
   const [breakdownAttackId, setBreakdownAttackId] = React.useState(attacks.activeId);
   const [showCharacterPicker, setShowCharacterPicker] = React.useState(false);
-  const [characterQuery, setCharacterQuery] = React.useState("");
-  const [characterResults, setCharacterResults] = React.useState<DamageCalcCharacter[]>([]);
-  const [isLoadingCharacters, setIsLoadingCharacters] = React.useState(false);
-  const [characterError, setCharacterError] = React.useState("");
   const resultDialogRef = React.useRef<HTMLDialogElement | null>(null);
   const fruitDialogRef = React.useRef<HTMLDialogElement | null>(null);
   const fruitTriggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -276,45 +261,6 @@ export default function DamageCalcTool() {
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [showNavMenu]);
-
-  React.useEffect(() => {
-    if (!showCharacterPicker) return;
-    let active = true;
-    const timer = window.setTimeout(async () => {
-      setIsLoadingCharacters(true);
-      setCharacterError("");
-      try {
-        const response = await fetch(
-          `/api/damage-calc/characters?query=${encodeURIComponent(characterQuery)}&limit=30`,
-          { cache: "no-store" }
-        );
-        const data = (await response.json()) as CharacterSearchResponse;
-        if (!active) return;
-        if (!response.ok) throw new Error(data.message ?? "キャラクターの取得に失敗しました");
-        setCharacterResults(data.characters ?? []);
-      } catch (error) {
-        if (!active) return;
-        setCharacterResults([]);
-        setCharacterError(error instanceof Error ? error.message : "キャラクターの取得に失敗しました");
-      } finally {
-        if (active) setIsLoadingCharacters(false);
-      }
-    }, characterQuery.trim() ? 250 : 0);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [characterQuery, showCharacterPicker]);
-
-  React.useEffect(() => {
-    if (!showCharacterPicker) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowCharacterPicker(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [showCharacterPicker]);
 
   React.useEffect(() => {
     const dialog = resultDialogRef.current;
@@ -764,7 +710,6 @@ export default function DamageCalcTool() {
                               type="button"
                               className={cn(styles.toggleButton, styles.mainInputControl, styles.characterSelectButton)}
                               onClick={() => {
-                                setCharacterQuery("");
                                 setShowCharacterPicker(true);
                               }}
                             >
@@ -1042,54 +987,7 @@ export default function DamageCalcTool() {
           </div>
         </dialog>
       ) : null}
-      {showCharacterPicker ? (
-        <div className={styles.characterModalOverlay} onClick={() => setShowCharacterPicker(false)}>
-          <section
-            className={styles.characterModal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="character-picker-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.characterModalHeader}>
-              <h2 id="character-picker-title" className={styles.characterModalTitle}>キャラを選択</h2>
-              <button type="button" className={styles.characterModalClose} onClick={() => setShowCharacterPicker(false)} aria-label="閉じる">×</button>
-            </div>
-            <Input
-              className={styles.characterSearchInput}
-              value={characterQuery}
-              onChange={(event) => setCharacterQuery(event.target.value)}
-              placeholder="キャラクター名を検索"
-              autoFocus
-            />
-            {characterError ? <p className={styles.characterMessage}>{characterError}</p> : null}
-            {isLoadingCharacters ? <p className={styles.characterMessage}>読み込み中...</p> : null}
-            {!isLoadingCharacters && !characterError && characterResults.length === 0 ? (
-              <p className={styles.characterMessage}>該当するキャラクターが見つかりません。</p>
-            ) : null}
-            <div className={styles.characterResults}>
-              {characterResults.map((character) => (
-                <button
-                  key={character.id}
-                  type="button"
-                  className={styles.characterResult}
-                  onClick={() => selectCharacter(character)}
-                >
-                  {character.iconUrl ? (
-                    <img className={styles.characterResultIcon} src={character.iconUrl} alt="" />
-                  ) : (
-                    <span className={styles.characterResultFallback}>画像なし</span>
-                  )}
-                  <span className={styles.characterResultText}>
-                    <strong>{character.name}</strong>
-                  </span>
-                  <span className={styles.characterAttack}>攻撃力 {character.attack.toLocaleString("ja-JP")}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {showCharacterPicker ? <CharacterPicker onSelect={selectCharacter} onClose={() => setShowCharacterPicker(false)} /> : null}
       {activeTab === "calc" && (
         <>
           <div className={styles.resultFooter} data-theme={theme}>

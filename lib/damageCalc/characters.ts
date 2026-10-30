@@ -1,16 +1,10 @@
 import "server-only";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { DamageCalcCharacter } from "./characterTypes";
+export type { DamageCalcCharacter } from "./characterTypes";
 
 type GenericRow = Record<string, unknown>;
-
-export type DamageCalcCharacter = {
-  id: string;
-  name: string;
-  nameKana: string;
-  attack: number;
-  iconUrl: string;
-};
 
 function toText(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -45,6 +39,7 @@ function toCharacter(
     name: toText(row.name) || id,
     nameKana: toText(row.name_kana),
     attack: toNumber(row.attack),
+    speed: toNumber(row.speed),
     iconUrl: buildIconUrl(row, supabase),
   };
 }
@@ -58,7 +53,7 @@ export async function searchDamageCalcCharacters(query: string, limit = 30): Pro
   if (!trimmed) {
     const { data, error } = await supabase
       .from(charactersTable)
-      .select("id,name,name_kana,attack,icon_path,number")
+      .select("id,name,name_kana,attack,speed,icon_path,number")
       .order("number", { ascending: false })
       .limit(normalizedLimit);
     if (error) throw new Error(`キャラクター一覧の取得に失敗しました: ${error.message}`);
@@ -96,7 +91,7 @@ export async function searchDamageCalcCharacters(query: string, limit = 30): Pro
 
   const { data, error } = await supabase
     .from(charactersTable)
-    .select("id,name,name_kana,attack,icon_path,number")
+    .select("id,name,name_kana,attack,speed,icon_path,number")
     .in("id", ids);
   if (error) throw new Error(`キャラクター検索に失敗しました: ${error.message}`);
 

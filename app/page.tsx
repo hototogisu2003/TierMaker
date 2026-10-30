@@ -37,6 +37,13 @@ const tools = [
     cta: "アシストスキル検索へ",
     accent: "#eab308",
   },
+  {
+    title: "あのSS",
+    description: "いろは・ローレライα・カグヤのSSバフ倍率を、味方のステータスやわくわくの実から計算。",
+    href: "/IrohaBuff",
+    cta: "あのSSへ",
+    accent: "#0891b2",
+  },
 ] as const;
 
 export default function HomePage() {
