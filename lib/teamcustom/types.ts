@@ -58,6 +58,14 @@ export type CustomCharacter = {
   iconUrl: string;
 };
 
+export type SlotStatus = {
+  hp: number;
+  attack: number;
+  speed: number;
+  assistHp: number;
+  assistAttack: number;
+};
+
 export type TeamSlot = {
   slotIndex: number;
   characterId: string;
@@ -71,6 +79,8 @@ export type TeamSlot = {
   slotMemo?: string;
   superSenkeiEnabled?: boolean;
   customCharacter?: CustomCharacter;
+  status?: SlotStatus;
+  usageHp?: number;
 };
 
 export type TeamRecord = {

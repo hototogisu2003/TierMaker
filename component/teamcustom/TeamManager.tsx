@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
+import { applyTeamHpSupport, normalizeSlotStatus, normalizeUsageHp, teamHpSupportMultiplier } from "@/lib/teamcustom/status";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
 import { CREST_AVAILABLE_GRADES_BY_ID, CREST_GRADE_LABEL, CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
-import type { CharacterItem, CrestGrade, CustomCharacter, FruitGrade, QuestItem, ShugojuItem, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
+import type { CharacterItem, CrestGrade, CustomCharacter, FruitGrade, QuestItem, ShugojuItem, SlotStatus, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";
 
 type Tab = "memo" | "arrange";
 type FruitFilter = "status" | "other";
@@ -25,7 +26,11 @@ type DraftSlot = {
   slotMemo: string;
   superSenkeiEnabled: boolean;
   customCharacter?: CustomCharacter;
+  status?: SlotStatus;
+  usageHp: number;
 };
+
+type StatusDraft = Record<keyof SlotStatus | "usageHp", string>;
 
 type CustomCharacterDraft = Omit<CustomCharacter, "id" | "hp" | "attack" | "speed"> & {
   hp: string;
@@ -58,11 +63,13 @@ type SharePayload = {
     slotMemo?: string;
     superSenkeiEnabled?: boolean;
     customCharacter?: CustomCharacter;
+    status?: SlotStatus;
+    usageHp?: number;
   }>;
 };
 
 type CompactCustomCharacter = [string, CharacterItem["element"], string, string, string, number, number, number, 0 | 1];
-type CompactShareSlot = [string?, number[]?, number[]?, string?, CompactCustomCharacter?, 0?];
+type CompactShareSlot = [string?, number[]?, number[]?, string?, CompactCustomCharacter?, 0?, SlotStatus?, number?];
 type CompactSharePayloadV2 = {
   v: 2;
   t?: string;
@@ -100,7 +107,6 @@ const SPOT_OPTIONS = ["火", "水", "木", "光", "闇", "王者"] as const sati
 const SPOT_MAIN_BONUS = { hp: 2000, attack: 2000, speed: 40.8 } as const;
 const SPOT_SUB_BONUS = { hp: 1500, attack: 1500, speed: 30.6 } as const;
 const HP_ITEM_BONUS = 10000;
-const MAX_USAGE_BONUS = 4000;
 const CUSTOM_ICON_SIZE = 256;
 const CUSTOM_ICON_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const YEAR_OPTIONS: number[] = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018];
@@ -213,6 +219,7 @@ function emptySlots(): DraftSlot[] {
     crestGrades: {},
     slotMemo: "",
     superSenkeiEnabled: true,
+    usageHp: 0,
   }));
 }
 
@@ -365,6 +372,8 @@ function normalizeSharePayload(raw: unknown): SharePayload {
           slotMemo,
           superSenkeiEnabled,
           customCharacter,
+          status: Array.isArray(tuple) ? normalizeSlotStatus(tuple[6]) : undefined,
+          usageHp: normalizeUsageHp(Array.isArray(tuple) ? tuple[7] : undefined, v2.u === 1),
         };
       }),
     };
@@ -461,11 +470,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [mainSpot, setMainSpot] = useState<SpotKey | "">("");
   const [subSpot, setSubSpot] = useState<SpotKey | "">("");
   const [hpItemUsed, setHpItemUsed] = useState(false);
-  const [maxUsageUsed, setMaxUsageUsed] = useState(false);
   const [isSpotModalOpen, setIsSpotModalOpen] = useState(false);
   const [shugojuListScrollTop, setShugojuListScrollTop] = useState(0);
   const [memoText, setMemoText] = useState("");
   const [slots, setSlots] = useState<DraftSlot[]>(emptySlots());
+  const maxUsageUsed = slots.every((slot) => slot.usageHp === 1000);
   const [message, setMessage] = useState("");
   const [fruitFilter, setFruitFilter] = useState<FruitFilter>("status");
 
@@ -499,6 +508,12 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [modalSlotIndex, setModalSlotIndex] = useState<number | null>(null);
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
+  const [statusEditor, setStatusEditor] = useState<{ slotIndex: number; draft: StatusDraft } | null>(null);
+  const statusDialogRef = useRef<HTMLDialogElement>(null);
+  const [statusError, setStatusError] = useState("");
+  useEffect(() => {
+    if (statusEditor && !statusDialogRef.current?.open) statusDialogRef.current?.showModal();
+  }, [statusEditor]);
   const [isCustomCharacterOpen, setIsCustomCharacterOpen] = useState(false);
   const [customCharacterDraft, setCustomCharacterDraft] = useState<CustomCharacterDraft>(emptyCustomCharacterDraft);
   const [isFruitModalOpen, setIsFruitModalOpen] = useState(false);
@@ -610,8 +625,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     return map;
   }, [characters]);
   const characterOf = (slot: DraftSlot): CharacterItem | CustomCharacter | null => {
-    if (slot.customCharacter) return slot.customCharacter;
-    return slot.characterId ? charMap.get(slot.characterId) ?? null : null;
+    const character = slot.customCharacter ?? (slot.characterId ? charMap.get(slot.characterId) ?? null : null);
+    return character && slot.status ? { ...character, hp: slot.status.hp, attack: slot.status.attack, speed: slot.status.speed } : character;
   };
   const senkeiLabelOf = (slot: DraftSlot, character: CharacterItem | CustomCharacter | null): string => {
     const senkei = character?.senkei.replace(/^超/, "") ?? "";
@@ -722,13 +737,24 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       speed: (mainApplies ? SPOT_MAIN_BONUS.speed : 0) + (!subBlocked && subApplies ? SPOT_SUB_BONUS.speed : 0),
     };
   };
+  const hpSupportMembers = slots.map((slot) => {
+    const character = characterOf(slot);
+    return character ? {
+      id: slot.customCharacter ? "" : character.id,
+      formType: "formType" in character ? character.formType : undefined,
+    } : null;
+  });
   const statusBonusTotalsOf = (slot: DraftSlot) => {
     const fruit = fruitBonusTotalsOf(slot);
     const spot = spotBonusTotalsOf(slot);
+    const character = characterOf(slot);
+    const hpAddition = fruit.hp + spot.hp + (slot.status?.assistHp ?? 0) + slot.usageHp;
     return {
-      hp: fruit.hp + spot.hp,
-      attack: fruit.attack + spot.attack,
+      hp: character ? applyTeamHpSupport(character.hp + hpAddition, slot.slotIndex, hpSupportMembers) - character.hp : hpAddition,
+      attack: fruit.attack + spot.attack + (slot.status?.assistAttack ?? 0),
       speed: fruit.speed + spot.speed,
+      displayedAdditions: { hp: hpAddition, attack: fruit.attack + spot.attack + (slot.status?.assistAttack ?? 0), speed: fruit.speed + spot.speed },
+      hpMultiplier: teamHpSupportMultiplier(slot.slotIndex, hpSupportMembers),
     };
   };
   const formatStatValue = (label: "HP" | "攻撃" | "スピード", value: number | null) => {
@@ -749,7 +775,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (!character) return total;
     return total + Math.round(character.hp + statusBonusTotalsOf(slot).hp);
   }, 0);
-  const displayedTotalHp = totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0) + (maxUsageUsed ? MAX_USAGE_BONUS : 0);
+  const displayedTotalHp = totalTeamHp + (hpItemUsed ? HP_ITEM_BONUS : 0);
   const filteredQuests = useMemo(() => {
     if (!hasQuestSearched) return [];
     const keyword = appliedQuestKeyword.trim().toLowerCase();
@@ -1084,7 +1110,11 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   }
 
   function updateSlot(slotIndex: number, patch: Partial<DraftSlot>) {
-    setSlots((prev) => prev.map((slot) => (slot.slotIndex === slotIndex ? { ...slot, ...patch } : slot)));
+    setSlots((prev) => prev.map((slot) => (slot.slotIndex === slotIndex ? {
+      ...slot,
+      ...(patch.characterId !== undefined && (patch.characterId !== slot.characterId || patch.customCharacter) ? { status: undefined, usageHp: maxUsageUsed ? 1000 : 0 } : {}),
+      ...patch,
+    } : slot)));
   }
 
   function moveDraftSlot(fromIndex: number, toIndex: number) {
@@ -1098,6 +1128,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: to.characterId,
+            status: to.status,
+            usageHp: to.usageHp,
             superSenkeiEnabled: to.superSenkeiEnabled,
             customCharacter: to.customCharacter ? { ...to.customCharacter } : undefined,
             fruits: [...to.fruits],
@@ -1111,6 +1143,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           return {
             ...slot,
             characterId: from.characterId,
+            status: from.status,
+            usageHp: from.usageHp,
             superSenkeiEnabled: from.superSenkeiEnabled,
             customCharacter: from.customCharacter ? { ...from.customCharacter } : undefined,
             fruits: [...from.fruits],
@@ -1130,7 +1164,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setSlots((prev) =>
       prev.map((slot) =>
         slot.slotIndex === slotIndex
-          ? { ...slot, characterId: "", customCharacter: undefined, superSenkeiEnabled: true, fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
+          ? { ...slot, characterId: "", customCharacter: undefined, status: undefined, usageHp: 0, superSenkeiEnabled: true, fruits: [], fruitGrades: [], crests: [], crestGrades: {}, slotMemo: "" }
           : slot
       )
     );
@@ -1235,7 +1269,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot("");
     setSubSpot("");
     setHpItemUsed(false);
-    setMaxUsageUsed(false);
     setIsSpotModalOpen(false);
     setMemoText("");
     setSlots(emptySlots());
@@ -1271,7 +1304,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot(record.mainSpot ?? "");
     setSubSpot(record.subSpot ?? "");
     setHpItemUsed(Boolean(record.hpItemUsed));
-    setMaxUsageUsed(Boolean(record.maxUsageUsed));
     setIsSpotModalOpen(false);
     setMemoText(record.memoText ?? "");
     setSlots(
@@ -1282,6 +1314,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           characterId: found?.characterId ?? "",
           superSenkeiEnabled: found?.superSenkeiEnabled !== false,
           customCharacter: normalizeCustomCharacter(found?.customCharacter),
+          status: normalizeSlotStatus(found?.status),
+          usageHp: normalizeUsageHp(found?.usageHp, Boolean(record.maxUsageUsed)),
           fruits: found?.fruits ?? [],
           fruitGrades: normalizeFruitGradeList(found?.fruits ?? [], found?.fruitGradesList, found?.fruitGrades),
           crests: found?.crests ?? [],
@@ -1308,7 +1342,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     setMainSpot(payload.mainSpot ?? "");
     setSubSpot(payload.subSpot ?? "");
     setHpItemUsed(Boolean(payload.hpItemUsed));
-    setMaxUsageUsed(Boolean(payload.maxUsageUsed));
     setMemoText(payload.memoText ?? "");
     setActiveSlotIndex(0);
     setModalSlotIndex(null);
@@ -1338,6 +1371,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           characterId: (found?.characterId ?? "").toString(),
           superSenkeiEnabled: found?.superSenkeiEnabled !== false,
           customCharacter: normalizeCustomCharacter(found?.customCharacter),
+          status: normalizeSlotStatus(found?.status),
+          usageHp: normalizeUsageHp(found?.usageHp, Boolean(payload.maxUsageUsed)),
           fruits,
           fruitGrades,
           crests,
@@ -1382,6 +1417,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         slotMemo: slot.slotMemo,
         superSenkeiEnabled: slot.superSenkeiEnabled,
         customCharacter: slot.customCharacter,
+        status: slot.status,
+        usageHp: slot.usageHp,
       };
     });
 
@@ -1493,6 +1530,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
           tuple[4] = [custom.name, custom.element, custom.shuzoku, custom.gekishu, custom.senkei, custom.hp, custom.attack, custom.speed, custom.hasGauge ? 1 : 0];
         }
         if (!slot.superSenkeiEnabled) tuple[5] = 0;
+        if (slot.status) tuple[6] = slot.status;
+        tuple[7] = slot.usageHp;
         return tuple;
       });
       const payload: CompactSharePayloadV2 = {
@@ -1576,6 +1615,41 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     activateSlot(slotIndex);
     setModalSlotIndex(slotIndex);
     setIsCrestModalOpen(true);
+  }
+
+  function openStatusEditor(slot: DraftSlot) {
+    const character = characterOf(slot);
+    if (!character) return;
+    activateSlot(slot.slotIndex);
+    setStatusError("");
+    setStatusEditor({
+      slotIndex: slot.slotIndex,
+      draft: {
+        hp: String(character.hp), attack: String(character.attack), speed: String(character.speed),
+        assistHp: String(slot.status?.assistHp ?? 0), assistAttack: String(slot.status?.assistAttack ?? 0),
+        usageHp: String(slot.usageHp),
+      },
+    });
+  }
+
+  function updateStatusDraft(key: keyof StatusDraft, value: string) {
+    if (!statusEditor) return;
+    const draft = { ...statusEditor.draft, [key]: value };
+    setStatusEditor({ ...statusEditor, draft });
+    const optionalFields = ["assistHp", "assistAttack", "usageHp"];
+    const parsed = Object.fromEntries(Object.entries(draft).map(([name, text]) => [
+      name, text.trim() ? Number(text) : optionalFields.includes(name) ? 0 : NaN,
+    ]));
+    const status = normalizeSlotStatus(parsed);
+    const usageHp = parsed.usageHp;
+    const integersValid = (["hp", "attack", "assistHp", "assistAttack", "usageHp"] as const)
+      .every((name) => Number.isInteger(parsed[name]));
+    if (!status || !integersValid || usageHp < 0 || usageHp > 1000) {
+      setStatusError("ステータスは0以上、使用回数は0〜1000の整数で入力してください");
+      return;
+    }
+    setStatusError("");
+    updateSlot(statusEditor.slotIndex, { status, usageHp });
   }
 
   const editorSlotIndex = activeSlotIndex;
@@ -2125,9 +2199,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
                   const fruitBonusTotals = statusBonusTotalsOf(slot);
                   const statRows = [
-                    { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
-                    { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
-                    { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed },
+                    { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp, addition: fruitBonusTotals.displayedAdditions.hp },
+                    { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack, addition: fruitBonusTotals.displayedAdditions.attack },
+                    { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed, addition: fruitBonusTotals.displayedAdditions.speed },
                   ];
 
                   return (
@@ -2202,13 +2276,27 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                             )}
                           </div>
                           <div className={styles.detailWrap}>
-                            <div className={styles.statsGrid}>
+                            <div
+                              className={`${styles.statsGrid} ${c ? styles.editableStats : ""}`}
+                              role={c ? "button" : undefined}
+                              tabIndex={c ? 0 : undefined}
+                              aria-label={c ? `${SLOT_LABELS[slot.slotIndex]}のステータスを変更` : undefined}
+                              onClick={(event) => { event.stopPropagation(); openStatusEditor(slot); }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  openStatusEditor(slot);
+                                }
+                              }}
+                            >
                               {statRows.map((stat) => (
                                 <Fragment key={`${slot.slotIndex}-${stat.label}`}>
                                   <div className={styles.statLabel}>{stat.label}</div>
                                   <div className={styles.statValue}>
-                                    <span className={styles.statValueWrap}>
+                                    <span className={`${styles.statValueWrap} ${stat.label === "HP" ? styles.hpValueWrap : ""}`}>
                                       <span>{formatStatValue(stat.label, stat.base === null ? null : stat.base + stat.bonus)}</span>
+                                      {stat.label === "HP" && fruitBonusTotals.hpMultiplier > 1 ? <span>（×{fruitBonusTotals.hpMultiplier}）</span> : null}
                                       {stat.label === "攻撃" && c?.hasGauge ? (
                                         <span className={styles.gaugeValueWrap}>
                                           <span className={styles.gaugeDivider}>/</span>
@@ -2218,7 +2306,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                       ) : null}
                                     </span>
                                   </div>
-                                  <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.bonus, Boolean(c))}</div>
+                                  <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.addition, Boolean(c))}</div>
                                 </Fragment>
                               ))}
                             </div>
@@ -2342,7 +2430,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 className={`${styles.btn} ${styles.hpItemButton}`}
                 data-selected={maxUsageUsed ? "1" : "0"}
                 aria-pressed={maxUsageUsed}
-                onClick={() => setMaxUsageUsed((current) => !current)}
+                onClick={() => setSlots((current) => current.map((slot) => ({ ...slot, usageHp: maxUsageUsed ? 0 : 1000 })))}
               >
                 使用回数最大
               </button>
@@ -2394,6 +2482,61 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               placeholder="メモ"
             />
           </div>
+          {statusEditor ? (
+            <dialog
+              ref={statusDialogRef}
+              className={styles.statusDialog}
+              aria-labelledby="status-editor-title"
+              onCancel={() => setStatusEditor(null)}
+              onClick={(event) => { if (event.target === event.currentTarget) setStatusEditor(null); }}
+            >
+              <form
+                className={styles.statusForm}
+                onSubmit={(event) => event.preventDefault()}
+              >
+                <div className={styles.modalTopRow}>
+                  <h2 id="status-editor-title" className={styles.label}>{statusEditor.slotIndex + 1}体目 ステータス変更</h2>
+                  <button className={styles.btn} type="button" onClick={() => setStatusEditor(null)}>閉じる</button>
+                </div>
+                {([ ["hp", "HP", "assistHp"], ["attack", "攻撃力", "assistAttack"], ["speed", "スピード", null] ] as const).map(([key, label, assistKey]) => (
+                  <div className={styles.statusEditRow} key={key}>
+                    <label className={styles.statusField}>
+                      <span>{label}</span>
+                      <input
+                        className={styles.input} type="number" min="0" step={key === "speed" ? "0.01" : "1"}
+                        inputMode={key === "speed" ? "decimal" : "numeric"} required
+                        value={statusEditor.draft[key]}
+                        onChange={(event) => updateStatusDraft(key, event.target.value)}
+                      />
+                    </label>
+                    {assistKey ? (
+                      <div className={styles.statusAssistFields}>
+                      {key === "hp" ? (
+                        <label className={styles.statusField}>
+                          <span>使用回数</span>
+                          <input
+                            className={styles.input} type="number" min="0" max="1000" step="1" inputMode="numeric" placeholder="0"
+                            value={statusEditor.draft.usageHp}
+                            onChange={(event) => updateStatusDraft("usageHp", event.target.value)}
+                          />
+                        </label>
+                      ) : null}
+                      <label className={styles.statusField}>
+                        <span>{label}アシスト加算</span>
+                        <input
+                          className={styles.input} type="number" min="0" step="1" inputMode="numeric" placeholder="0"
+                          aria-label={`${label}アシスト加算`} value={statusEditor.draft[assistKey]}
+                          onChange={(event) => updateStatusDraft(assistKey, event.target.value)}
+                        />
+                      </label>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {statusError ? <p role="alert">{statusError}</p> : null}
+              </form>
+            </dialog>
+          ) : null}
           {isCharacterModalOpen && modalSlot ? (
             <div className={`${styles.arrangeOverlay} ${styles.topAlignedOverlay}`} onClick={() => setIsCharacterModalOpen(false)}>
               <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
@@ -2849,9 +2992,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                       const crestRows = Array.from({ length: 4 }, (_, i) => slot.crests[i] ?? "");
                       const fruitBonusTotals = statusBonusTotalsOf(slot);
                       const statRows = [
-                        { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp },
-                        { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack },
-                        { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed },
+                        { label: "HP" as const, base: c ? c.hp : null, bonus: fruitBonusTotals.hp, addition: fruitBonusTotals.displayedAdditions.hp },
+                        { label: "攻撃" as const, base: c ? c.attack : null, bonus: fruitBonusTotals.attack, addition: fruitBonusTotals.displayedAdditions.attack },
+                        { label: "スピード" as const, base: c ? c.speed : null, bonus: fruitBonusTotals.speed, addition: fruitBonusTotals.displayedAdditions.speed },
                       ];
                       return (
                         <div key={`export-${slot.slotIndex}`} className={styles.teamBlock}>
@@ -2878,8 +3021,9 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                   <Fragment key={`export-${slot.slotIndex}-${stat.label}`}>
                                     <div className={styles.statLabel}>{stat.label}</div>
                                     <div className={styles.statValue}>
-                                      <span className={styles.statValueWrap}>
+                                      <span className={`${styles.statValueWrap} ${stat.label === "HP" ? styles.hpValueWrap : ""}`}>
                                         <span>{formatStatValue(stat.label, stat.base === null ? null : stat.base + stat.bonus)}</span>
+                                        {stat.label === "HP" && fruitBonusTotals.hpMultiplier > 1 ? <span>（×{fruitBonusTotals.hpMultiplier}）</span> : null}
                                         {stat.label === "攻撃" && c?.hasGauge ? (
                                           <span className={styles.gaugeValueWrap}>
                                             <span className={styles.gaugeDivider}>/</span>
@@ -2889,7 +3033,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                         ) : null}
                                       </span>
                                     </div>
-                                    <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.bonus, Boolean(c))}</div>
+                                    <div className={styles.statBonus}>{formatStatBonus(stat.label, stat.addition, Boolean(c))}</div>
                                   </Fragment>
                                 ))}
                               </div>

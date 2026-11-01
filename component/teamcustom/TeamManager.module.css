@@ -567,6 +567,65 @@
   grid-auto-rows: min-content;
 }
 
+.editableStats {
+  cursor: pointer;
+}
+
+.editableStats:hover,
+.editableStats:focus-visible {
+  background: #eef6ff;
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+
+.statusDialog {
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid #d0d7e2;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  overflow-y: auto;
+}
+
+.statusDialog::backdrop {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.statusForm {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.statusEditRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.statusAssistFields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.statusField {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.statusField .input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .statLabel,
 .statValue,
 .statBonus {
@@ -587,6 +646,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0;
+}
+
+.hpValueWrap {
+  width: 100%;
+  justify-content: space-between;
 }
 
 .gaugeValueWrap {
