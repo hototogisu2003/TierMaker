@@ -139,7 +139,14 @@ export default function BoardControls({ onSave, onReset, exportTargetRef, export
       <div className="left">
         <span className="homeLink">
           <Link href="/" className="homeLinkAnchor" aria-label="Home">
-            <img className="headerLogo" src="/icon/icon_Header_2.png" alt="Strike-Optima" />
+            <img
+              className="headerLogo"
+              src="/icon/icon_Header_2.png"
+              alt="Strike-Optima"
+              width={144}
+              height={48}
+              style={{ display: "block", objectFit: "contain" }}
+            />
           </Link>
         </span>
 
