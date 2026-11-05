@@ -56,7 +56,6 @@ const DEFAULT_YEAR: YearValue = "";
 const DEFAULT_SORT_ORDER: SortOrder = "desc";
 const DEFAULT_ELEMENT_ORDER_ENABLED = true;
 const DEFAULT_IS_ALL_ELEMENTS_MODE = true;
-const DEFAULT_INCLUDE_UNOBTAINABLE = false;
 const DEFAULT_SELECTED_ELEMENTS = new Set<CharacterElement>();
 const DEFAULT_SELECTED_OBTAINS = new Set<CharacterObtain>();
 const DEFAULT_SELECTED_GACHAS = new Set<CharacterGacha>(["限定"]);
@@ -218,9 +217,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
   const [nameFilter, setNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [selectedPoolSource, setSelectedPoolSource] =
     React.useState<PoolSourceType>(DEFAULT_POOL_SOURCE);
-  const [includeUnobtainable, setIncludeUnobtainable] = React.useState(
-    DEFAULT_INCLUDE_UNOBTAINABLE
-  );
   const [yearFrom, setYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
   const [yearTo, setYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
   const [sortOrder, setSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
@@ -249,9 +245,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
   const [appliedNameFilter, setAppliedNameFilter] = React.useState(DEFAULT_NAME_FILTER);
   const [appliedPoolSource, setAppliedPoolSource] =
     React.useState<PoolSourceType>(DEFAULT_POOL_SOURCE);
-  const [appliedIncludeUnobtainable, setAppliedIncludeUnobtainable] = React.useState(
-    DEFAULT_INCLUDE_UNOBTAINABLE
-  );
   const [appliedYearFrom, setAppliedYearFrom] = React.useState<YearValue>(DEFAULT_YEAR);
   const [appliedYearTo, setAppliedYearTo] = React.useState<YearValue>(DEFAULT_YEAR);
   const [appliedSortOrder, setAppliedSortOrder] = React.useState<SortOrder>(DEFAULT_SORT_ORDER);
@@ -355,9 +348,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
       const ids = new Set<string>();
       for (const c of allCharacters) {
         if (c.sourceType !== appliedPoolSource) continue;
-        if (appliedPoolSource === "character" && !appliedIncludeUnobtainable && !c.isObtainable) {
-          continue;
-        }
         const name = c.name.trim().toLowerCase();
         const nameKana = c.nameKana.trim().toLowerCase();
         if (name.includes(normalizedFilter) || nameKana.includes(normalizedFilter)) {
@@ -382,7 +372,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
     const ids = new Set<string>();
     for (const c of allCharacters) {
       if (c.sourceType !== "character") continue;
-      if (!appliedIncludeUnobtainable && !c.isObtainable) continue;
       const isElementMatched =
         appliedIsAllElementsMode || (!!c.element && appliedSelectedElements.has(c.element));
       const isObtainMatched =
@@ -426,7 +415,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
     hasAppliedFiltersOnce,
     normalizedFilter,
     appliedPoolSource,
-    appliedIncludeUnobtainable,
     appliedSelectedElements,
     appliedIsAllElementsMode,
     appliedSelectedObtains,
@@ -532,7 +520,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
     setHasAppliedFiltersOnce(true);
     setAppliedNameFilter(nameFilter);
     setAppliedPoolSource(selectedPoolSource);
-    setAppliedIncludeUnobtainable(includeUnobtainable);
     setAppliedYearFrom(yearFrom);
     setAppliedYearTo(yearTo);
     setAppliedSortOrder(sortOrder);
@@ -560,7 +547,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
     setHasAppliedFiltersOnce(false);
     setNameFilter(DEFAULT_NAME_FILTER);
     setSelectedPoolSource(DEFAULT_POOL_SOURCE);
-    setIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setYearFrom(DEFAULT_YEAR);
     setYearTo(DEFAULT_YEAR);
     setSortOrder(DEFAULT_SORT_ORDER);
@@ -575,7 +561,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
 
     setAppliedNameFilter(DEFAULT_NAME_FILTER);
     setAppliedPoolSource(DEFAULT_POOL_SOURCE);
-    setAppliedIncludeUnobtainable(DEFAULT_INCLUDE_UNOBTAINABLE);
     setAppliedYearFrom(DEFAULT_YEAR);
     setAppliedYearTo(DEFAULT_YEAR);
     setAppliedSortOrder(DEFAULT_SORT_ORDER);
@@ -671,7 +656,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
         formType: "",
         contentType: "",
         otherCategory: "",
-        isObtainable: true,
         sortNumber: Number.POSITIVE_INFINITY,
         iconPath: file.name,
         iconUrl: objectUrl,
@@ -822,8 +806,6 @@ export default function TierMaker({ characters, shugoju, initialTiers }: Props) 
           onNameFilterChange={setNameFilter}
           selectedPoolSource={selectedPoolSource}
           onPoolSourceChange={setSelectedPoolSource}
-          includeUnobtainable={includeUnobtainable}
-          onIncludeUnobtainableChange={setIncludeUnobtainable}
           yearFrom={yearFrom}
           yearTo={yearTo}
           yearOptions={YEAR_OPTIONS}

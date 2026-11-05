@@ -37,8 +37,6 @@ type Props = {
   onNameFilterChange: (next: string) => void;
   selectedPoolSource: PoolSourceType;
   onPoolSourceChange: (next: PoolSourceType) => void;
-  includeUnobtainable: boolean;
-  onIncludeUnobtainableChange: (next: boolean) => void;
   yearFrom: YearValue;
   yearTo: YearValue;
   yearOptions: number[];
@@ -89,8 +87,6 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
     onNameFilterChange,
     selectedPoolSource,
     onPoolSourceChange,
-    includeUnobtainable,
-    onIncludeUnobtainableChange,
     yearFrom,
     yearTo,
     yearOptions,
@@ -531,15 +527,6 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                     </div>
                   </div>
                 </div>
-                <label className="unobtainableToggle">
-                  <input
-                    type="checkbox"
-                    checked={includeUnobtainable}
-                    onChange={(e) => onIncludeUnobtainableChange(e.target.checked)}
-                    disabled={isShugojuMode}
-                  />
-                  <span>入手不可能キャラ（コラボ超究極の一部ボスなど）を含む</span>
-                </label>
                 <button
                   type="button"
                   className="resetFiltersBtn"
@@ -799,20 +786,6 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
           min-width: 56px;
           color: #111111;
           font-weight: 700;
-        }
-
-        .unobtainableToggle {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          color: #374151;
-          font-size: 11px;
-          line-height: 1.2;
-          user-select: none;
-        }
-
-        .unobtainableToggle input {
-          margin: 0;
         }
 
         .inlineBtns {

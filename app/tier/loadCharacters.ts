@@ -20,7 +20,6 @@ type CharacterRow = {
   form?: string | null;
   content?: string | null;
   quest?: string | null;
-  get?: number | string | null;
   number?: number | string | null;
   icon_path: string;
 };
@@ -72,15 +71,6 @@ function toSortableNumber(value: number | string | null | undefined): number {
     return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
   }
   return Number.POSITIVE_INFINITY;
-}
-
-function isObtainableFromGet(value: number | string | null | undefined): boolean {
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed !== 0 : true;
-  }
-  return true;
 }
 
 function normalizeElement(raw: string | null | undefined): CharacterElement | "" {
@@ -195,7 +185,7 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
   const [characterResult, shugojuResult] = await Promise.all([
     supabase
       .from(charactersTableName)
-      .select("id,name,name_kana,element,obtain,gacha,form,content,quest,get,number,icon_path")
+      .select("id,name,name_kana,element,obtain,gacha,form,content,quest,number,icon_path")
       .abortSignal(AbortSignal.timeout(8000))
       .order("number", { ascending: true })
       .order("id", { ascending: true })
@@ -245,7 +235,6 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
       formType: normalizeForm(row.form),
       contentType: normalizeContent(row.content),
       otherCategory: normalizeOtherCategory(row.quest),
-      isObtainable: isObtainableFromGet(row.get),
       sortNumber: toSortableNumber(row.number),
     } satisfies CharacterForUI;
   });
@@ -260,7 +249,6 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
       formType: "",
       contentType: "",
       otherCategory: "",
-      isObtainable: true,
       sortNumber: toSortableNumber(row.id),
     } satisfies CharacterForUI;
   });

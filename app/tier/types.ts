@@ -25,7 +25,6 @@ export type CharacterForUI = {
   formType: CharacterForm | "";
   contentType: CharacterContent | "";
   otherCategory: CharacterOtherCategory | "";
-  isObtainable: boolean;
   sortNumber: number;
   iconPath: string;
   iconUrl: string;
