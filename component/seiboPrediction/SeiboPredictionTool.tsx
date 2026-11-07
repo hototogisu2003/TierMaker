@@ -686,12 +686,12 @@ export default function SeiboPredictionTool({ bossCards }: { bossCards: SeiboBos
     <section className={styles.page}>
       <div className={styles.headerRow}>
         <div className={styles.headerTitleGroup}>
-          <Link href="/" className={styles.homeLink} aria-label="Home">
+          <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
           <h1 className={styles.title}>適正予想メーカー</h1>
         </div>
-        <Link
+        <Link prefetch={false}
           href="/Seibo-Prediction/ranking"
           className={styles.iconLink}
           aria-label="ランキングへ"

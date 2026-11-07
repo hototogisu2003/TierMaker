@@ -735,12 +735,12 @@ export default function BingoTool({
     <section className={styles.page}>
       <div className={styles.headerRow}>
         <div className={styles.headerTitleGroup}>
-          <Link href="/" className={styles.homeLink} aria-label="Home">
+          <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
           <h1 className={styles.title}>{title}</h1>
         </div>
-        <Link href={rankingUrl} className={styles.iconLink} aria-label="ランキング" title="ランキング">
+        <Link prefetch={false} href={rankingUrl} className={styles.iconLink} aria-label="ランキング" title="ランキング">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <path fill="currentColor" d="M5 21h14v-2H5v2Zm1-4h3V9H6v8Zm5 0h3V3h-3v14Zm5 0h3V6h-3v11Z" />
           </svg>

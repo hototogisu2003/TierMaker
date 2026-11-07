@@ -28,7 +28,7 @@ export default function IrohaBuffTool() {
     <div className={styles.surface}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Link href="/" aria-label="ホームへ戻る" className={styles.logoLink}>
+          <Link prefetch={false} href="/" aria-label="ホームへ戻る" className={styles.logoLink}>
             <img src="/icon/icon_Header_2.png" alt="Strike-Optima" width="162" height="54" />
           </Link>
           <h1>あのSS</h1>

@@ -2095,7 +2095,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       <div className={styles.topBand}>
         <div className={styles.topRow}>
           <div className={styles.leftGroup}>
-            <Link href="/" className={styles.homeLink} aria-label="Home">
+            <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
               <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
             </Link>
             <div className={styles.menuWrap}>
@@ -2157,7 +2157,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               >
                 お問い合わせ
               </a>
-              <Link className={styles.sideMenuItem} href="/privacy" onClick={() => setIsMenuOpen(false)}>
+              <Link prefetch={false} className={styles.sideMenuItem} href="/privacy" onClick={() => setIsMenuOpen(false)}>
                 プライバシーポリシー
               </Link>
             </div>

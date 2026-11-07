@@ -17,11 +17,11 @@ export default function BingoRanking({ ranking, inputUrl = "/bingo/dd4" }: { ran
     <section className={styles.page}>
       <div className={styles.headerRow}>
         <div className={styles.headerTitleGroup}>
-          <Link href="/" className={styles.homeLink} aria-label="Home">
+          <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
         </div>
-        <Link href={inputUrl} className={styles.iconLink} aria-label="入力へ" title="入力へ">
+        <Link prefetch={false} href={inputUrl} className={styles.iconLink} aria-label="入力へ" title="入力へ">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <path fill="currentColor" d="M4 20h16v-2H4v2ZM6 4v11h12V4H6Zm2 2h8v7H8V6Z" />
           </svg>

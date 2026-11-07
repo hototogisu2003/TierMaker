@@ -471,7 +471,7 @@ export default function DamageCalcTool() {
       <div className={styles.hero}>
         <div className={styles.heroTop}>
           <div className={styles.heroLeft}>
-            <Link href="/" className={styles.homeLink} aria-label="Home">
+            <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
               <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
             </Link>
             <div className={styles.headerTitleWrap} ref={navMenuRef}>

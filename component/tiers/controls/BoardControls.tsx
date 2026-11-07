@@ -138,7 +138,7 @@ export default function BoardControls({ onSave, onReset, exportTargetRef, export
     <div className="controlsRow">
       <div className="left">
         <span className="homeLink">
-          <Link href="/" className="homeLinkAnchor" aria-label="Home">
+          <Link prefetch={false} href="/" className="homeLinkAnchor" aria-label="Home">
             <img
               className="headerLogo"
               src="/icon/icon_Header_2.png"
@@ -178,7 +178,7 @@ export default function BoardControls({ onSave, onReset, exportTargetRef, export
                 </div>
 
                 <div className="sideMenuList">
-                  <Link
+                  <Link prefetch={false}
                     href="/tier"
                     className="sideMenuItem"
                     style={{ color: "#111111" }}
@@ -187,7 +187,7 @@ export default function BoardControls({ onSave, onReset, exportTargetRef, export
                     表を作成する
                   </Link>
 
-                  <Link
+                  <Link prefetch={false}
                     href="/tier/list"
                     className="sideMenuItem"
                     style={{ color: "#111111" }}

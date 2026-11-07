@@ -59,7 +59,7 @@ export default function RootLayout({
             >
               お問い合わせ
             </a>
-            <Link href="/privacy" style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "underline" }}>
+            <Link prefetch={false} href="/privacy" style={{ color: "#1d4ed8", fontWeight: 700, textDecoration: "underline" }}>
               プライバシーポリシー
             </Link>
           </div>

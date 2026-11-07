@@ -69,7 +69,7 @@ export default function HomePage() {
                 <h2>{tool.title}</h2>
               </div>
               <p>{tool.description}</p>
-              <Link href={tool.href} className="toolLink" aria-label={tool.cta}>
+              <Link prefetch={false} href={tool.href} className="toolLink" aria-label={tool.cta}>
                 <span>{tool.cta}</span>
                 <span className="toolLinkIcon" aria-hidden="true">
                   &gt;

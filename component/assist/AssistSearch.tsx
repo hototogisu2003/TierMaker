@@ -83,7 +83,7 @@ export default function AssistSearch() {
     <section className={styles.page}>
       <div className={styles.shell}>
         <header className={styles.header}>
-          <Link href="/" aria-label="トップページへ"><img src="/icon/icon_Header_2.png" alt="Strike-Optima" width={192} height={64} /></Link>
+          <Link prefetch={false} href="/" aria-label="トップページへ"><img src="/icon/icon_Header_2.png" alt="Strike-Optima" width={192} height={64} /></Link>
           <h1>アシストスキル検索ツール</h1>
         </header>
 
