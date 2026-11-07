@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
+import CrestIcon from "./CrestIcon";
+import ElementIcon from "@/component/ui/ElementIcon";
 import { applyTeamHpSupport, normalizeSlotStatus, normalizeUsageHp, teamHpSupportMultiplier } from "@/lib/teamcustom/status";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
@@ -118,14 +120,6 @@ const ELEMENT_HEADER_COLOR: Record<NonNullable<CharacterItem["element"]>, string
   光: "#fff2a8",
   闇: "#d6b2d7",
   "": "#ffffff",
-};
-const ELEMENT_ICON_MAP: Record<"all" | (typeof ELEMENT_OPTIONS)[number], { src: string; alt: string }> = {
-  all: { src: "/icon/icon_全.avif", alt: "全属性" },
-  火: { src: "/icon/icon_火.png", alt: "火属性" },
-  水: { src: "/icon/icon_水.png", alt: "水属性" },
-  木: { src: "/icon/icon_木.png", alt: "木属性" },
-  光: { src: "/icon/icon_光.png", alt: "光属性" },
-  闇: { src: "/icon/icon_闇.png", alt: "闇属性" },
 };
 const FRUIT_ID_BY_NAME = new Map<string, number>(FRUIT_OPTIONS.map((option) => [option.name, option.id]));
 const FRUIT_NAME_BY_ID = new Map<number, string>(FRUIT_OPTIONS.map((option) => [option.id, option.name]));
@@ -658,10 +652,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   };
   const crestDisplayName = (crestName: string): string => crestName === "ハートパネルマスター" ? "HPマスター" : crestName;
   const crestLabel = (crestName: string, grade: CrestGrade): string => `${crestDisplayName(crestName)}${CREST_GRADE_LABEL[grade]}`;
-  const crestIconSrc = (crestName: string, grade: CrestGrade) => {
-    const id = crestIdOf(crestName);
-    return id ? `/soulskill/skill_${id}_${grade}.png` : "";
-  };
   const fruitOptionByName = useMemo(() => new Map(FRUIT_OPTIONS.map((option) => [option.name, option])), []);
   const fruitBonusTotalsOf = (slot: DraftSlot) => {
     const currentCharacter = characterOf(slot);
@@ -1456,7 +1446,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => resolve());
       });
-      const url = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+      const url = await toPng(node, { cacheBust: false, pixelRatio: 2 });
       const safeTitle = (title.trim() || "編成タイトル").replace(/[\\/:*?"<>|]/g, "_");
       const fileName = `${safeTitle}_${filenameDateText(new Date())}.png`;
       await triggerImageSave(url, fileName);
@@ -1473,7 +1463,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve());
     });
-    return toPng(node, { cacheBust: true, pixelRatio: 2 });
+    return toPng(node, { cacheBust: false, pixelRatio: 2 });
   }
 
   async function openGenerateModal() {
@@ -1846,7 +1836,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               data-selected={isAllElementsMode ? "1" : "0"}
               title="全属性"
             >
-              <img className={styles.elementIcon} src={ELEMENT_ICON_MAP.all.src} alt={ELEMENT_ICON_MAP.all.alt} />
+              <ElementIcon element="all" size={22} />
             </button>
             {ELEMENT_OPTIONS.map((el) => (
               <button
@@ -1857,7 +1847,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 data-selected={!isAllElementsMode && selectedElements.has(el) ? "1" : "0"}
                 title={`${el}属性`}
               >
-                <img className={styles.elementIcon} src={ELEMENT_ICON_MAP[el].src} alt={ELEMENT_ICON_MAP[el].alt} />
+                <ElementIcon element={el} size={22} />
               </button>
             ))}
           </div>
@@ -2039,7 +2029,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                 style={{ background: editorSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
                 onClick={() => toggleOption(editorSlotIndex, "crests", value, 4)}
               >
-                <img className={styles.crestOptionIcon} src={`/soulskill/skill_${index + 1}_0.png`} alt="" aria-hidden="true" />
+                <CrestIcon className={styles.crestOptionIcon} id={index + 1} grade={0} />
                 <span>{crestDisplayName(value)}</span>
               </button>
             ))}
@@ -2060,7 +2050,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                     >
                       ×
                     </button>
-                    <img className={styles.crestSkillIcon} src={crestIconSrc(crest, grade)} alt={crestLabel(crest, grade)} />
+                    <CrestIcon className={styles.crestSkillIcon} id={crestIdOf(crest)} grade={grade} alt={crestLabel(crest, grade)} />
                     <span className={styles.selectedFruitName}>{crestLabel(crest, grade)}</span>
                     <div className={`${styles.crestGradeBtns} ${styles.crestGradeBtnsRemovable}`}>
                       {[0, 1, 2].map((g) => {
@@ -2348,9 +2338,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                   >
                                     {crestRows[idx] ? (
                                       <span className={styles.fruitCellContent}>
-                                        <img
+                                        <CrestIcon
                                           className={styles.crestSkillIcon}
-                                          src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                          id={crestIdOf(crestRows[idx])}
+                                          grade={crestGradeOf(slot, crestRows[idx])}
                                           alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
                                         />
                                         <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>
@@ -2689,7 +2680,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                       style={{ background: modalSlot.crests.includes(value) ? "#e3f0ff" : "#fff" }}
                       onClick={() => toggleOption(modalSlot.slotIndex, "crests", value, 4)}
                     >
-                      <img className={styles.crestOptionIcon} src={`/soulskill/skill_${index + 1}_0.png`} alt="" aria-hidden="true" />
+                      <CrestIcon className={styles.crestOptionIcon} id={index + 1} grade={0} />
                       <span>{crestDisplayName(value)}</span>
                     </button>
                   ))}
@@ -2709,7 +2700,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         >
                           ×
                         </button>
-                        <img className={styles.crestSkillIcon} src={crestIconSrc(crest, grade)} alt={crestLabel(crest, grade)} />
+                        <CrestIcon className={styles.crestSkillIcon} id={crestIdOf(crest)} grade={grade} alt={crestLabel(crest, grade)} />
                         <span className={styles.selectedFruitName}>{crestLabel(crest, grade)}</span>
                         <div className={`${styles.crestGradeBtns} ${styles.crestGradeBtnsRemovable}`}>
                           {[0, 1, 2].map((g) => {
@@ -3051,9 +3042,10 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                                     <div className={`${styles.tableCell} ${crestRows[idx] ? "" : styles.tableCellEmpty}`}>
                                       {crestRows[idx] ? (
                                         <span className={styles.fruitCellContent}>
-                                          <img
+                                          <CrestIcon
                                             className={styles.crestSkillIcon}
-                                            src={crestIconSrc(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
+                                            id={crestIdOf(crestRows[idx])}
+                                            grade={crestGradeOf(slot, crestRows[idx])}
                                             alt={crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}
                                           />
                                           <span>{crestLabel(crestRows[idx], crestGradeOf(slot, crestRows[idx]))}</span>

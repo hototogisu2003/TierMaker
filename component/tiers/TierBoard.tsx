@@ -15,11 +15,7 @@ import TierRow from "./TierRow";
 import PoolRow from "./PoolRow";
 import DragOverlayPreview from "./DragOverlayPreview";
 import Input from "@/component/ui/Input";
-import iconFire from "@/icon/icon_火.png";
-import iconWater from "@/icon/icon_水.png";
-import iconWood from "@/icon/icon_木.png";
-import iconLight from "@/icon/icon_光.png";
-import iconDark from "@/icon/icon_闇.png";
+import ElementIcon from "@/component/ui/ElementIcon";
 
 import { DragOverlay } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
@@ -139,13 +135,6 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
   const contentOrder: CharacterContent[] = ["破界の星墓", "天魔の孤城", "禁忌の獄"];
   const otherCategoryRow1: CharacterOtherCategory[] = ["滅絶", "黎絶", "轟絶", "爆絶", "超絶"];
   const otherCategoryRow2: CharacterOtherCategory[] = ["超究極", "コラボ", "その他"];
-  const elementIconMap: Record<CharacterElement, { src: string; alt: string }> = {
-    火: { src: iconFire.src, alt: "火属性" },
-    水: { src: iconWater.src, alt: "水属性" },
-    木: { src: iconWood.src, alt: "木属性" },
-    光: { src: iconLight.src, alt: "光属性" },
-    闇: { src: iconDark.src, alt: "闇属性" },
-  };
 
   const filterPoolItems = React.useCallback(
     (itemIds: string[]) => itemIds.filter((id) => visibleCharacterIds.has(id)),
@@ -309,7 +298,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                           aria-label="全属性"
                           disabled={isShugojuMode}
                         >
-                          <img className="elementBtnIcon" src="/icon/icon_全.avif" alt="全属性" />
+                          <ElementIcon element="all" />
                         </button>
 
                         {elementOrder.map((el) => {
@@ -324,11 +313,7 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
                               aria-label={`${el}属性`}
                               disabled={isShugojuMode}
                             >
-                              <img
-                                className="elementBtnIcon"
-                                src={elementIconMap[el].src}
-                                alt={elementIconMap[el].alt}
-                              />
+                              <ElementIcon element={el} />
                             </button>
                           );
                         })}
@@ -976,12 +961,6 @@ const TierBoard = React.forwardRef<HTMLDivElement, Props>(function TierBoard(
         .elementBtn[data-selected="1"] {
           background: #dbeafe;
           border-color: #2563eb;
-        }
-
-        .elementBtnIcon {
-          width: 24px;
-          height: 24px;
-          display: block;
         }
 
         .betweenTiersAndFilter {
