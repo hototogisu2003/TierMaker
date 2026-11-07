@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
 import CrestIcon from "./CrestIcon";
+import SpotIcon from "./SpotIcon";
 import ElementIcon from "@/component/ui/ElementIcon";
 import { applyTeamHpSupport, normalizeSlotStatus, normalizeUsageHp, teamHpSupportMultiplier } from "@/lib/teamcustom/status";
 import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
@@ -629,7 +630,6 @@ export default function TeamManager({ mode }: { mode: Tab }) {
 
   const selectedQuest = useMemo(() => quests.find((q) => q.id === questId) ?? null, [quests, questId]);
   const selectedShugoju = useMemo(() => shugojus.find((s) => s.id === shugojuId) ?? null, [shugojus, shugojuId]);
-  const spotIconSrc = (spot: SpotKey | "", kind: "main" | "sub") => (spot ? `/spot/${spot}_${kind}.png` : "");
   const fruitGradeIconSrc = (grade: FruitGrade) => (grade === "EL" ? "/calc-legacy/特級EL.png" : "/calc-legacy/特級L.png");
   const fruitGradeOf = (slot: DraftSlot, fruitIndex: number): FruitGrade => slot.fruitGrades[fruitIndex] ?? "L";
   const crestIdOf = (crestName: string): number | null => {
@@ -2445,8 +2445,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
               <button className={styles.btn} type="button" onClick={() => setIsSpotModalOpen(true)}>
                 スポットを選択
               </button>
-              {mainSpot ? <img className={styles.icon} src={spotIconSrc(mainSpot, "main")} alt={`${mainSpot}メイン`} style={{ width: 32, height: 32 }} /> : null}
-              {subSpot ? <img className={styles.icon} src={spotIconSrc(subSpot, "sub")} alt={`${subSpot}サブ`} style={{ width: 32, height: 32 }} /> : null}
+              {mainSpot ? <SpotIcon className={styles.icon} spot={mainSpot} kind="main" size={32} /> : null}
+              {subSpot ? <SpotIcon className={styles.icon} spot={subSpot} kind="sub" size={32} /> : null}
             </div>
           </div>
           {superSenkeiSlotIndex !== null ? (
@@ -2906,7 +2906,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         data-selected={mainSpot === spot ? "1" : "0"}
                         onClick={() => setMainSpot((prev) => (prev === spot ? "" : spot))}
                       >
-                        <img className={styles.spotIcon} src={spotIconSrc(spot, "main")} alt={`${spot}メイン`} />
+                        <SpotIcon className={styles.spotIcon} spot={spot} kind="main" />
                         <span>{spot}</span>
                       </button>
                     ))}
@@ -2923,7 +2923,7 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                         data-selected={subSpot === spot ? "1" : "0"}
                         onClick={() => setSubSpot((prev) => (prev === spot ? "" : spot))}
                       >
-                        <img className={styles.spotIcon} src={spotIconSrc(spot, "sub")} alt={`${spot}サブ`} />
+                        <SpotIcon className={styles.spotIcon} spot={spot} kind="sub" />
                         <span>{spot}</span>
                       </button>
                     ))}
@@ -2967,8 +2967,8 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                   <div className={styles.exportTotalHp}>HP：{displayedTotalHp.toLocaleString("ja-JP")}</div>
                 </div>
                 <div className={styles.exportHeaderIcons}>
-                  {mainSpot ? <img className={styles.exportSpotIcon} src={spotIconSrc(mainSpot, "main")} alt={`${mainSpot}メイン`} /> : null}
-                  {subSpot ? <img className={styles.exportSpotIcon} src={spotIconSrc(subSpot, "sub")} alt={`${subSpot}サブ`} /> : null}
+                  {mainSpot ? <SpotIcon className={styles.exportSpotIcon} spot={mainSpot} kind="main" /> : null}
+                  {subSpot ? <SpotIcon className={styles.exportSpotIcon} spot={subSpot} kind="sub" /> : null}
                   {selectedShugoju?.iconUrl ? (
                     <img className={styles.exportShugojuIcon} src={selectedShugoju.iconUrl} alt={selectedShugoju.name} />
                   ) : null}

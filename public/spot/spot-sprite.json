@@ -1,0 +1,144 @@
+{
+    "image":  "spot-sprite.png",
+    "width":  420,
+    "height":  140,
+    "cellWidth":  70,
+    "cellHeight":  70,
+    "columns":  6,
+    "rows":  2,
+    "count":  12,
+    "frames":  [
+                   {
+                       "name":  "火",
+                       "kind":  "main",
+                       "source":  "火_main.png",
+                       "column":  0,
+                       "row":  0,
+                       "x":  0,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "水",
+                       "kind":  "main",
+                       "source":  "水_main.png",
+                       "column":  1,
+                       "row":  0,
+                       "x":  70,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "木",
+                       "kind":  "main",
+                       "source":  "木_main.png",
+                       "column":  2,
+                       "row":  0,
+                       "x":  140,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "光",
+                       "kind":  "main",
+                       "source":  "光_main.png",
+                       "column":  3,
+                       "row":  0,
+                       "x":  210,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "闇",
+                       "kind":  "main",
+                       "source":  "闇_main.png",
+                       "column":  4,
+                       "row":  0,
+                       "x":  280,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "王者",
+                       "kind":  "main",
+                       "source":  "王者_main.png",
+                       "column":  5,
+                       "row":  0,
+                       "x":  350,
+                       "y":  0,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "火",
+                       "kind":  "sub",
+                       "source":  "火_sub.png",
+                       "column":  0,
+                       "row":  1,
+                       "x":  0,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "水",
+                       "kind":  "sub",
+                       "source":  "水_sub.png",
+                       "column":  1,
+                       "row":  1,
+                       "x":  70,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "木",
+                       "kind":  "sub",
+                       "source":  "木_sub.png",
+                       "column":  2,
+                       "row":  1,
+                       "x":  140,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "光",
+                       "kind":  "sub",
+                       "source":  "光_sub.png",
+                       "column":  3,
+                       "row":  1,
+                       "x":  210,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "闇",
+                       "kind":  "sub",
+                       "source":  "闇_sub.png",
+                       "column":  4,
+                       "row":  1,
+                       "x":  280,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   },
+                   {
+                       "name":  "王者",
+                       "kind":  "sub",
+                       "source":  "王者_sub.png",
+                       "column":  5,
+                       "row":  1,
+                       "x":  350,
+                       "y":  70,
+                       "width":  70,
+                       "height":  70
+                   }
+               ]
+}

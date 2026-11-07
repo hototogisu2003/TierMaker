@@ -90,6 +90,22 @@ async function main() {
   for (const grade of [0, 1, 2]) {
     assert.ok(await evaluate(`document.querySelector('[data-crest-id="1"][data-crest-grade="${grade}"]')?.getBoundingClientRect().width > 0`));
   }
+  assert.equal(requests.filter((url) => url.includes("spot-sprite")).length, 0, "unused spot picker must not load its sprite");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'スポットを選択').click()");
+  await waitFor("document.querySelectorAll('button [data-spot]').length === 12");
+  await waitFor("performance.getEntriesByType('resource').some(r => r.name.includes('spot-sprite'))");
+  assert.equal(requests.filter((url) => url.includes("spot-sprite")).length, 1, "all twelve spots share one initial image request");
+  const spotStyles = await evaluate("[...document.querySelectorAll('button [data-spot]')].map(i => ({ label: i.getAttribute('aria-label'), width: getComputedStyle(i).width, height: getComputedStyle(i).height, position: getComputedStyle(i).backgroundPosition, size: getComputedStyle(i).backgroundSize }))");
+  const spotNames = ["火", "水", "木", "光", "闇", "王者"];
+  assert.deepEqual(spotStyles.map(s => s.label), ["メイン", "サブ"].flatMap(kind => spotNames.map(name => name + kind)));
+  assert.ok(spotStyles.every(s => s.width === "44px" && s.height === "44px" && s.size === "600% 200%"));
+  assert.deepEqual(spotStyles.map(s => s.position), [0, 100].flatMap(y => [0, 20, 40, 60, 80, 100].map(x => `${x}% ${y}%`)));
+  const spotPicker = await send("Page.captureScreenshot", { format: "png" });
+  fs.writeFileSync(path.join(__dirname, "../.next/spot-sprite-picker.png"), Buffer.from(spotPicker.data, "base64"));
+  await evaluate("document.querySelector('button [data-spot=\"火\"][data-spot-kind=\"main\"]').closest('button').click(); document.querySelector('button [data-spot=\"王者\"][data-spot-kind=\"sub\"]').closest('button').click()");
+  await waitFor("document.querySelector('button [data-spot=\"火\"][data-spot-kind=\"main\"]').closest('button').dataset.selected === '1' && document.querySelector('button [data-spot=\"王者\"][data-spot-kind=\"sub\"]').closest('button').dataset.selected === '1'");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '閉じる').click()");
+  assert.ok(await evaluate("[...document.querySelectorAll('[data-spot]')].filter(i => !i.closest('[class*=exportSheet]')).every(i => getComputedStyle(i).width === '32px')"));
   const desktop = await send("Page.captureScreenshot", { format: "png" });
   fs.writeFileSync(path.join(__dirname, "../.next/crest-sprite-desktop.png"), Buffer.from(desktop.data, "base64"));
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '画像・URL生成').click()");
@@ -98,12 +114,20 @@ async function main() {
   fs.writeFileSync(path.join(__dirname, "../.next/crest-sprite-export.png"), Buffer.from(png.split(",")[1], "base64"));
   assert.equal(new Set(requests.filter((url) => url.includes("soulskill-sprite"))).size, 1, "export must not add cache-busting URLs");
   assert.ok(spriteResponses.every((response) => response.status === 200));
+  assert.equal(await evaluate("document.querySelectorAll('[class*=exportSheet] [data-spot]').length"), 2);
+  assert.equal(new Set(requests.filter((url) => url.includes("spot-sprite"))).size, 1, "spot export must reuse the same image URL");
+  assert.equal(requests.some((url) => /\/spot\/(火|水|木|光|闇|王者)_(main|sub)\.png/.test(decodeURI(url))), false);
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '閉じる' && b.closest('[class*=arrangeDialog]'))?.click()");
   await delay(500);
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'スポットを選択').click()");
+  await waitFor("document.querySelectorAll('button [data-spot]').length === 12");
+  await evaluate("document.querySelector('button [data-spot=\"闇\"][data-spot-kind=\"main\"]').closest('button').click(); document.querySelector('button [data-spot=\"光\"][data-spot-kind=\"sub\"]').closest('button').click()");
+  await waitFor("document.querySelector('button [data-spot=\"闇\"][data-spot-kind=\"main\"]').closest('button').dataset.selected === '1'");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === '閉じる').click()");
   const mobile = await send("Page.captureScreenshot", { format: "png" });
   fs.writeFileSync(path.join(__dirname, "../.next/crest-sprite-mobile.png"), Buffer.from(mobile.data, "base64"));
-  console.log("PASS: one initial request per crest/element sprite, no individual icon requests, six element labels/sizes and filter selection, grades 0/1/2, PNG export, desktop/mobile captures");
+  console.log("PASS: one initial request per crest/element/spot sprite, lazy spot loading, all 12 spot crops and labels, desktop/mobile spot selection, PNG export, no individual icon requests");
   await send("Browser.close");
 }
 main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => {
