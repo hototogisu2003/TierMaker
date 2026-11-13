@@ -29,16 +29,31 @@ async function main() {
   });
   let downloadName;
   let downloadComplete = false;
+  const imageFetches = new Map();
+  let delayedRequest;
+  let retryAttempts = 0;
+  let missingImageAvailable = false;
+  const fixturePng = fs.readFileSync(path.resolve(__dirname, "../public/spot/火_main.png")).toString("base64");
+  const fulfillImage = (requestId, status = 200) => send("Fetch.fulfillRequest", { requestId, responseCode: status,
+    responseHeaders: [{ name: "Content-Type", value: status === 200 ? "image/png" : "text/plain" }],
+    body: status === 200 ? fixturePng : Buffer.from("temporarily unavailable").toString("base64") });
   socket.onmessage = ({ data }) => {
     const e = JSON.parse(data);
     if (e.id) {
       const p = pending.get(e.id); pending.delete(e.id);
       if (e.error) p.reject(new Error(e.error.message)); else p.resolve(e.result);
     } else if (e.method === "Fetch.requestPaused") {
+      const url = new URL(e.params.request.url);
+      if (url.pathname === "/export-images/delayed.png") { delayedRequest = e.params.requestId; return; }
+      if (url.pathname === "/export-images/retry.png") { void fulfillImage(e.params.requestId, ++retryAttempts === 1 ? 503 : 200); return; }
+      if (url.pathname === "/missing-overview-image.png") { void fulfillImage(e.params.requestId, missingImageAvailable ? 200 : 404); return; }
       void send("Fetch.fulfillRequest", { requestId: e.params.requestId, responseCode: 200,
         responseHeaders: [ { name: "Content-Type", value: "application/json" }, { name: "Access-Control-Allow-Origin", value: "*" },
           { name: "Access-Control-Allow-Headers", value: "apikey,authorization,content-type,x-client-info,accept-profile" },
           { name: "Access-Control-Allow-Methods", value: "GET,OPTIONS" } ], body: Buffer.from("[]").toString("base64") });
+    } else if (e.method === "Network.requestWillBeSent" && e.params.type === "Fetch") {
+      const pathname = new URL(e.params.request.url).pathname;
+      if (pathname.startsWith("/icon/") || pathname.startsWith("/export-images/") || pathname === "/missing-overview-image.png") imageFetches.set(pathname, (imageFetches.get(pathname) || 0) + 1);
     } else if (e.method === "Browser.downloadWillBegin") downloadName = e.params.suggestedFilename;
     else if (e.method === "Browser.downloadProgress" && e.params.state === "completed") downloadComplete = true;
   };
@@ -56,14 +71,16 @@ async function main() {
     await delay(100);
   };
   await send("Page.enable");
-  await send("Fetch.enable", { patterns: [{ urlPattern: "*/rest/v1/*" }] });
+  await send("Network.enable");
+  await send("Fetch.enable", { patterns: [{ urlPattern: "*/rest/v1/*" },
+    { urlPattern: "*/export-images/*", resourceType: "Fetch" }, { urlPattern: "*/missing-overview-image.png", resourceType: "Fetch" }] });
   await send("Page.navigate", { url: `${base}/TeamBuild/list` });
   await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent === '一覧表示')");
   assert.equal(await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === '一覧表示').disabled"), true);
   const records = Array.from({ length: 21 }, (_, i) => ({
     id: `overview-${i}`, title: i === 0 ? "長い編成タイトルの表示を確認・禁忌の獄と天魔の孤城のための編成メモ" : `テスト編成${i + 1}`,
-    targetQuestId: "quest", targetQuestName: "クエスト", targetQuestIconUrl: i === 1 ? null : `${base}/icon/icon_火.png`,
-    shugojuName: "守護獣", shugojuIconUrl: i === 1 ? null : `${base}/icon/icon_水.png`,
+    targetQuestId: "quest", targetQuestName: "クエスト", targetQuestIconUrl: i === 0 ? `${base}/export-images/retry.png` : i === 1 ? null : `${base}/icon/icon_火.png`,
+    shugojuName: "守護獣", shugojuIconUrl: i === 0 ? `${base}/export-images/delayed.png` : i === 1 ? null : `${base}/icon/icon_水.png`,
     slots: [3, 1, 0, 2].map(slotIndex => ({ slotIndex, characterId: String(slotIndex), characterName: `キャラ${slotIndex + 1}`,
       iconUrl: i === 1 && slotIndex === 2 ? "" : i === 2 ? `${base}/missing-overview-image.png` : `${base}/icon/icon_木.png`, fruits: [], crests: [] })),
     createdAt: new Date(Date.UTC(2026, 10, 14, 0, 0, i)).toISOString(),
@@ -86,22 +103,31 @@ async function main() {
   await waitFor("document.querySelectorAll('#team-overview-selection input').length === 21");
   assert.equal(await evaluate("document.querySelector('dialog').open && document.querySelector('dialog').contains(document.querySelector('#team-overview-selection'))"), true);
   assert.equal(await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'プレビューを表示').disabled"), true);
-  await click("先頭20件を選択");
-  assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:checked').length"), 20);
-  assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:disabled').length"), 1);
+  await click("先頭10件を選択");
+  assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:checked').length"), 10);
+  assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:disabled').length"), 11);
   // Excluding one selection must allow a different team to take its place.
   await evaluate("document.querySelector('#team-overview-selection input').click()");
   assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:disabled').length"), 0);
-  await click("先頭20件を選択");
+  await click("先頭10件を選択");
   const downloadDir = path.resolve(__dirname, "../.next/team-list-downloads");
   fs.mkdirSync(downloadDir, { recursive: true });
   await send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir, eventsEnabled: true });
   await click("プレビューを表示");
+  for (let i = 0; i < 100 && !delayedRequest; i++) await delay(50);
+  assert.ok(delayedRequest, "last required image must be requested");
+  assert.equal(await evaluate("document.querySelector('dialog img') === null"), true, "preview waits for all images");
+  await fulfillImage(delayedRequest);
   await waitFor("document.querySelector('dialog img')?.src.startsWith('data:image/png')");
+  assert.equal(retryAttempts, 2, "transient HTTP failure must recover automatically");
+  assert.equal(imageFetches.get("/missing-overview-image.png"), 3, "failed shared URL retries once per URL, not once per slot");
+  for (const name of ["火", "木", "水"]) assert.equal(imageFetches.get(new URL(`${base}/icon/icon_${name}.png`).pathname), 1, "shared success is fetched once");
+  assert.equal(await evaluate("document.querySelector('[class*=imageWarning]').textContent.includes('テスト編成3：1体目（キャラ1）')"), true);
+  assert.equal(await evaluate("document.querySelectorAll('[class*=exportSheet] > [class*=exportRow]')[2].querySelector('[class*=teamIcons]').querySelectorAll('img').length"), 0);
   const dimensions = await evaluate("({width: document.querySelector('dialog img').naturalWidth, height: document.querySelector('dialog img').naturalHeight})");
   assert.equal(dimensions.width, 1080);
   assert.equal(dimensions.height, await evaluate("Math.round(document.querySelector('[class*=exportSheet]').getBoundingClientRect().height * 1080 / 1000)"));
-  assert.equal(await evaluate("document.querySelectorAll('[class*=exportSheet] > [class*=exportRow]').length"), 20);
+  assert.equal(await evaluate("document.querySelectorAll('[class*=exportSheet] > [class*=exportRow]').length"), 10);
   assert.deepEqual(await evaluate("[...document.querySelector('[class*=exportSheet] > [class*=exportRow]').children].flatMap(c => c.matches('[class*=teamIcons]') ? [...c.children] : [c]).map(c => c.textContent || c.alt || c.getAttribute('aria-label'))"),
     ["クエスト", records[0].title, "キャラ1", "キャラ2", "キャラ3", "キャラ4", "守護獣"]);
   await click("画像保存");
@@ -110,6 +136,13 @@ async function main() {
   const png = fs.readFileSync(path.join(downloadDir, downloadName));
   assert.equal(png.subarray(1, 4).toString(), "PNG");
   assert.equal(png.readUInt32BE(16), 1080);
+  const successfulFetchCounts = [...imageFetches].filter(([url]) => url !== "/missing-overview-image.png");
+  missingImageAvailable = true;
+  await click("画像を再取得");
+  await waitFor("document.querySelector('dialog img') && !document.querySelector('[class*=imageWarning]')");
+  assert.equal(imageFetches.get("/missing-overview-image.png"), 4, "failed image must be retried after recovery");
+  for (const [url, count] of successfulFetchCounts) assert.equal(imageFetches.get(url), count, "successful images must stay cached");
+  assert.equal(await evaluate("document.querySelectorAll('[class*=exportSheet] > [class*=exportRow]')[2].querySelector('[class*=teamIcons]').querySelectorAll('img').length"), 4);
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await waitFor("!document.querySelector('dialog')");
   await click("一覧表示");
@@ -152,7 +185,7 @@ async function main() {
   await click("一覧表示");
   await waitFor("document.querySelectorAll('#team-overview-selection input').length === 20");
   assert.equal(await evaluate(`document.querySelector('#team-overview-selection').textContent.includes(${JSON.stringify(records[0].title)})`), false);
-  console.log("PASS: overview selection/limit, PNG download, mobile; per-team trash position, confirm title, cancel/Escape, delete persistence and overview synchronization");
+  console.log("PASS: URL deduplication, wait for all images, automatic retry, named failure placeholders and recovery; overview selection/limit, PNG download, mobile, per-team deletion");
   await send("Browser.close");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => { clearTimeout(timeout); socket?.close(); chrome.kill(); });

@@ -15,6 +15,9 @@
 .dialogContent { display: grid; gap: 12px; padding: 16px; }
 .dialogTitle { margin: 0; margin-right: auto; font-size: 16px; }
 .previewImage { width: 100%; height: auto; display: block; }
+.imageWarning { padding: 12px; border: 1px solid #e2b34d; border-radius: 8px; background: #fff9e8; }
+.imageWarning p { margin: 0 0 8px; }
+.imageWarning ul { margin: 0 0 12px; padding-left: 20px; max-height: 180px; overflow-y: auto; overflow-wrap: anywhere; }
 .offscreen { position: fixed; left: -100000px; top: 0; pointer-events: none; }
 .exportSheet { width: 1000px; padding: 20px; box-sizing: border-box; background: #fff; color: #111827; font-family: Arial, "Noto Sans JP", sans-serif; }
 .exportRow { display: grid; grid-template-columns: 96px minmax(0, 1fr) 384px 96px; align-items: center; gap: 12px; min-height: 107px; padding: 5px 8px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box; background: #fff; }
