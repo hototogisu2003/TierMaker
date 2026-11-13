@@ -132,17 +132,16 @@ export default function TeamListExport({ records, saveImage }: {
       {selecting ? (
         <dialog ref={dialogRef} className={styles.dialog} aria-labelledby={previewOpen ? "team-overview-title" : "team-overview-selection-title"}
           onCancel={closePreview} onClick={(event) => { if (event.target === event.currentTarget) closePreview(); }}>
+        <div className={styles.dialogHeader}>
+          <h2 id={previewOpen ? "team-overview-title" : "team-overview-selection-title"} className={styles.dialogTitle}>
+            {previewOpen ? "一覧プレビュー" : "表示する編成を選択"}
+          </h2>
+          <button className={styles.button} type="button" onClick={closePreview}>閉じる</button>
+        </div>
         {!previewOpen ? (
         <div className={styles.selection} id="team-overview-selection">
           <div className={styles.toolbar}>
-            <h2 id="team-overview-selection-title" className={styles.dialogTitle}>表示する編成を選択</h2>
             <span aria-live="polite">{selectedRecords.length}/{LIMIT}件</span>
-            <button className={styles.button} type="button" onClick={closePreview}>閉じる</button>
-          </div>
-          <div className={styles.toolbar}>
-            <button className={styles.button} type="button" onClick={() => setSelectedIds(records.slice(0, LIMIT).map((record) => record.id))}>
-              {records.length > LIMIT ? `先頭${LIMIT}件を選択` : "すべて選択"}
-            </button>
             <button className={styles.button} type="button" disabled={!selectedRecords.length} onClick={() => setSelectedIds([])}>選択解除</button>
           </div>
           <div className={styles.choices}>
@@ -167,14 +166,13 @@ export default function TeamListExport({ records, saveImage }: {
         ) : (
           <div className={styles.dialogContent}>
             <div className={styles.toolbar}>
-              <h2 id="team-overview-title" className={styles.dialogTitle}>一覧プレビュー（{selectedRecords.length}件）</h2>
+              <span>{selectedRecords.length}件</span>
               <button className={styles.button} type="button" onClick={() => {
                 generationRef.current += 1;
                 imageAbortRef.current?.abort();
                 setPreviewOpen(false);
               }}>選択に戻る</button>
               <button className={styles.button} type="button" disabled={loading || !previewUrl || saving} onClick={() => void savePreview()}>画像保存</button>
-              <button className={styles.button} type="button" onClick={closePreview}>閉じる</button>
             </div>
             {loading ? <p role="status">プレビュー生成中...（画像 {imageProgress.completed}/{imageProgress.total}）</p> : null}
             {!loading && failedImages.length > 0 ? (

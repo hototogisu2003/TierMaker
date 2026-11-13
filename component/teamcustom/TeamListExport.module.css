@@ -12,6 +12,8 @@
 .choice input { width: 18px; height: 18px; flex: 0 0 auto; }
 .dialog { width: min(1060px, calc(100% - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #111827; overflow-y: auto; }
 .dialog::backdrop { background: rgba(15, 23, 42, .4); }
+.dialogHeader { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+.dialogHeader .button { white-space: nowrap; }
 .dialogContent { display: grid; gap: 12px; padding: 16px; }
 .dialogTitle { margin: 0; margin-right: auto; font-size: 16px; }
 .previewImage { width: 100%; height: auto; display: block; }

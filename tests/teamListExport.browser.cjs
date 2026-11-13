@@ -103,13 +103,13 @@ async function main() {
   await waitFor("document.querySelectorAll('#team-overview-selection input').length === 21");
   assert.equal(await evaluate("document.querySelector('dialog').open && document.querySelector('dialog').contains(document.querySelector('#team-overview-selection'))"), true);
   assert.equal(await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'プレビューを表示').disabled"), true);
-  await click("先頭10件を選択");
+  await evaluate("[...document.querySelectorAll('#team-overview-selection input')].slice(0, 10).forEach(input => input.click())");
   assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:checked').length"), 10);
   assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:disabled').length"), 11);
   // Excluding one selection must allow a different team to take its place.
   await evaluate("document.querySelector('#team-overview-selection input').click()");
   assert.equal(await evaluate("document.querySelectorAll('#team-overview-selection input:disabled').length"), 0);
-  await click("先頭10件を選択");
+  await evaluate("document.querySelector('#team-overview-selection input').click()");
   const downloadDir = path.resolve(__dirname, "../.next/team-list-downloads");
   fs.mkdirSync(downloadDir, { recursive: true });
   await send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir, eventsEnabled: true });
