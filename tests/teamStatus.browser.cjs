@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const base = process.argv[2] || "http://localhost:3100";
+const artifactsDir = fs.mkdtempSync(path.join(os.tmpdir(), "team-status-artifacts-"));
 const port = 19349;
 const chrome = spawn(process.env.CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", [
   "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
@@ -39,7 +40,8 @@ async function main() {
   };
   const fixtures = [fixture, ...["15", "16", "155", "true-test"].map((id) => ({
     ...fixture, id, name: `特殊キャラ${id}`, form: "真獣神化", shuzoku: "神",
-  }))];
+  })), ...Array.from({ length: 30 }, (_, index) => ({ ...fixture, id: `quest-${index}`, name: `クエスト${index + 1}`, number: index + 10 }))];
+  const shugojuFixtures = Array.from({ length: 40 }, (_, index) => ({ id: `guardian-${index}`, name: `守護獣${index + 1}`, name_kana: "しゅごじゅう", icon_path: fixture.icon_path }));
   socket.onmessage = ({ data }) => {
     const event = JSON.parse(data);
     if (event.id) {
@@ -52,7 +54,7 @@ async function main() {
           { name: "Access-Control-Allow-Headers", value: "apikey,authorization,content-type,x-client-info,accept-profile" },
           { name: "Access-Control-Allow-Methods", value: "GET,OPTIONS" },
         ],
-        body: Buffer.from(JSON.stringify(event.params.request.url.includes("hp") ? fixtures : [])).toString("base64"),
+        body: Buffer.from(JSON.stringify(new URL(event.params.request.url).searchParams.get("select")?.split(",").includes("hp") ? fixtures : shugojuFixtures)).toString("base64"),
       });
     }
   };
@@ -137,7 +139,7 @@ async function main() {
   assert.deepEqual(await values(), ["22000", "1500", "27000", "1000", "315.75"]);
   assert.equal(await evaluate("document.querySelector('dialog').scrollWidth <= document.querySelector('dialog').clientWidth"), true);
   const screenshot = await send("Page.captureScreenshot", { format: "png" });
-  fs.writeFileSync(path.join(__dirname, "../.next/team-status-mobile.png"), Buffer.from(screenshot.data, "base64"));
+  fs.writeFileSync(path.join(artifactsDir, "team-status-mobile.png"), Buffer.from(screenshot.data, "base64"));
   await click("閉じる");
   await evaluate("document.querySelector('[aria-label=\"1stを下へ移動\"]').click()");
   await waitFor(`${stats("2nd")}?.textContent.includes('39600')`);
@@ -152,7 +154,7 @@ async function main() {
   await open("2nd");
   assert.equal(await evaluate("[...document.querySelectorAll('dialog label')].find(l => l.textContent.trim() === '使用回数').querySelector('input').value"), "1000");
   const usageScreenshot = await send("Page.captureScreenshot", { format: "png" });
-  fs.writeFileSync(path.join(__dirname, "../.next/team-usage-mobile.png"), Buffer.from(usageScreenshot.data, "base64"));
+  fs.writeFileSync(path.join(artifactsDir, "team-usage-mobile.png"), Buffer.from(usageScreenshot.data, "base64"));
   await evaluate(`(() => {
     for (const name of ['使用回数', 'HPアシスト加算', '攻撃力アシスト加算']) {
       const input = [...document.querySelectorAll('dialog label')].find(l => l.textContent.trim() === name).querySelector('input');
@@ -213,7 +215,7 @@ async function main() {
   await click("使用回数最大");
   await waitFor(`${hp("2nd")} === '39001'`);
   const hpScreenshot = await send("Page.captureScreenshot", { format: "png" });
-  fs.writeFileSync(path.join(__dirname, "../.next/team-hp-support-mobile.png"), Buffer.from(hpScreenshot.data, "base64"));
+  fs.writeFileSync(path.join(artifactsDir, "team-hp-support-mobile.png"), Buffer.from(hpScreenshot.data, "base64"));
   // Editing base HP must not start from the support-multiplied display value.
   await open("2nd");
   assert.deepEqual(await values(), ["20001", "1500", "25000", "0", "300.25"]);
@@ -232,6 +234,33 @@ async function main() {
   await send("Page.navigate", { url: `${base}/TeamBuild/memo?share=b64.${Buffer.from(JSON.stringify(legacyMaxShare)).toString("base64url")}` });
   await waitFor(`${hp("2nd")} === '27001'`);
   assert.equal(await evaluate("document.querySelector('[class*=exportTotalHp]').textContent"), "HP：50,001");
+  const columns = (name) => `getComputedStyle(document.querySelector('[class*=${name}]')).gridTemplateColumns.split(' ').length`;
+  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await click("クエストを選択");
+  await evaluate(`(() => { const input = document.querySelector('input[placeholder="ボスを検索"]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'クエスト'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await waitFor("document.querySelectorAll('[class*=questPickGrid] button').length > 0");
+  assert.equal(await evaluate(columns("questPickGrid")), 5);
+  await evaluate("document.querySelector('[class*=questPickList]').scrollTop = 10000");
+  await waitFor("document.querySelector('[class*=questPickGrid]').textContent.includes('クエスト30')");
+  await evaluate("[...document.querySelectorAll('[class*=questPickGrid] button')].find(b => b.textContent === 'クエスト30').click()");
+  await waitFor("!document.querySelector('[class*=questPickGrid]')");
+  await click("守護獣を選択");
+  await waitFor("document.querySelectorAll('[class*=shugojuGrid] button').length >= 25");
+  assert.equal(await evaluate(columns("shugojuGrid")), 5);
+  await send("Emulation.setDeviceMetricsOverride", { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
+  await waitFor(`${columns("shugojuGrid")} === 3`);
+  await evaluate("document.querySelector('[class*=shugojuList]').scrollTop = 10000");
+  await waitFor("document.querySelector('[class*=shugojuGrid]').textContent.includes('守護獣40')");
+  // Widening at the end of the list must not leave the virtualized grid empty.
+  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await waitFor(`${columns("shugojuGrid")} === 5 && document.querySelector('[class*=shugojuGrid]').textContent.includes('守護獣40')`);
+  await click("閉じる");
+  await click("スポットを選択");
+  assert.equal(await evaluate(columns("spotGrid")), 5);
+  await send("Emulation.setDeviceMetricsOverride", { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
+  await waitFor(`${columns("spotGrid")} === 3`);
+  await click("閉じる");
   console.log("PASS: status editing, per-character usage autofill/edit/save/share, legacy maximum migration, additions display, mobile, slot movement; HP support priority/exclusions, rounding, export/total HP, no double application");
   await send("Browser.close");
 }

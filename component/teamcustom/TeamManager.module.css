@@ -1220,7 +1220,7 @@
 
 .spotGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1392,7 +1392,7 @@
 
 .questPickGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1494,6 +1494,8 @@
   font-weight: 800;
   font-size: 16px;
   line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .arrangeTitleRow {
@@ -1501,6 +1503,50 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.arrangeTitleActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.arrangeTrashBtn {
+  color: #b91c1c;
+}
+
+.removeRecordDialog {
+  width: min(420px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  overflow-y: auto;
+}
+
+.removeRecordDialog::backdrop {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.removeRecordContent {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.removeRecordDescription {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.removeRecordConfirm {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
 }
 
 .arrangeGearBtn {
@@ -1701,7 +1747,7 @@
 
 .shugojuGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -2021,6 +2067,11 @@
 }
 
 @media (max-width: 768px) {
+  .questPickGrid,
+  .shugojuGrid,
+  .spotGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .customCharacterGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

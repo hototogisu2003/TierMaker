@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import styles from "./TeamManager.module.css";
+import TeamListExport from "./TeamListExport";
 import CrestIcon from "./CrestIcon";
 import SpotIcon from "./SpotIcon";
 import ElementIcon from "@/component/ui/ElementIcon";
@@ -98,12 +99,10 @@ const TEAM_RECORD_LIMIT = 50;
 const TEAM_SHARE_BASE_URL = "https://strike-optima.com";
 const EXPORT_IMAGE_WIDTH_PX = 960;
 const EXPORT_IMAGE_HEIGHT_PX = 960;
-const QUEST_GRID_COLS = 3;
 const QUEST_ROW_HEIGHT = 86;
 const QUEST_VISIBLE_ROWS = 5;
 const CHARACTER_ITEM_WIDTH = 82;
 const CHARACTER_VISIBLE_ITEMS = 12;
-const SHUGOJU_GRID_COLS = 3;
 const SHUGOJU_ROW_HEIGHT = 90;
 const SHUGOJU_VISIBLE_ROWS = 5;
 const SPOT_OPTIONS = ["火", "水", "木", "光", "闇", "王者"] as const satisfies readonly SpotKey[];
@@ -516,9 +515,15 @@ export default function TeamManager({ mode }: { mode: Tab }) {
   const [superSenkeiSlotIndex, setSuperSenkeiSlotIndex] = useState<number | null>(null);
   const [arrangeIds, setArrangeIds] = useState<string[]>([]);
   const [arrangeRemoveId, setArrangeRemoveId] = useState("");
-  const [isArrangeRemoveOpen, setIsArrangeRemoveOpen] = useState(false);
+  const [isRemovingRecord, setIsRemovingRecord] = useState(false);
+  const [removeRecordError, setRemoveRecordError] = useState("");
+  const removeRecordDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (arrangeRemoveId && !removeRecordDialogRef.current?.open) removeRecordDialogRef.current?.showModal();
+  }, [arrangeRemoveId]);
   const [isArrangeLoaded, setIsArrangeLoaded] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const pickerGridCols = isMobileViewport ? 3 : 5;
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -779,32 +784,32 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     return list.slice(0, 50);
   }, [quests, appliedQuestKeyword, appliedQuestFilter, hasQuestSearched]);
   const questVirtual = useMemo(() => {
-    const totalRows = Math.ceil(filteredQuests.length / QUEST_GRID_COLS);
-    const startRow = Math.max(0, Math.floor(questListScrollTop / QUEST_ROW_HEIGHT) - 1);
+    const totalRows = Math.ceil(filteredQuests.length / pickerGridCols);
+    const startRow = Math.min(Math.max(0, totalRows - QUEST_VISIBLE_ROWS), Math.max(0, Math.floor(questListScrollTop / QUEST_ROW_HEIGHT) - 1));
     const endRow = Math.min(totalRows, startRow + QUEST_VISIBLE_ROWS + 2);
-    const startIndex = startRow * QUEST_GRID_COLS;
-    const endIndex = Math.min(filteredQuests.length, endRow * QUEST_GRID_COLS);
+    const startIndex = startRow * pickerGridCols;
+    const endIndex = Math.min(filteredQuests.length, endRow * pickerGridCols);
     const visible = filteredQuests.slice(startIndex, endIndex);
     const paddingTop = startRow * QUEST_ROW_HEIGHT;
     const paddingBottom = Math.max(0, (totalRows - endRow) * QUEST_ROW_HEIGHT);
     return { visible, paddingTop, paddingBottom };
-  }, [filteredQuests, questListScrollTop]);
+  }, [filteredQuests, questListScrollTop, pickerGridCols]);
   const filteredShugojus = useMemo(() => {
     const keyword = shugojuKeyword.trim().toLowerCase();
     const list = keyword ? shugojus.filter((s) => s.name.toLowerCase().includes(keyword) || s.nameKana.toLowerCase().includes(keyword)) : shugojus;
     return list.slice(0, 200);
   }, [shugojus, shugojuKeyword]);
   const shugojuVirtual = useMemo(() => {
-    const totalRows = Math.ceil(filteredShugojus.length / SHUGOJU_GRID_COLS);
-    const startRow = Math.max(0, Math.floor(shugojuListScrollTop / SHUGOJU_ROW_HEIGHT));
-    const endRow = Math.min(totalRows, startRow + SHUGOJU_VISIBLE_ROWS);
-    const startIndex = startRow * SHUGOJU_GRID_COLS;
-    const endIndex = Math.min(filteredShugojus.length, endRow * SHUGOJU_GRID_COLS);
+    const totalRows = Math.ceil(filteredShugojus.length / pickerGridCols);
+    const startRow = Math.min(Math.max(0, totalRows - SHUGOJU_VISIBLE_ROWS), Math.max(0, Math.floor(shugojuListScrollTop / SHUGOJU_ROW_HEIGHT) - 1));
+    const endRow = Math.min(totalRows, startRow + SHUGOJU_VISIBLE_ROWS + 2);
+    const startIndex = startRow * pickerGridCols;
+    const endIndex = Math.min(filteredShugojus.length, endRow * pickerGridCols);
     const visible = filteredShugojus.slice(startIndex, endIndex);
     const paddingTop = startRow * SHUGOJU_ROW_HEIGHT;
     const paddingBottom = Math.max(0, (totalRows - endRow) * SHUGOJU_ROW_HEIGHT);
     return { visible, paddingTop, paddingBottom };
-  }, [filteredShugojus, shugojuListScrollTop]);
+  }, [filteredShugojus, shugojuListScrollTop, pickerGridCols]);
   const arrangedRecords = useMemo(
     () => arrangeIds.map((id) => records.find((r) => r.id === id)).filter((x): x is TeamRecord => Boolean(x)).slice(0, TEAM_RECORD_LIMIT),
     [arrangeIds, records]
@@ -1566,12 +1571,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
     if (editingId === id) resetDraft();
   }
   async function removeManagedRecord(id: string) {
-    if (!id) return;
-    await deleteTeam(id);
-    await refreshRecords();
-    setArrangeRemoveId("");
-    setIsArrangeRemoveOpen(false);
-    setMessage("保存データを削除しました");
+    if (!id || isRemovingRecord) return;
+    setIsRemovingRecord(true);
+    setRemoveRecordError("");
+    try {
+      await deleteTeam(id);
+      await refreshRecords();
+      setArrangeRemoveId("");
+      setMessage("保存データを削除しました");
+    } catch {
+      setRemoveRecordError("編成を削除できませんでした。再度お試しください。");
+    } finally {
+      setIsRemovingRecord(false);
+    }
   }
   function applyQuestSearch(nextQuestKeyword?: string, nextQuestFilter?: (typeof QUEST_FILTER_OPTIONS)[number] | "") {
     setAppliedQuestKeyword(nextQuestKeyword ?? questKeyword);
@@ -3080,16 +3092,15 @@ export default function TeamManager({ mode }: { mode: Tab }) {
         <div className={styles.card} style={{ display: "grid", gap: 10 }}>
           <div className={styles.row}>
             <div className={styles.label}>編成を管理する (最大{TEAM_RECORD_LIMIT}件)</div>
-            <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(true)} disabled={arrangedRecords.length === 0}>
-              削除
-            </button>
             <span className={styles.helper}>{arrangedRecords.length}/{TEAM_RECORD_LIMIT}件</span>
+            <TeamListExport records={arrangedRecords} saveImage={triggerImageSave} />
           </div>
           <div className={`${styles.compareBoard} ${styles.arrangeBoard}`}>
             {arrangedRecords.map((record, idx) => (
               <div key={record.id} className={`${styles.compareRow} ${styles.arrangeRow}`}>
                 <div className={styles.arrangeTitleRow}>
                   <div className={styles.arrangeTitle}>{record.title}</div>
+                  <div className={styles.arrangeTitleActions}>
                   <button
                     className={`${styles.iconBtn} ${styles.arrangeGearBtn}`}
                     type="button"
@@ -3104,6 +3115,19 @@ export default function TeamManager({ mode }: { mode: Tab }) {
                       />
                     </svg>
                   </button>
+                  <button
+                    className={`${styles.iconBtn} ${styles.arrangeGearBtn} ${styles.arrangeTrashBtn}`}
+                    type="button"
+                    aria-label={`${record.title}を削除`}
+                    title="編成を削除"
+                    disabled={isRemovingRecord}
+                    onClick={() => { setRemoveRecordError(""); setArrangeRemoveId(record.id); }}
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+                    </svg>
+                  </button>
+                  </div>
                 </div>
                 <div className={styles.arrangeBottomRow}>
                   <div className={styles.arrangeVisualRow}>
@@ -3154,22 +3178,25 @@ export default function TeamManager({ mode }: { mode: Tab }) {
             ))}
           </div>
           {arrangedRecords.length === 0 ? <div className={styles.helper}>保存データがありません</div> : null}
-          {isArrangeRemoveOpen ? (
-            <div className={styles.arrangeOverlay} onClick={() => setIsArrangeRemoveOpen(false)}>
-              <div className={styles.arrangeDialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.label}>保存データから削除する編成を選択</div>
-                <select className={styles.select} value={arrangeRemoveId} onChange={(e) => setArrangeRemoveId(e.target.value)}>
-                  <option value="">選択してください</option>
-                  {arrangedRecords.map((record) => (
-                    <option key={record.id} value={record.id}>{record.title}</option>
-                  ))}
-                </select>
+          {arrangeRemoveId ? (
+            <dialog ref={removeRecordDialogRef} className={styles.removeRecordDialog}
+              aria-labelledby="remove-team-title" aria-describedby="remove-team-description"
+              onCancel={(event) => { if (isRemovingRecord) event.preventDefault(); else setArrangeRemoveId(""); }}
+              onClick={(event) => { if (!isRemovingRecord && event.target === event.currentTarget) setArrangeRemoveId(""); }}>
+              <div className={styles.removeRecordContent}>
+                <h2 id="remove-team-title" className={styles.label}>編成を削除しますか？</h2>
+                <p id="remove-team-description" className={styles.removeRecordDescription}>
+                  「{records.find((record) => record.id === arrangeRemoveId)?.title}」を削除します。
+                </p>
+                {removeRecordError ? <p role="alert">{removeRecordError}</p> : null}
                 <div className={styles.row} style={{ justifyContent: "flex-end" }}>
-                  <button className={styles.btn} type="button" onClick={() => setIsArrangeRemoveOpen(false)}>閉じる</button>
-                  <button className={styles.btn} type="button" onClick={() => void removeManagedRecord(arrangeRemoveId)} disabled={!arrangeRemoveId}>削除</button>
+                  <button className={styles.btn} type="button" disabled={isRemovingRecord} onClick={() => setArrangeRemoveId("")}>キャンセル</button>
+                  <button className={`${styles.btn} ${styles.removeRecordConfirm}`} type="button" onClick={() => void removeManagedRecord(arrangeRemoveId)} disabled={isRemovingRecord}>
+                    {isRemovingRecord ? "削除中..." : "削除"}
+                  </button>
                 </div>
               </div>
-            </div>
+            </dialog>
           ) : null}
         </div>
       ) : null}
