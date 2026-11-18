@@ -1,24 +1,5 @@
-﻿import { createClient } from "@supabase/supabase-js";
+import type { CharacterMasterResponse } from "@/lib/characterMaster/server";
 import type { CharacterItem, QuestItem, ShugojuItem } from "@/lib/teamcustom/types";
-
-type GenericRow = Record<string, unknown>;
-
-function must(name: string): string {
-  const value =
-    name === "NEXT_PUBLIC_SUPABASE_URL"
-      ? process.env.NEXT_PUBLIC_SUPABASE_URL
-      : name === "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-        ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        : undefined;
-  if (!value) {
-    throw new Error(`Missing env: ${name}`);
-  }
-  return value;
-}
-
-function normalizeBaseUrl(v: string | undefined): string {
-  return (v ?? "").trim().replace(/\/+$/, "");
-}
 
 function toText(v: unknown): string {
   if (typeof v === "string") return v;
@@ -51,12 +32,6 @@ function isObtainable(getValue: unknown): boolean {
     if (Number.isFinite(n)) return n !== 0;
   }
   return true;
-}
-
-function buildPublicUrl(path: string, baseUrl: string, fallback: string): string {
-  if (/^https?:\/\//i.test(path)) return path;
-  if (baseUrl) return `${baseUrl}/${path.replace(/^\/+/, "")}`;
-  return fallback;
 }
 
 function normalizeElement(raw: string): CharacterItem["element"] {
@@ -114,35 +89,18 @@ export async function fetchCharactersAndQuests(): Promise<{
   questLoadError: string | null;
   shugojuLoadError: string | null;
 }> {
-  const supabase = createClient(must("NEXT_PUBLIC_SUPABASE_URL"), must("NEXT_PUBLIC_SUPABASE_ANON_KEY"), {
-    auth: { persistSession: false },
-  });
-
-  const charactersTable = process.env.NEXT_PUBLIC_CHARACTERS_TABLE ?? "characters";
-  const shugojuTable = process.env.NEXT_PUBLIC_SHUGOJU_TABLE ?? "shugoju";
-  const characterBucket = process.env.NEXT_PUBLIC_ICON_BUCKET ?? "characters";
-  const r2Base = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-
-  const { data: charactersData, error: charactersError } = await supabase
-    .from(charactersTable)
-    .select('id,name,name_kana,hp,attack,speed,shuzoku,gekishu,senkei,"ゲージ",element,obtain,gacha,form,quest,content,get,number,icon_path')
-    .order("number", { ascending: true })
-    .order("id", { ascending: true })
-    .limit(5000);
-
-  if (charactersError) {
-    throw new Error(`Failed to load characters: ${charactersError.message}`);
+  const response = await fetch("/api/character-master");
+  const data = await response.json() as CharacterMasterResponse | { message: string };
+  if ("message" in data || !response.ok) {
+    throw new Error("message" in data ? data.message : `Failed to load characters: ${response.status}`);
   }
 
-  const sourceRows = charactersData ?? [];
-  const characters = sourceRows
-    .map((row) => {
-      const r = row as GenericRow;
+  const characters = data.characters
+    .map((r) => {
       const id = toText(r.id).trim();
       const iconPath = toText(r.icon_path).trim();
       const name = toText(r.name).trim() || id;
       if (!id || !iconPath) return null;
-      const storageUrl = supabase.storage.from(characterBucket).getPublicUrl(iconPath).data.publicUrl;
       return {
         id,
         name,
@@ -162,20 +120,18 @@ export async function fetchCharactersAndQuests(): Promise<{
         isObtainable: isObtainable(r.get),
         sortNumber: toNumber(r.number),
         iconPath,
-        iconUrl: buildPublicUrl(iconPath, r2Base, storageUrl),
+        iconUrl: r.iconUrl,
       } satisfies CharacterItem;
     })
     .filter((x): x is CharacterItem => Boolean(x));
 
-  const quests = sourceRows
-    .map((row) => {
-      const r = row as GenericRow;
+  const quests = data.characters
+    .map((r) => {
       const id = toText(r.id).trim();
       const iconPath = toText(r.icon_path).trim();
       const name = toText(r.name).trim() || id;
       const nameKana = toText(r.name_kana).trim();
       if (!id || !name) return null;
-      const fallback = iconPath ? supabase.storage.from(characterBucket).getPublicUrl(iconPath).data.publicUrl : "";
       return {
         id,
         name,
@@ -184,41 +140,21 @@ export async function fetchCharactersAndQuests(): Promise<{
         questTag: toText(r.quest).trim(),
         contentTag: toText(r.content).trim(),
         iconPath,
-        iconUrl: iconPath ? buildPublicUrl(iconPath, r2Base, fallback) : "",
+        iconUrl: r.iconUrl,
       } satisfies QuestItem;
     })
     .filter((x): x is QuestItem => Boolean(x));
 
-  let shugojus: ShugojuItem[] = [];
-  let shugojuLoadError: string | null = null;
-  const { data: shugojuData, error: shugojuError } = await supabase
-    .from(shugojuTable)
-    .select("id,name,name_kana,icon_path")
-    .order("id", { ascending: true })
-    .limit(5000);
+  const shugojus = data.shugojus
+    .map((r) => {
+      const id = toText(r.id).trim();
+      const name = toText(r.name).trim() || id;
+      const nameKana = toText(r.name_kana).trim();
+      const iconPath = toText(r.icon_path).trim();
+      if (!id || !name) return null;
+      return { id, name, nameKana, iconPath, iconUrl: r.iconUrl } satisfies ShugojuItem;
+    })
+    .filter((x): x is ShugojuItem => Boolean(x));
 
-  if (shugojuError) {
-    shugojuLoadError = shugojuError.message;
-  } else {
-    shugojus = (shugojuData ?? [])
-      .map((row) => {
-        const r = row as GenericRow;
-        const id = toText(r.id).trim();
-        const name = toText(r.name).trim() || id;
-        const nameKana = toText(r.name_kana).trim();
-        const iconPath = toText(r.icon_path).trim();
-        if (!id || !name) return null;
-        const fallback = iconPath ? supabase.storage.from(characterBucket).getPublicUrl(iconPath).data.publicUrl : "";
-        return {
-          id,
-          name,
-          nameKana,
-          iconPath,
-          iconUrl: iconPath ? buildPublicUrl(iconPath, r2Base, fallback) : "",
-        } satisfies ShugojuItem;
-      })
-      .filter((x): x is ShugojuItem => Boolean(x));
-  }
-
-  return { characters, quests, shugojus, questLoadError: null, shugojuLoadError };
+  return { characters, quests, shugojus, questLoadError: null, shugojuLoadError: data.shugojuLoadError };
 }

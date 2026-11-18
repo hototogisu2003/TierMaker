@@ -1,4 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import {
+  createMasterIconUrl,
+  loadCharacterMaster,
+  loadShugojuMaster,
+  type ShugojuMasterRow,
+} from "@/lib/characterMaster/server";
 import type {
   CharacterContent,
   CharacterElement,
@@ -10,50 +15,13 @@ import type {
   PoolSourceType,
 } from "./types";
 
-type CharacterRow = {
-  id: string | number;
-  name?: string | null;
-  name_kana?: string | null;
-  element?: string | null;
-  obtain?: string | null;
-  gacha?: string | null;
-  form?: string | null;
-  content?: string | null;
-  quest?: string | null;
-  number?: number | string | null;
-  icon_path: string;
-};
-
-type ShugojuRow = {
-  id: string | number;
-  name?: string | null;
-  name_kana?: string | null;
-  icon_path: string;
-};
-
 type LoadTierDataResult = {
   characters: CharacterForUI[];
   shugoju: CharacterForUI[];
 };
 
-function normalizeBaseUrl(value: string | undefined): string {
-  return (value ?? "").trim().replace(/\/+$/, "");
-}
-
-function isAbsoluteUrl(value: string): boolean {
-  return /^https?:\/\//i.test(value);
-}
-
-function joinUrl(base: string, path: string): string {
-  return `${base}/${path.replace(/^\/+/, "")}`;
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
+function hasIcon<Row extends ShugojuMasterRow>(row: Row): row is Row & { icon_path: string } {
+  return typeof row.icon_path === "string" && row.icon_path.length > 0;
 }
 
 function toStringId(id: string | number): string {
@@ -133,17 +101,6 @@ function normalizeOtherCategory(raw: string | null | undefined): CharacterOtherC
   return "";
 }
 
-function buildIconUrl(
-  iconPath: string,
-  r2BaseUrl: string,
-  bucketName: string,
-  getPublicUrl: (path: string) => string
-): string {
-  if (isAbsoluteUrl(iconPath)) return iconPath;
-  if (r2BaseUrl) return joinUrl(r2BaseUrl, iconPath);
-  return getPublicUrl(iconPath) || iconPath;
-}
-
 function mapBaseCharacter(
   row: {
     id: string | number;
@@ -165,49 +122,11 @@ function mapBaseCharacter(
 }
 
 export async function loadTierCharacters(): Promise<LoadTierDataResult> {
-  const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const supabaseAnonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const [characterMaster, shugojuMaster] = await Promise.all([loadCharacterMaster(), loadShugojuMaster()]);
+  const getIconUrl = createMasterIconUrl();
 
-  const charactersTableName = process.env.NEXT_PUBLIC_CHARACTERS_TABLE ?? "characters";
-  const shugojuTableName = process.env.NEXT_PUBLIC_SHUGOJU_TABLE ?? "shugoju";
-  const bucketName = process.env.NEXT_PUBLIC_ICON_BUCKET ?? "characters";
-  const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-  });
-
-  const getPublicUrl = (path: string) => {
-    const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
-    return data?.publicUrl ?? "";
-  };
-
-  const [characterResult, shugojuResult] = await Promise.all([
-    supabase
-      .from(charactersTableName)
-      .select("id,name,name_kana,element,obtain,gacha,form,content,quest,number,icon_path")
-      .abortSignal(AbortSignal.timeout(8000))
-      .order("number", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(5000),
-    supabase
-      .from(shugojuTableName)
-      .select("id,name,name_kana,icon_path")
-      .abortSignal(AbortSignal.timeout(8000))
-      .order("id", { ascending: true })
-      .limit(5000),
-  ]);
-
-  if (characterResult.error) {
-    throw characterResult.error;
-  }
-  if (shugojuResult.error) {
-    throw shugojuResult.error;
-  }
-
-  const characterRows = ((characterResult.data ?? []) as CharacterRow[])
-    .filter((row) => typeof row.icon_path === "string" && row.icon_path.length > 0)
-    .slice()
+  const characterRows = characterMaster
+    .filter(hasIcon)
     .sort((a, b) => {
       const left = toSortableNumber(a.number);
       const right = toSortableNumber(b.number);
@@ -215,9 +134,8 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
       return toStringId(a.id).localeCompare(toStringId(b.id), "ja");
     });
 
-  const shugojuRows = ((shugojuResult.data ?? []) as ShugojuRow[])
-    .filter((row) => typeof row.icon_path === "string" && row.icon_path.length > 0)
-    .slice()
+  const shugojuRows = shugojuMaster
+    .filter(hasIcon)
     .sort((a, b) => {
       const left = toSortableNumber(a.id);
       const right = toSortableNumber(b.id);
@@ -226,7 +144,7 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
     });
 
   const characters = characterRows.map((row) => {
-    const iconUrl = buildIconUrl(row.icon_path, r2BaseUrl, bucketName, getPublicUrl);
+    const iconUrl = getIconUrl(row.icon_path);
     return {
       ...mapBaseCharacter(row, iconUrl, "character"),
       element: normalizeElement(row.element),
@@ -240,7 +158,7 @@ export async function loadTierCharacters(): Promise<LoadTierDataResult> {
   });
 
   const shugoju = shugojuRows.map((row) => {
-    const iconUrl = buildIconUrl(row.icon_path, r2BaseUrl, bucketName, getPublicUrl);
+    const iconUrl = getIconUrl(row.icon_path);
     return {
       ...mapBaseCharacter(row, iconUrl, "shugoju"),
       element: "",

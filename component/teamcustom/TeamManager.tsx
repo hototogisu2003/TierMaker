@@ -10,7 +10,7 @@ import CrestIcon from "./CrestIcon";
 import SpotIcon from "./SpotIcon";
 import ElementIcon from "@/component/ui/ElementIcon";
 import { applyTeamHpSupport, normalizeSlotStatus, normalizeUsageHp, teamHpSupportMultiplier } from "@/lib/teamcustom/status";
-import { fetchCharactersAndQuests } from "@/lib/teamcustom/supabase";
+import { fetchCharactersAndQuests } from "@/lib/teamcustom/master";
 import { deleteTeam, getArrangeIds, listTeams, putTeam, setArrangeIds as persistArrangeIds } from "@/lib/teamcustom/indexeddb";
 import { CREST_AVAILABLE_GRADES_BY_ID, CREST_GRADE_LABEL, CREST_ID_BY_NAME, CREST_OPTIONS, FRUIT_OPTIONS } from "@/lib/teamcustom/options";
 import type { CharacterItem, CrestGrade, CustomCharacter, FruitGrade, QuestItem, ShugojuItem, SlotStatus, SpotKey, TeamRecord, TeamSlot } from "@/lib/teamcustom/types";

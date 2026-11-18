@@ -1,5 +1,4 @@
-﻿import { unstable_noStore as noStore } from "next/cache";
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import SavedBoardsPage from "@/component/tiers/SavedBoardsPage";
 import { loadTierCharacters } from "../loadCharacters";
 
@@ -10,13 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default async function TierSavedPage() {
-  noStore();
-
   try {
     const { characters, shugoju } = await loadTierCharacters();
     return <SavedBoardsPage characters={[...characters, ...shugoju]} />;
   } catch (error) {
     console.error("Saved tier boards load error:", error);
-    return <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(error, null, 2)}</pre>;
+    return <pre style={{ whiteSpace: "pre-wrap" }}>{error instanceof Error ? error.message : JSON.stringify(error, null, 2)}</pre>;
   }
 }

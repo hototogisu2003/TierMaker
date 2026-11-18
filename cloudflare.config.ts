@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
       env: {
         ...publicBindings,
         ASSETS: bindings.assets(),
+        VINEXT_KV_CACHE: bindings.kv(),
         SUPABASE_SERVICE_ROLE_KEY: bindings.secret(),
       },
     }),
