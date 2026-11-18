@@ -38,8 +38,10 @@ export default function AssistSearch() {
     try {
       const response = await fetch("/api/assist/characters", { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("fetch failed");
-      const data = await response.json();
-      if (!Array.isArray(data.characters)) throw new Error("invalid response");
+      const data: unknown = await response.json();
+      if (!data || typeof data !== "object" || !("characters" in data) || !Array.isArray(data.characters)) {
+        throw new Error("invalid response");
+      }
       setCharacters(data.characters);
     } catch {
       if (!controller.signal.aborted) setError("キャラクターの取得に失敗しました。時間をおいて再試行してください。");

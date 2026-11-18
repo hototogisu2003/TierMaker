@@ -4,29 +4,44 @@
   "private": true,
   "scripts": {
     "predev": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }\"",
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "dev:clean": "powershell -NoProfile -Command \"if (Test-Path .next) { Remove-Item .next -Recurse -Force }; npm run dev -- -p 3000\"",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "dev:vinext": "vite dev --port 3001",
+    "build:vinext": "vite build",
+    "start:vinext": "vite preview",
+    "deploy:vinext": "vinext-cloudflare deploy"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@next/third-parties": "^14.2.35",
+    "@next/third-parties": "^16.4.6",
     "@supabase/supabase-js": "^2.49.1",
     "html-to-image": "^1.11.11",
-    "next": "^14.2.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "vinext": "^1.4.6",
+    "react-server-dom-webpack": "^19.3.1",
+    "@vinext/cloudflare": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.0",
-    "typescript": "^5.4.5"
-  }
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.4.6",
+    "typescript": "^5.4.5",
+    "vite": "8.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "@vitejs/plugin-rsc": "^0.5.39",
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.17",
+    "cf": "1.0.0-rc.1",
+    "vite-css-modules": "^1.16.1",
+    "postcss": "^8.5.23"
+  },
+  "type": "module"
 }

@@ -22,7 +22,7 @@ function setDeviceTokenCookie(response: NextResponse, deviceToken: string, cooki
 
 export async function submitBingoPrediction(request: Request, event: BingoEvent) {
   const cookieName = event === "13th" ? "bingo_13th_device_token" : "bingo_device_token";
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   let deviceToken = normalizeDeviceToken(cookieStore.get(cookieName)?.value);
   let shouldSetDeviceTokenCookie = false;
 

@@ -25,7 +25,7 @@ function setDeviceTokenCookie(response: NextResponse, deviceToken: string) {
 }
 
 export async function POST(request: Request) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   let deviceToken = normalizeDeviceToken(cookieStore.get(SEIBO_DEVICE_COOKIE_NAME)?.value);
   let shouldSetDeviceTokenCookie = false;
 

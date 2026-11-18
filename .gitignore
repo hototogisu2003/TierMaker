@@ -1,4 +1,10 @@
 .env.local
+.dev.vars*
 
 node_modules
 .next
+next-env.d.ts
+/dist/
+.vinext/
+.cloudflare/
+.wrangler/
