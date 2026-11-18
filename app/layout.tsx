@@ -1,7 +1,7 @@
 ﻿// app/layout.tsx
 import type { Metadata } from "next";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import Link from "next/link";
+import Script from "next/script";
 import "./globals.css";
 
 const siteTitle = "Strike-Optima |モンストお役立ちツール";
@@ -40,6 +40,9 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  const gaConfig = JSON.stringify(gaId)?.replaceAll("<", "\\u003c");
+
   return (
     <html lang="ja">
       <body>
@@ -69,7 +72,21 @@ export default function RootLayout({
             当サイト上で使用しているゲームの画像・名称・その他のアセットの著作権および商標権は、mixi Inc.に帰属します。その他、当サイトの知的財産権は、各権利所有者に帰属します。
           </div>
         </footer>
-        {process.env.NEXT_PUBLIC_GA_ID ? <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} /> : null}
+        {gaId && (
+          <>
+            <Script id="_next-ga-init" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+                function gtag() { window.dataLayer.push(arguments); }
+                gtag('js', new Date());
+                gtag('config', ${gaConfig});`}
+            </Script>
+            <Script
+              id="_next-ga"
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`}
+            />
+          </>
+        )}
       </body>
     </html>
   );
