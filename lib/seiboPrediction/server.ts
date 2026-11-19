@@ -24,7 +24,7 @@ import type {
   SeiboVersion,
   ShotType,
 } from "./types";
-import { MAX_BOSS_RANKING, NEW_SEIBO_BOSS, SEIBO_3_QUESTS } from "./types";
+import { NEW_SEIBO_BOSS, SEIBO_3_QUESTS } from "./types";
 
 type GenericRow = Record<string, unknown>;
 
@@ -580,26 +580,26 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
     }
   }
 
-  const topIds = new Set<string>();
+  const rankedIds = new Set<string>();
   const characterEntries = new Map<SeiboQuestKey, [string, number][]>();
   const bossEntries = new Map<SeiboQuestKey, [string, number][]>();
-  const topEntries = (counts: Map<string, number> | undefined, limit: number) =>
-    [...(counts ?? [])].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja")).slice(0, limit);
+  const rankedEntries = (counts: Map<string, number> | undefined) =>
+    [...(counts ?? [])].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"));
 
   for (const ranking of rankings) {
     const { questKey } = ranking;
-    ranking.gimmickRanking = topEntries(gimmickCounts.get(questKey), MAX_GIMMICK_RANKING)
+    ranking.gimmickRanking = rankedEntries(gimmickCounts.get(questKey)).slice(0, MAX_GIMMICK_RANKING)
       .map(([label, count]) => ({ label, count }));
-    const characters = topEntries(characterCounts.get(questKey), MAX_CHARACTER_RANKING);
-    const bosses = topEntries(bossCounts.get(questKey), MAX_BOSS_RANKING);
+    const characters = rankedEntries(characterCounts.get(questKey)).slice(0, MAX_CHARACTER_RANKING);
+    const bosses = rankedEntries(bossCounts.get(questKey));
     characterEntries.set(questKey, characters);
     bossEntries.set(questKey, bosses);
     for (const [id] of [...characters, ...bosses]) {
-      if (id !== NEW_SEIBO_BOSS.id) topIds.add(id);
+      if (id !== NEW_SEIBO_BOSS.id) rankedIds.add(id);
     }
   }
 
-  const characterMap = await fetchCharacterMapByIds([...topIds]);
+  const characterMap = await fetchCharacterMapByIds([...rankedIds]);
   const toRankingItem = ([id, count]: [string, number]) => {
     const character = id === NEW_SEIBO_BOSS.id ? NEW_SEIBO_BOSS : characterMap.get(id);
     return {

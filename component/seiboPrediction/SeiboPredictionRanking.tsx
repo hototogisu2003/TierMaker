@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./SeiboPredictionTool.module.css";
-import { MAX_BOSS_RANKING } from "@/lib/seiboPrediction/types";
 import type { CharacterRankingItem, Gimmick, SeiboBossCard, SeiboQuestRanking, SeiboVersion, ShotType } from "@/lib/seiboPrediction/types";
 
 function getShotIconPath(shotType: ShotType | ""): string {
@@ -38,10 +37,11 @@ function RankedCharacters({ items }: { items: CharacterRankingItem[] }) {
   const [namedCharacterId, setNamedCharacterId] = useState<string | null>(null);
   if (!items.length) return <div className={styles.empty}>まだ投稿がありません。</div>;
 
+  let rank = 1;
   return (
     <div className={styles.characterRankingGrid}>
       {items.map((item, index) => {
-        const rank = getCompetitionRank(items, index);
+        if (index > 0 && items[index - 1].count !== item.count) rank = index + 1;
         const showName = namedCharacterId === item.id;
         return (
           <div key={item.id} className={styles.characterRankingCard}>
@@ -123,7 +123,7 @@ export default function SeiboPredictionRanking({
             <div className={styles.rankingBlocks}>
               {version === "3" ? (
                 <section className={styles.rankingBlock}>
-                  <h2 className={styles.rankingTitle}>ボス予想 上位{MAX_BOSS_RANKING}件</h2>
+                  <h2 className={styles.rankingTitle}>ボス予想</h2>
                   <RankedCharacters key={activeRanking.questKey} items={activeRanking.bossRanking} />
                 </section>
               ) : null}

@@ -33,7 +33,6 @@ export const MAX_GIMMICKS = 4;
 export const MAX_CHARACTERS = 4;
 export const MAX_GIMMICK_RANKING = 5;
 export const MAX_CHARACTER_RANKING = 20;
-export const MAX_BOSS_RANKING = 5;
 
 export type ShotType = (typeof SHOT_TYPE_OPTIONS)[number];
 export type Gimmick = (typeof GIMMICK_OPTIONS)[number];
