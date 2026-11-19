@@ -1,13 +1,14 @@
 import { createHash } from "node:crypto";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   MAX_CHARACTER_RANKING,
   MAX_GIMMICK_RANKING,
-  SEIBO_QUESTS,
   buildGimmickCombinationLabel,
   emptySeiboRankings,
+  getSeiboQuests,
   isCountablePrediction,
   isGimmick,
+  isSeiboBossForQuest,
   normalizeSubmissionPayload,
   normalizeShotTypeLabel,
   questTitleFromKey,
@@ -15,21 +16,24 @@ import {
 } from "./shared";
 import type {
   Gimmick,
+  SeiboBossCandidate,
   SeiboBossCard,
   SeiboCharacterSummary,
   SeiboQuestKey,
   SeiboQuestRanking,
-  SeiboSubmissionPayload,
+  SeiboVersion,
   ShotType,
 } from "./types";
+import { MAX_BOSS_RANKING, NEW_SEIBO_BOSS, SEIBO_3_QUESTS } from "./types";
 
 type GenericRow = Record<string, unknown>;
 
 type PredictionRow = {
   quest_key: string;
-  shot_type: string;
+  shot_type: string | null;
   gimmicks: string[] | null;
   character_ids: string[] | null;
+  boss_id?: string | null;
 };
 
 type SubmissionSlotClaimResponse = {
@@ -74,7 +78,8 @@ function getCharacterOtherTableName(): string {
   return process.env.NEXT_PUBLIC_CHARA_OTHER_TABLE ?? "chara_other";
 }
 
-function getPredictionTableName(): string {
+function getPredictionTableName(version: SeiboVersion): string {
+  if (version === "3") return "seibo_3_predictions";
   return process.env.NEXT_PUBLIC_SEIBO_PREDICTIONS_TABLE ?? "seibo_predictions";
 }
 
@@ -143,10 +148,20 @@ function toCharacterSummary(
   };
 }
 
-export async function fetchSeiboBossCards(): Promise<SeiboBossCard[]> {
+export async function fetchSeiboBossCards(version: SeiboVersion): Promise<SeiboBossCard[]> {
+  if (version === "3") {
+    return SEIBO_3_QUESTS.map(({ key, bossName, iconUrl }) => ({
+      questKey: key,
+      bossName,
+      title: questTitleFromKey(key, version),
+      iconUrl,
+    }));
+  }
+
   const supabase = getSupabaseServerClient();
   const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-  const bossNames = SEIBO_QUESTS.map((quest) => quest.bossName).filter((name) => name !== "EX");
+  const quests = getSeiboQuests(version);
+  const bossNames = quests.filter((quest) => quest.key !== "ex").map((quest) => quest.bossName);
   const { data, error } = await supabase
     .from(getCharactersTableName())
     .select("id,name,name_kana,icon_path")
@@ -164,15 +179,42 @@ export async function fetchSeiboBossCards(): Promise<SeiboBossCard[]> {
     }
   }
 
-  return SEIBO_QUESTS.map((quest) => {
+  return quests.map((quest) => {
     const matched = byName.get(quest.bossName);
     return {
       questKey: quest.key,
       bossName: quest.bossName,
-      title: questTitleFromKey(quest.key),
+      title: questTitleFromKey(quest.key, version),
       iconUrl: matched?.iconUrl ?? "",
     };
   });
+}
+
+async function fetchEligibleSeiboBosses(ids?: string[]): Promise<SeiboBossCandidate[]> {
+  const supabase = getSupabaseServerClient();
+  const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
+  let query = supabase
+    .from(getCharactersTableName())
+    .select("id,name,name_kana,icon_path,element")
+    .eq("quest", "爆絶")
+    .or("content.is.null,content.neq.破界の星墓")
+    .order("number", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true });
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query;
+  if (error) throw new Error(`ボス候補の取得に失敗しました: ${error.message}`);
+  return ((data ?? []) as GenericRow[]).flatMap((row) => {
+    const character = toCharacterSummary(row, supabase, r2BaseUrl);
+    if (!character) return [];
+    const rawElement = toText(row.element).toLowerCase();
+    const element = SEIBO_3_QUESTS.find(({ bossName, elementAlias }) =>
+      rawElement === bossName || rawElement === elementAlias)?.bossName ?? null;
+    return [{ ...character, element }];
+  });
+}
+
+export async function fetchSeiboBossCandidates(): Promise<SeiboBossCandidate[]> {
+  return [NEW_SEIBO_BOSS, ...await fetchEligibleSeiboBosses()];
 }
 
 export async function searchSeiboCharacters(query: string, limit = 12): Promise<SeiboCharacterSummary[]> {
@@ -285,15 +327,69 @@ export async function fetchSeiboCharactersByIds(ids: string[]): Promise<SeiboCha
 
 export async function insertSeiboSubmission(
   input: unknown,
-  deviceToken: string
+  deviceToken: string,
+  version: SeiboVersion,
 ): Promise<{ stored: boolean; message?: string }> {
-  const payload = normalizeSubmissionPayload(input);
-  const tableName = getPredictionTableName();
-  const supabase = getSupabaseServerClient();
+  const payload = normalizeSubmissionPayload(input, version);
   const tokenHash = hashDeviceToken(deviceToken.trim());
   const batchId = crypto.randomUUID();
 
   const countablePredictions = payload.predictions.filter(isCountablePrediction);
+  const rows = countablePredictions.map((prediction) => ({
+    quest_key: prediction.questKey,
+    shot_type: toStorageShotType(prediction.shotType),
+    gimmicks: prediction.gimmicks,
+    character_ids: prediction.characters.map((character) => character.id),
+  }));
+  const emptySubmissionMessage = "画像は作成できますが、ランキングに反映される予想はまだありません。";
+
+  if (version === "3") {
+    const bossIds = new Set(payload.predictions.flatMap(({ bossId }) => bossId ? [bossId] : []));
+    const characterBossIds = [...bossIds].filter((id) => id !== NEW_SEIBO_BOSS.id);
+    if (characterBossIds.length) {
+      const eligibleBosses = await fetchEligibleSeiboBosses(characterBossIds);
+      const eligibleById = new Map(eligibleBosses.map((boss) => [boss.id, boss]));
+      for (const { questKey, bossId } of payload.predictions) {
+        if (!bossId || bossId === NEW_SEIBO_BOSS.id) continue;
+        const boss = eligibleById.get(bossId);
+        if (!boss || !isSeiboBossForQuest(boss, questKey)) {
+          throw new Error(`${questTitleFromKey(questKey, version)}のボス候補から選び直してください。`);
+        }
+      }
+    }
+
+    const rowsByQuest = new Map(rows.map((row) => [row.quest_key, row]));
+    const rowsWithBosses = payload.predictions.flatMap(({ questKey, bossId }): PredictionRow[] => {
+      const row = rowsByQuest.get(questKey);
+      if (row) return [{ ...row, boss_id: bossId ?? null }];
+      if (!bossId) return [];
+      return [{ quest_key: questKey, shot_type: null, gimmicks: [], character_ids: [], boss_id: bossId }];
+    });
+
+    const supabase = getSupabaseServiceRoleClient();
+    const submission = {
+      p_token_hash: tokenHash,
+      p_batch_id: batchId,
+      p_predictions: rowsWithBosses,
+    };
+    let { error } = await supabase.rpc("replace_seibo_3_submission_with_bosses", submission);
+    if (error && isMissingFunctionError(error.message)) {
+      if (bossIds.size) {
+        throw new Error("ボス予想の保存には supabase/seibo_3_boss_predictions.sql の適用が必要です。");
+      }
+      ({ error } = await supabase.rpc("replace_seibo_3_submission", { ...submission, p_predictions: rows }));
+    }
+    if (error) {
+      if (isMissingTableError(error.message) || isMissingFunctionError(error.message)) {
+        throw new Error("Supabaseに第3回の集計テーブルまたは保存関数がありません。supabase/seibo_3_predictions.sql を実行してください。");
+      }
+      throw new Error(`予想の保存に失敗しました: ${error.message}`);
+    }
+    return rowsWithBosses.length ? { stored: true } : { stored: true, message: emptySubmissionMessage };
+  }
+
+  const tableName = getPredictionTableName(version);
+  const supabase = getSupabaseServerClient();
   if (countablePredictions.length === 0) {
     const { error } = await supabase.from(tableName).delete().eq("token_hash", tokenHash);
     if (error) {
@@ -308,7 +404,7 @@ export async function insertSeiboSubmission(
     }
     return {
       stored: true,
-      message: "画像は作成できますが、ランキングに反映される予想はまだありません。",
+      message: emptySubmissionMessage,
     };
   }
 
@@ -328,16 +424,13 @@ export async function insertSeiboSubmission(
     throw new Error(`既存予想の取得に失敗しました: ${existingError.message}`);
   }
 
-  const rows = countablePredictions.map((prediction) => ({
+  const legacyRows = rows.map((row) => ({
+    ...row,
     token_hash: tokenHash,
     batch_id: batchId,
-    quest_key: prediction.questKey,
-    shot_type: toStorageShotType(prediction.shotType),
-    gimmicks: prediction.gimmicks,
-    character_ids: prediction.characters.map((character) => character.id),
   }));
 
-  const { error } = await supabase.from(tableName).upsert(rows, {
+  const { error } = await supabase.from(tableName).upsert(legacyRows, {
     onConflict: "token_hash,quest_key",
     ignoreDuplicates: false,
   });
@@ -429,39 +522,52 @@ export async function releaseSeiboSubmissionSlot(deviceToken: string): Promise<v
   }
 }
 
-export async function fetchAllSeiboRankings(): Promise<SeiboQuestRanking[]> {
+export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<SeiboQuestRanking[]> {
   const supabase = getSupabaseServerClient();
-  const tableName = getPredictionTableName();
-  const empty = emptySeiboRankings();
-  const { data, error } = await supabase
-    .from(tableName)
-    .select("quest_key,shot_type,gimmicks,character_ids");
+  const tableName = getPredictionTableName(version);
+  const rankings = emptySeiboRankings(version);
+  const columns = "quest_key,shot_type,gimmicks,character_ids";
+  let { data, error } = version === "3"
+    ? await supabase.from(tableName).select("quest_key,shot_type,gimmicks,character_ids,boss_id")
+    : await supabase.from(tableName).select(columns);
+  if (version === "3" && error?.code === "42703") {
+    // The existing rankings can still load before the boss migration is applied.
+    ({ data, error } = await supabase.from(tableName).select(columns));
+  }
 
   if (error) {
     if (isMissingTableError(error.message)) {
-      return empty;
+      return rankings;
     }
     throw new Error(`\u30e9\u30f3\u30ad\u30f3\u30b0\u306e\u53d6\u5f97\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${error.message}`);
   }
 
   const rows = (data ?? []) as PredictionRow[];
-  const rankingMap = new Map<SeiboQuestKey, SeiboQuestRanking>(empty.map((entry) => [entry.questKey, entry]));
+  const rankingMap = new Map(rankings.map((entry) => [entry.questKey, entry]));
   const gimmickCounts = new Map<SeiboQuestKey, Map<string, number>>();
   const characterCounts = new Map<SeiboQuestKey, Map<string, number>>();
+  const bossCounts = new Map<SeiboQuestKey, Map<string, number>>();
 
-  for (const quest of SEIBO_QUESTS) {
-    gimmickCounts.set(quest.key, new Map());
-    characterCounts.set(quest.key, new Map());
+  for (const { questKey } of rankings) {
+    gimmickCounts.set(questKey, new Map());
+    characterCounts.set(questKey, new Map());
+    bossCounts.set(questKey, new Map());
   }
 
   for (const row of rows) {
     const questKey = row.quest_key as SeiboQuestKey;
     const ranking = rankingMap.get(questKey);
-    const normalizedShotType = normalizeShotTypeLabel(row.shot_type);
-    if (!ranking || !normalizedShotType) continue;
+    if (!ranking) continue;
+    const bossId = version === "3" ? row.boss_id : null;
+    if (bossId) {
+      const counts = bossCounts.get(questKey);
+      counts?.set(bossId, (counts.get(bossId) ?? 0) + 1);
+    }
+    const normalizedShotType = row.shot_type && normalizeShotTypeLabel(row.shot_type);
+    if (bossId || normalizedShotType) ranking.totalSubmissions += 1;
+    if (!normalizedShotType) continue;
 
     const gimmicks = (row.gimmicks ?? []).filter((value): value is Gimmick => isGimmick(value));
-    ranking.totalSubmissions += 1;
 
     const gimmickLabel = buildGimmickCombinationLabel(normalizedShotType as ShotType, gimmicks);
     const gimmickCountMap = gimmickCounts.get(questKey);
@@ -474,57 +580,41 @@ export async function fetchAllSeiboRankings(): Promise<SeiboQuestRanking[]> {
     }
   }
 
-  const topCharacterIds = new Set<string>();
-  for (const quest of SEIBO_QUESTS) {
-    const ranking = rankingMap.get(quest.key);
-    const gimmickCountMap = gimmickCounts.get(quest.key) ?? new Map<string, number>();
-    const characterCountMap = characterCounts.get(quest.key) ?? new Map<string, number>();
-    if (!ranking) continue;
+  const topIds = new Set<string>();
+  const characterEntries = new Map<SeiboQuestKey, [string, number][]>();
+  const bossEntries = new Map<SeiboQuestKey, [string, number][]>();
+  const topEntries = (counts: Map<string, number> | undefined, limit: number) =>
+    [...(counts ?? [])].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja")).slice(0, limit);
 
-    ranking.gimmickRanking = [...gimmickCountMap.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
-      .slice(0, MAX_GIMMICK_RANKING)
+  for (const ranking of rankings) {
+    const { questKey } = ranking;
+    ranking.gimmickRanking = topEntries(gimmickCounts.get(questKey), MAX_GIMMICK_RANKING)
       .map(([label, count]) => ({ label, count }));
-
-    const sortedCharacters = [...characterCountMap.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
-      .slice(0, MAX_CHARACTER_RANKING);
-    for (const [characterId] of sortedCharacters) {
-      topCharacterIds.add(characterId);
+    const characters = topEntries(characterCounts.get(questKey), MAX_CHARACTER_RANKING);
+    const bosses = topEntries(bossCounts.get(questKey), MAX_BOSS_RANKING);
+    characterEntries.set(questKey, characters);
+    bossEntries.set(questKey, bosses);
+    for (const [id] of [...characters, ...bosses]) {
+      if (id !== NEW_SEIBO_BOSS.id) topIds.add(id);
     }
   }
 
-  const characterMap = await fetchCharacterMapByIds([...topCharacterIds]);
+  const characterMap = await fetchCharacterMapByIds([...topIds]);
+  const toRankingItem = ([id, count]: [string, number]) => {
+    const character = id === NEW_SEIBO_BOSS.id ? NEW_SEIBO_BOSS : characterMap.get(id);
+    return {
+      id,
+      name: character?.name ?? id,
+      nameKana: character?.nameKana ?? "",
+      iconUrl: character?.iconUrl ?? "",
+      count,
+    };
+  };
 
-  for (const quest of SEIBO_QUESTS) {
-    const ranking = rankingMap.get(quest.key);
-    const characterCountMap = characterCounts.get(quest.key) ?? new Map<string, number>();
-    if (!ranking) continue;
-
-    ranking.characterRanking = [...characterCountMap.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
-      .slice(0, MAX_CHARACTER_RANKING)
-      .map(([characterId, count]) => {
-        const character = characterMap.get(characterId);
-        return {
-          id: characterId,
-          name: character?.name ?? characterId,
-          nameKana: character?.nameKana ?? "",
-          iconUrl: character?.iconUrl ?? "",
-          count,
-        };
-      });
+  for (const ranking of rankings) {
+    ranking.characterRanking = (characterEntries.get(ranking.questKey) ?? []).map(toRankingItem);
+    ranking.bossRanking = (bossEntries.get(ranking.questKey) ?? []).map(toRankingItem);
   }
 
-  return SEIBO_QUESTS.map((quest) => rankingMap.get(quest.key) ?? {
-    questKey: quest.key,
-    title: questTitleFromKey(quest.key),
-    totalSubmissions: 0,
-    gimmickRanking: [],
-    characterRanking: [],
-  });
-}
-
-export function coerceSeiboPayload(input: unknown): SeiboSubmissionPayload {
-  return normalizeSubmissionPayload(input);
+  return rankings;
 }

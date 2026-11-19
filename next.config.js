@@ -3,6 +3,12 @@ const nextConfig = {
   allowedDevOrigins: [
     "192.168.40.175",
   ],
+  async redirects() {
+    return [
+      { source: "/Seibo-Prediction", destination: "/SeiboPrediction/2", permanent: true },
+      { source: "/Seibo-Prediction/ranking", destination: "/SeiboPrediction/2/ranking", permanent: true },
+    ];
+  },
   images: {
     // next/image を使う場合に Supabase Storage のドメインを許可する
     // （現状は img タグなので必須ではないが、将来切替のために用意）

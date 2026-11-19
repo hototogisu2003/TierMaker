@@ -20,20 +20,43 @@ export const SEIBO_QUESTS = [
   { key: "ex", bossName: "EX" },
 ] as const;
 
+// Keep the stored keys so existing /3 predictions stay with their element.
+export const SEIBO_3_QUESTS = [
+  { key: "nigimitama", bossName: "火", elementAlias: "fire", iconUrl: "/icon/icon_火.png" },
+  { key: "tougenkyo", bossName: "水", elementAlias: "water", iconUrl: "/icon/icon_水.png" },
+  { key: "cocytus", bossName: "木", elementAlias: "wood", iconUrl: "/icon/icon_木.png" },
+  { key: "largamente", bossName: "光", elementAlias: "light", iconUrl: "/icon/icon_光.png" },
+  { key: "melangcolin", bossName: "闇", elementAlias: "dark", iconUrl: "/icon/icon_闇.png" },
+] as const;
+
 export const MAX_GIMMICKS = 4;
 export const MAX_CHARACTERS = 4;
 export const MAX_GIMMICK_RANKING = 5;
 export const MAX_CHARACTER_RANKING = 20;
+export const MAX_BOSS_RANKING = 5;
 
 export type ShotType = (typeof SHOT_TYPE_OPTIONS)[number];
 export type Gimmick = (typeof GIMMICK_OPTIONS)[number];
 export type SeiboQuestKey = (typeof SEIBO_QUESTS)[number]["key"];
+export type SeiboVersion = "2" | "3";
 
 export type SeiboCharacterSummary = {
   id: string;
   name: string;
   nameKana: string;
   iconUrl: string;
+};
+
+export type SeiboBossCandidate = SeiboCharacterSummary & {
+  element: (typeof SEIBO_3_QUESTS)[number]["bossName"] | null;
+};
+
+export const NEW_SEIBO_BOSS: SeiboBossCandidate = {
+  id: "new-boss",
+  name: "新ボス",
+  nameKana: "",
+  iconUrl: "/icon/icon_新ボス.svg",
+  element: null,
 };
 
 export type SeiboBossCard = {
@@ -45,6 +68,7 @@ export type SeiboBossCard = {
 
 export type SeiboQuestPrediction = {
   questKey: SeiboQuestKey;
+  bossId?: string | null;
   shotType: ShotType | "";
   gimmicks: Gimmick[];
   characters: SeiboCharacterSummary[];
@@ -69,4 +93,5 @@ export type SeiboQuestRanking = {
   totalSubmissions: number;
   gimmickRanking: GimmickRankingItem[];
   characterRanking: CharacterRankingItem[];
+  bossRanking: CharacterRankingItem[];
 };
