@@ -5,6 +5,7 @@ const nextConfig = {
   ],
   async redirects() {
     return [
+      { source: "/SeiboPrediction", destination: "/SeiboPrediction/3", permanent: false },
       { source: "/Seibo-Prediction", destination: "/SeiboPrediction/2", permanent: true },
       { source: "/Seibo-Prediction/ranking", destination: "/SeiboPrediction/2/ranking", permanent: true },
     ];
