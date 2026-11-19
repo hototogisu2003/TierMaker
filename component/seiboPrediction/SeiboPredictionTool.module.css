@@ -746,6 +746,30 @@
   background: linear-gradient(135deg, #dbeafe, #f8fafc);
 }
 
+.exportSheetV3 :is(.exportLandscapeHeader, .exportLandscapeRow) {
+  grid-template-columns: 215px 74px 294px minmax(0, 1fr);
+}
+
+.exportSheetV3 .exportLandscapeGimmickGrid {
+  grid-template-rows: 1fr;
+}
+
+.exportSheetV3 .exportLandscapeCharactersCell {
+  min-height: 84px;
+  flex-wrap: nowrap;
+  gap: 3px;
+  padding: 4px 3px;
+}
+
+.exportSheetV3 :is(.exportLandscapeCharacter, .exportLandscapeCharacterIcon) {
+  width: 65px;
+}
+
+.exportSheetV3 .exportLandscapeCharacterIcon {
+  height: 65px;
+  vertical-align: middle;
+}
+
 .exportLandscapeEmptyText {
   display: block;
   width: 100%;
