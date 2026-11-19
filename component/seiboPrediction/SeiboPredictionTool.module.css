@@ -68,11 +68,6 @@
   align-items: center;
 }
 
-.toolbarNote {
-  font-size: 13px;
-  color: #4b5563;
-}
-
 .actionButton {
   border-color: #15803d !important;
   background: #22c55e !important;
@@ -132,6 +127,10 @@
   padding: 18px;
 }
 
+.panel.rankingPanel {
+  padding: 8px;
+}
+
 .questList {
   display: grid;
   gap: 16px;
@@ -181,6 +180,20 @@
   font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.questBossControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding-block: 4px;
+}
+
+.selectedBossName {
+  font-size: 13px;
+  color: #334155;
+  overflow-wrap: anywhere;
 }
 
 .table {
@@ -313,6 +326,7 @@
 
 .searchResults {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   max-height: 260px;
   overflow: auto;
@@ -325,6 +339,7 @@
   background: #ffffff;
   padding: 8px 10px;
   display: grid;
+  min-width: 0;
   grid-template-columns: 56px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
@@ -339,6 +354,28 @@
 
 .searchResultName {
   font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.bossOption {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  text-align: center;
+  cursor: pointer;
+}
+
+.bossOption:hover,
+.bossOption[aria-pressed="true"] {
+  border-color: #1d4ed8;
+  background: #eff6ff;
 }
 
 .searchResultKana {
@@ -378,19 +415,36 @@
 }
 
 .rankingTab {
-  border: 1px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  min-height: 54px;
+  padding: 3px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
   background: #f8fafc;
   color: #111111;
-  border-radius: 999px;
-  padding: 8px 12px;
+  font-size: 11px;
   font-weight: 700;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
-.rankingTab[data-selected="1"] {
-  background: #111827;
-  border-color: #111827;
-  color: #ffffff;
+.rankingTab[aria-pressed="true"] {
+  background: #dbeafe;
+  border-color: #1d4ed8;
+}
+
+.rankingTab:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.rankingTabIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 7px;
+  object-fit: cover;
 }
 
 .rankingSummary {
@@ -459,37 +513,95 @@
   color: #111827;
 }
 
-.characterRankingRow {
-  display: grid;
-  grid-template-columns: 28px 44px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-}
-
-.characterRankingIcon {
-  width: 44px;
-  height: 44px;
-  object-fit: cover;
-  border: 1px solid #111111;
-}
-
 .characterRankingGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(100%, 405px);
+  gap: 4px;
 }
 
 .characterRankingCard {
+  position: relative;
+  min-width: 0;
+}
+
+.characterRankingButton {
   display: grid;
-  justify-items: center;
-  gap: 6px;
+  grid-template-columns: minmax(16px, 26%) minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 2px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #334155;
+  cursor: pointer;
+}
+
+.characterRankingButton:focus-visible,
+.characterRankingButton[aria-pressed="true"] {
+  outline: 2px solid #1d4ed8;
+  outline-offset: -2px;
+}
+
+.characterRankingIcon,
+.characterRankingPlaceholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+}
+
+.characterRankingIcon {
+  display: block;
+  height: auto;
+  object-fit: cover;
+}
+
+.characterRankingPlaceholder {
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.characterRankingRank {
+  color: #111827;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
 }
 
 .characterRankingName {
-  font-size: 11px;
-  line-height: 1.25;
+  position: absolute;
+  z-index: 1;
+  inset: calc(100% + 4px) auto auto 50%;
+  width: max-content;
+  max-width: 140px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.4;
   text-align: center;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.characterRankingCard:nth-child(5n + 1) .characterRankingName {
+  left: 0;
+  transform: none;
+}
+
+.characterRankingCard:nth-child(5n) .characterRankingName {
+  right: 0;
+  left: auto;
+  transform: none;
 }
 
 .empty {
@@ -787,6 +899,33 @@
   margin-top: 8px;
 }
 
+.modalOverlay.bossPickerOverlay {
+  padding: 0;
+}
+
+:global(body):has(.bossPickerOverlay) {
+  overflow: hidden;
+}
+
+.modal.bossPickerModal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.bossPickerModal .searchResults {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  align-content: start;
+  overscroll-behavior: contain;
+}
+
 .modalHeader {
   position: sticky;
   top: 0;
@@ -896,7 +1035,12 @@
   }
 
   .searchResult {
-    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    justify-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    text-align: center;
   }
 
   .searchResultIcon {
@@ -904,27 +1048,8 @@
     height: 48px;
   }
 
-  .searchResultAction {
-    grid-column: 1 / -1;
-  }
-
-  .characterRankingRow {
-    grid-template-columns: 24px 40px minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .characterRankingIcon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .characterRankingGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px 8px;
-  }
-
-  .characterRankingName {
-    font-size: 10px;
+  .searchResultName {
+    font-size: 12px;
   }
 
   .rankingMechanicIcon {

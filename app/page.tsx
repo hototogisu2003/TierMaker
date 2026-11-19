@@ -26,7 +26,7 @@ const tools = [
   {
     title: "適正予想メーカー",
     description: "星墓のギミック、適正予想を簡単に入力、共有できるツール。新規クエスト実装の都度更新します。（現在：星墓2期）",
-    href: "/Seibo-Prediction",
+    href: "/SeiboPrediction",
     cta: "適正予想メーカーへ",
     accent: "#9333ea",
   },

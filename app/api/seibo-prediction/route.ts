@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { coerceSeiboPayload, insertSeiboSubmission } from "@/lib/seiboPrediction/server";
+import { insertSeiboSubmission } from "@/lib/seiboPrediction/server";
+import { isSeiboVersion } from "@/lib/seiboPrediction/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,11 @@ function setDeviceTokenCookie(response: NextResponse, deviceToken: string) {
 }
 
 export async function POST(request: Request) {
+  const version = new URL(request.url).searchParams.get("version") ?? "2";
+  if (!isSeiboVersion(version)) {
+    return NextResponse.json({ stored: false, message: "予想のバージョンが不正です" }, { status: 400 });
+  }
+
   const cookieStore = await cookies();
   let deviceToken = normalizeDeviceToken(cookieStore.get(SEIBO_DEVICE_COOKIE_NAME)?.value);
   let shouldSetDeviceTokenCookie = false;
@@ -36,8 +42,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const payload = coerceSeiboPayload(body);
-    const result = await insertSeiboSubmission(payload, deviceToken);
+    const result = await insertSeiboSubmission(body, deviceToken, version);
     const response = NextResponse.json(result, { status: result.stored ? 200 : 202 });
 
     if (shouldSetDeviceTokenCookie) {

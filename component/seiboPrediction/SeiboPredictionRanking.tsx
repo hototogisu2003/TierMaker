@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import styles from "./SeiboPredictionTool.module.css";
-import { SEIBO_QUESTS } from "@/lib/seiboPrediction/shared";
-import type { Gimmick, SeiboQuestKey, SeiboQuestRanking, ShotType } from "@/lib/seiboPrediction/types";
+import { MAX_BOSS_RANKING } from "@/lib/seiboPrediction/types";
+import type { CharacterRankingItem, Gimmick, SeiboBossCard, SeiboQuestRanking, SeiboVersion, ShotType } from "@/lib/seiboPrediction/types";
 
 function getShotIconPath(shotType: ShotType | ""): string {
   if (shotType === "反射") return "/gimmick/icon_反射.png";
@@ -34,8 +34,52 @@ function getCompetitionRank<T extends { count: number }>(items: T[], index: numb
   return index + 1;
 }
 
-export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQuestRanking[] }) {
-  const [activeQuestKey, setActiveQuestKey] = useState<SeiboQuestKey>(SEIBO_QUESTS[0].key);
+function RankedCharacters({ items }: { items: CharacterRankingItem[] }) {
+  const [namedCharacterId, setNamedCharacterId] = useState<string | null>(null);
+  if (!items.length) return <div className={styles.empty}>まだ投稿がありません。</div>;
+
+  return (
+    <div className={styles.characterRankingGrid}>
+      {items.map((item, index) => {
+        const rank = getCompetitionRank(items, index);
+        const showName = namedCharacterId === item.id;
+        return (
+          <div key={item.id} className={styles.characterRankingCard}>
+            <button
+              type="button"
+              className={styles.characterRankingButton}
+              aria-label={`${rank}位 ${item.name}`}
+              aria-pressed={showName}
+              onClick={() => setNamedCharacterId(showName ? null : item.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setNamedCharacterId(null);
+              }}
+            >
+              <span className={styles.characterRankingRank} aria-hidden="true">{rank}</span>
+              {item.iconUrl ? (
+                <img className={styles.characterRankingIcon} src={item.iconUrl} alt="" />
+              ) : (
+                <span className={styles.characterRankingPlaceholder} aria-hidden="true">?</span>
+              )}
+            </button>
+            {showName ? <span className={styles.characterRankingName} aria-hidden="true">{item.name}</span> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function SeiboPredictionRanking({
+  rankings,
+  bossCards,
+  version,
+}: {
+  rankings: SeiboQuestRanking[];
+  bossCards: SeiboBossCard[];
+  version: SeiboVersion;
+}) {
+  const [activeQuestKey, setActiveQuestKey] = useState(bossCards[0]?.questKey);
   const activeRanking = rankings.find((entry) => entry.questKey === activeQuestKey) ?? null;
 
   return (
@@ -45,9 +89,9 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
           <Link prefetch={false} href="/" className={styles.homeLink} aria-label="Home">
             <img className={styles.headerLogo} src="/icon/icon_Header_2.png" alt="Strike-Optima" />
           </Link>
-          <h1 className={styles.title}>星墓クエスト予想ランキング</h1>
+          <h1 className={styles.title}>予想ランキング</h1>
         </div>
-        <Link prefetch={false} href="/Seibo-Prediction" className={styles.iconLink} aria-label="予想入力へ" title="予想入力へ">
+        <Link prefetch={false} href={`/SeiboPrediction/${version}`} className={styles.iconLink} aria-label="予想入力へ" title="予想入力へ">
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
             <path
               fill="currentColor"
@@ -57,17 +101,19 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
         </Link>
       </div>
 
-      <div className={styles.panel}>
+      <div className={`${styles.panel} ${styles.rankingPanel}`}>
         <div className={styles.rankingTabs}>
-          {SEIBO_QUESTS.map((quest) => (
+          {bossCards.map(({ questKey, bossName, iconUrl }) => (
             <button
-              key={quest.key}
+              key={questKey}
               type="button"
               className={styles.rankingTab}
-              data-selected={activeQuestKey === quest.key ? "1" : "0"}
-              onClick={() => setActiveQuestKey(quest.key)}
+              aria-label={bossName}
+              aria-pressed={activeQuestKey === questKey}
+              title={bossName}
+              onClick={() => setActiveQuestKey(questKey)}
             >
-              {quest.bossName}
+              {iconUrl ? <img className={styles.rankingTabIcon} src={iconUrl} alt="" /> : bossName}
             </button>
           ))}
         </div>
@@ -75,6 +121,12 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
         {activeRanking ? (
           <>
             <div className={styles.rankingBlocks}>
+              {version === "3" ? (
+                <section className={styles.rankingBlock}>
+                  <h2 className={styles.rankingTitle}>ボス予想 上位{MAX_BOSS_RANKING}件</h2>
+                  <RankedCharacters key={activeRanking.questKey} items={activeRanking.bossRanking} />
+                </section>
+              ) : null}
               <section className={styles.rankingBlock}>
                 <h2 className={styles.rankingTitle}>ギミック 上位5件</h2>
                 {activeRanking.gimmickRanking.length > 0 ? (
@@ -116,23 +168,7 @@ export default function SeiboPredictionRanking({ rankings }: { rankings: SeiboQu
 
               <section className={styles.rankingBlock}>
                 <h2 className={styles.rankingTitle}>適正キャラ 上位20件</h2>
-                {activeRanking.characterRanking.length > 0 ? (
-                  <div className={styles.characterRankingGrid}>
-                    {activeRanking.characterRanking.map((item, index, items) => (
-                      <div key={`${item.id}-${index}`} className={styles.characterRankingCard}>
-                        <div className={styles.rankingIndex}>{getCompetitionRank(items, index)}</div>
-                        {item.iconUrl ? (
-                          <img className={styles.characterRankingIcon} src={item.iconUrl} alt={item.name} />
-                        ) : (
-                          <div className={`${styles.characterRankingIcon} ${styles.characterFallback}`}>{item.name}</div>
-                        )}
-                        <div className={styles.characterRankingName}>{item.name}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.empty}>まだ投稿がありません。</div>
-                )}
+                <RankedCharacters key={activeRanking.questKey} items={activeRanking.characterRanking} />
               </section>
             </div>
           </>
