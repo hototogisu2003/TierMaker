@@ -515,8 +515,8 @@
 
 .characterRankingGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: min(100%, 405px);
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  width: min(100%, 814px);
   gap: 4px;
 }
 
@@ -593,15 +593,17 @@
   pointer-events: none;
 }
 
-.characterRankingCard:nth-child(5n + 1) .characterRankingName {
-  left: 0;
-  transform: none;
-}
+@media (width > 640px) {
+  .characterRankingCard:nth-child(10n + 1) .characterRankingName {
+    left: 0;
+    transform: none;
+  }
 
-.characterRankingCard:nth-child(5n) .characterRankingName {
-  right: 0;
-  left: auto;
-  transform: none;
+  .characterRankingCard:nth-child(10n) .characterRankingName {
+    right: 0;
+    left: auto;
+    transform: none;
+  }
 }
 
 .empty {
@@ -990,6 +992,22 @@
 }
 
 @media (max-width: 640px) {
+  .characterRankingGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(100%, 405px);
+  }
+
+  .characterRankingCard:nth-child(5n + 1) .characterRankingName {
+    left: 0;
+    transform: none;
+  }
+
+  .characterRankingCard:nth-child(5n) .characterRankingName {
+    right: 0;
+    left: auto;
+    transform: none;
+  }
+
   .page {
     width: min(100% - 16px, 100%);
     padding-top: 16px;
