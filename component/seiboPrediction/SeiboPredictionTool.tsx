@@ -849,7 +849,7 @@ export default function SeiboPredictionTool({
       </div>
 
       <div className={styles.hiddenExport} aria-hidden="true">
-        <div ref={exportRef} className={styles.exportSheet}>
+        <div ref={exportRef} className={version === "3" ? `${styles.exportSheet} ${styles.exportSheetV3}` : styles.exportSheet}>
           <div className={styles.exportLandscapeHeader}>
             <div className={styles.exportLandscapeHeaderSpacer} />
             <div className={styles.exportLandscapeHeaderSpacer} />
@@ -873,7 +873,7 @@ export default function SeiboPredictionTool({
                   className={styles.exportLandscapeTitleCell}
                   style={{ backgroundColor: EXPORT_ROW_COLORS[prediction.questKey] }}
                 >
-                  {selectedBoss ? `${bossCard.title}（${selectedBoss.name}）` : bossCard.title}
+                  {bossCard.title}
                 </div>
                 <div className={styles.exportLandscapeIconCell}>
                   {bossIconUrl ? (
