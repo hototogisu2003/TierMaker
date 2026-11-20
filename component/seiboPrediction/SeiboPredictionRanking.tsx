@@ -167,7 +167,7 @@ export default function SeiboPredictionRanking({
               </section>
 
               <section className={styles.rankingBlock}>
-                <h2 className={styles.rankingTitle}>適正キャラ 上位20件</h2>
+                <h2 className={styles.rankingTitle}>適正キャラ上位</h2>
                 <RankedCharacters key={activeRanking.questKey} items={activeRanking.characterRanking} />
               </section>
             </div>

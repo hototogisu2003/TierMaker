@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
-  MAX_CHARACTER_RANKING,
+  CHARACTER_RANKING_CUTOFF,
   MAX_GIMMICK_RANKING,
   buildGimmickCombinationLabel,
   emptySeiboRankings,
@@ -296,20 +296,21 @@ async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, SeiboC
 
   const supabase = getSupabaseServerClient();
   const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-  const { data, error } = await supabase
-    .from(getCharactersTableName())
-    .select("id,name,name_kana,icon_path")
-    .in("id", uniqueIds);
-
-  if (error) {
-    throw new Error(`\u30ad\u30e3\u30e9\u30af\u30bf\u30fc\u8a73\u7d30\u306e\u53d6\u5f97\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${error.message}`);
-  }
-
   const result = new Map<string, SeiboCharacterSummary>();
-  for (const row of (data ?? []) as GenericRow[]) {
-    const summary = toCharacterSummary(row, supabase, r2BaseUrl);
-    if (summary) {
-      result.set(summary.id, summary);
+  const batchSize = 100;
+  for (let offset = 0; offset < uniqueIds.length; offset += batchSize) {
+    const { data, error } = await supabase
+      .from(getCharactersTableName())
+      .select("id,name,name_kana,icon_path")
+      .in("id", uniqueIds.slice(offset, offset + batchSize));
+
+    if (error) {
+      throw new Error(`\u30ad\u30e3\u30e9\u30af\u30bf\u30fc\u8a73\u7d30\u306e\u53d6\u5f97\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${error.message}`);
+    }
+
+    for (const row of (data ?? []) as GenericRow[]) {
+      const summary = toCharacterSummary(row, supabase, r2BaseUrl);
+      if (summary) result.set(summary.id, summary);
     }
   }
   return result;
@@ -590,7 +591,9 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
     const { questKey } = ranking;
     ranking.gimmickRanking = rankedEntries(gimmickCounts.get(questKey)).slice(0, MAX_GIMMICK_RANKING)
       .map(([label, count]) => ({ label, count }));
-    const characters = rankedEntries(characterCounts.get(questKey)).slice(0, MAX_CHARACTER_RANKING);
+    const sortedCharacters = rankedEntries(characterCounts.get(questKey));
+    const cutoffVotes = sortedCharacters[CHARACTER_RANKING_CUTOFF - 1]?.[1] ?? 0;
+    const characters = sortedCharacters.filter(([, count]) => count >= cutoffVotes);
     const bosses = rankedEntries(bossCounts.get(questKey));
     characterEntries.set(questKey, characters);
     bossEntries.set(questKey, bosses);
