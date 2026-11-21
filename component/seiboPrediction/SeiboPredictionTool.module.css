@@ -478,7 +478,7 @@
 
 .rankingRow {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
