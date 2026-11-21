@@ -80,6 +80,7 @@ export type SeiboSubmissionPayload = {
 export type GimmickRankingItem = {
   label: string;
   count: number;
+  topCharacters: CharacterRankingItem[];
 };
 
 export type CharacterRankingItem = SeiboCharacterSummary & {

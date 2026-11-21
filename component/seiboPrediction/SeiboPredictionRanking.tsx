@@ -157,6 +157,13 @@ export default function SeiboPredictionRanking({
                               />
                             ) : null}
                           </div>
+                          <div className={styles.rankingGimmickCharacters}>
+                            {item.topCharacters.map(({ id, iconUrl, name }) => iconUrl ? (
+                              <img key={id} className={styles.rankingGimmickCharacterIcon} src={iconUrl} alt={name} />
+                            ) : (
+                              <span key={id} className={styles.rankingGimmickCharacterIcon} role="img" aria-label={name}>?</span>
+                            ))}
+                          </div>
                         </div>
                       );
                     })}

@@ -290,18 +290,18 @@ export async function searchSeiboCharacters(query: string, limit = 12): Promise<
     .filter((row): row is SeiboCharacterSummary => Boolean(row));
 }
 
-async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, SeiboCharacterSummary>> {
+async function fetchCharacterMapByIds(ids: string[]) {
   const uniqueIds = [...new Set(ids.filter(Boolean))];
-  if (uniqueIds.length === 0) return new Map();
+  const result = new Map<string, { summary: SeiboCharacterSummary; number: number }>();
+  if (uniqueIds.length === 0) return result;
 
   const supabase = getSupabaseServerClient();
   const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-  const result = new Map<string, SeiboCharacterSummary>();
   const batchSize = 100;
   for (let offset = 0; offset < uniqueIds.length; offset += batchSize) {
     const { data, error } = await supabase
       .from(getCharactersTableName())
-      .select("id,name,name_kana,icon_path")
+      .select("id,name,name_kana,icon_path,number")
       .in("id", uniqueIds.slice(offset, offset + batchSize));
 
     if (error) {
@@ -310,7 +310,10 @@ async function fetchCharacterMapByIds(ids: string[]): Promise<Map<string, SeiboC
 
     for (const row of (data ?? []) as GenericRow[]) {
       const summary = toCharacterSummary(row, supabase, r2BaseUrl);
-      if (summary) result.set(summary.id, summary);
+      if (summary) {
+        const number = toNumber(row.number);
+        result.set(summary.id, { summary, number: Number.isFinite(number) ? number : -1 });
+      }
     }
   }
   return result;
@@ -322,7 +325,7 @@ export async function fetchSeiboCharactersByIds(ids: string[]): Promise<SeiboCha
 
   const characterMap = await fetchCharacterMapByIds(uniqueIds);
   return uniqueIds
-    .map((id) => characterMap.get(id))
+    .map((id) => characterMap.get(id)?.summary)
     .filter((character): character is SeiboCharacterSummary => Boolean(character));
 }
 
@@ -545,7 +548,7 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
 
   const rows = (data ?? []) as PredictionRow[];
   const rankingMap = new Map(rankings.map((entry) => [entry.questKey, entry]));
-  const gimmickCounts = new Map<SeiboQuestKey, Map<string, number>>();
+  const gimmickCounts = new Map<SeiboQuestKey, Map<string, { count: number; characterVotes: Map<string, number> }>>();
   const characterCounts = new Map<SeiboQuestKey, Map<string, number>>();
   const bossCounts = new Map<SeiboQuestKey, Map<string, number>>();
 
@@ -558,7 +561,8 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
   for (const row of rows) {
     const questKey = row.quest_key as SeiboQuestKey;
     const ranking = rankingMap.get(questKey);
-    if (!ranking) continue;
+    const gimmickCountMap = gimmickCounts.get(questKey);
+    if (!ranking || !gimmickCountMap) continue;
     const bossId = version === "3" ? row.boss_id : null;
     if (bossId) {
       const counts = bossCounts.get(questKey);
@@ -571,17 +575,20 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
     const gimmicks = (row.gimmicks ?? []).filter((value): value is Gimmick => isGimmick(value));
 
     const gimmickLabel = buildGimmickCombinationLabel(normalizedShotType as ShotType, gimmicks);
-    const gimmickCountMap = gimmickCounts.get(questKey);
-    gimmickCountMap?.set(gimmickLabel, (gimmickCountMap.get(gimmickLabel) ?? 0) + 1);
+    const combination = gimmickCountMap.get(gimmickLabel) ?? { count: 0, characterVotes: new Map<string, number>() };
+    combination.count += 1;
+    gimmickCountMap.set(gimmickLabel, combination);
 
     const characterCountMap = characterCounts.get(questKey);
-    for (const characterId of row.character_ids ?? []) {
+    for (const characterId of new Set(row.character_ids ?? [])) {
       if (!characterId) continue;
       characterCountMap?.set(characterId, (characterCountMap.get(characterId) ?? 0) + 1);
+      combination.characterVotes.set(characterId, (combination.characterVotes.get(characterId) ?? 0) + 1);
     }
   }
 
   const rankedIds = new Set<string>();
+  const gimmickEntries = new Map<SeiboQuestKey, { label: string; count: number; candidates: [string, number][] }[]>();
   const characterEntries = new Map<SeiboQuestKey, [string, number][]>();
   const bossEntries = new Map<SeiboQuestKey, [string, number][]>();
   const rankedEntries = (counts: Map<string, number> | undefined) =>
@@ -589,8 +596,18 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
 
   for (const ranking of rankings) {
     const { questKey } = ranking;
-    ranking.gimmickRanking = rankedEntries(gimmickCounts.get(questKey)).slice(0, MAX_GIMMICK_RANKING)
-      .map(([label, count]) => ({ label, count }));
+    const gimmicks = [...(gimmickCounts.get(questKey) ?? [])]
+      .sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0], "ja"))
+      .slice(0, MAX_GIMMICK_RANKING)
+      .map(([label, { count, characterVotes }]) => {
+        const characters = rankedEntries(characterVotes);
+        const cutoffVotes = characters[1]?.[1] ?? 0;
+        return { label, count, candidates: characters.filter(([, votes]) => votes >= cutoffVotes) };
+      });
+    gimmickEntries.set(questKey, gimmicks);
+    for (const { candidates } of gimmicks) {
+      for (const [id] of candidates) rankedIds.add(id);
+    }
     const sortedCharacters = rankedEntries(characterCounts.get(questKey));
     const cutoffVotes = sortedCharacters[CHARACTER_RANKING_CUTOFF - 1]?.[1] ?? 0;
     const characters = sortedCharacters.filter(([, count]) => count >= cutoffVotes);
@@ -604,7 +621,7 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
 
   const characterMap = await fetchCharacterMapByIds([...rankedIds]);
   const toRankingItem = ([id, count]: [string, number]) => {
-    const character = id === NEW_SEIBO_BOSS.id ? NEW_SEIBO_BOSS : characterMap.get(id);
+    const character = id === NEW_SEIBO_BOSS.id ? NEW_SEIBO_BOSS : characterMap.get(id)?.summary;
     return {
       id,
       name: character?.name ?? id,
@@ -614,7 +631,16 @@ export async function fetchAllSeiboRankings(version: SeiboVersion): Promise<Seib
     };
   };
 
+  const characterNumber = (id: string) => characterMap.get(id)?.number ?? -1;
+
   for (const ranking of rankings) {
+    ranking.gimmickRanking = (gimmickEntries.get(ranking.questKey) ?? []).map(({ label, count, candidates }) => ({
+      label,
+      count,
+      topCharacters: candidates.sort(([idA, votesA], [idB, votesB]) =>
+        votesB - votesA || characterNumber(idB) - characterNumber(idA) || idA.localeCompare(idB, "ja")
+      ).slice(0, 2).map(toRankingItem),
+    }));
     ranking.characterRanking = (characterEntries.get(ranking.questKey) ?? []).map(toRankingItem);
     ranking.bossRanking = (bossEntries.get(ranking.questKey) ?? []).map(toRankingItem);
   }

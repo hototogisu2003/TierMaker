@@ -478,7 +478,7 @@
 
 .rankingRow {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr) 72px;
   gap: 10px;
   align-items: center;
 }
@@ -502,10 +502,26 @@
 }
 
 .rankingMechanicIcon {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   flex: 0 0 auto;
+}
+
+.rankingGimmickCharacters {
+  display: flex;
+  align-items: center;
+}
+
+.rankingGimmickCharacterIcon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
 }
 
 .rankingCount {
@@ -1095,7 +1111,7 @@
   }
 
   .rankingMechanicIcon {
-    width: 36px;
-    height: 36px;
+    width: 29px;
+    height: 29px;
   }
 }
