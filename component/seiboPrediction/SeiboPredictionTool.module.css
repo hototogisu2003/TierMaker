@@ -182,20 +182,6 @@
   line-height: 1.2;
 }
 
-.questBossControls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  padding-block: 4px;
-}
-
-.selectedBossName {
-  font-size: 13px;
-  color: #334155;
-  overflow-wrap: anywhere;
-}
-
 .table {
   display: grid;
 }
@@ -355,27 +341,6 @@
 .searchResultName {
   font-weight: 700;
   overflow-wrap: anywhere;
-}
-
-.bossOption {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 6px;
-  min-width: 0;
-  padding: 6px 4px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #111827;
-  text-align: center;
-  cursor: pointer;
-}
-
-.bossOption:hover,
-.bossOption[aria-pressed="true"] {
-  border-color: #1d4ed8;
-  background: #eff6ff;
 }
 
 .searchResultKana {
@@ -939,33 +904,6 @@
 
 .topAlignedModal {
   margin-top: 8px;
-}
-
-.modalOverlay.bossPickerOverlay {
-  padding: 0;
-}
-
-:global(body):has(.bossPickerOverlay) {
-  overflow: hidden;
-}
-
-.modal.bossPickerModal {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
-}
-
-.bossPickerModal .searchResults {
-  flex: 1;
-  min-height: 0;
-  max-height: none;
-  align-content: start;
-  overscroll-behavior: contain;
 }
 
 .modalHeader {

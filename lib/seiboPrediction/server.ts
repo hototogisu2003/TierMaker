@@ -8,7 +8,6 @@ import {
   getSeiboQuests,
   isCountablePrediction,
   isGimmick,
-  isSeiboBossForQuest,
   normalizeSubmissionPayload,
   normalizeShotTypeLabel,
   questTitleFromKey,
@@ -16,7 +15,6 @@ import {
 } from "./shared";
 import type {
   Gimmick,
-  SeiboBossCandidate,
   SeiboBossCard,
   SeiboCharacterSummary,
   SeiboQuestKey,
@@ -150,11 +148,16 @@ function toCharacterSummary(
 
 export async function fetchSeiboBossCards(version: SeiboVersion): Promise<SeiboBossCard[]> {
   if (version === "3") {
-    return SEIBO_3_QUESTS.map(({ key, bossName, iconUrl }) => ({
+    const bossIds = SEIBO_3_QUESTS.flatMap(({ bossId }) => bossId ? [bossId] : []);
+    const bosses = await fetchCharacterMapByIds(bossIds);
+    const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
+    return SEIBO_3_QUESTS.map(({ key, bossName, bossId }) => ({
       questKey: key,
       bossName,
       title: questTitleFromKey(key, version),
-      iconUrl,
+      iconUrl: bossId
+        ? bosses.get(bossId)?.summary.iconUrl ?? ""
+        : buildPublicUrl("seibo3boss.jpg", r2BaseUrl, ""),
     }));
   }
 
@@ -188,33 +191,6 @@ export async function fetchSeiboBossCards(version: SeiboVersion): Promise<SeiboB
       iconUrl: matched?.iconUrl ?? "",
     };
   });
-}
-
-async function fetchEligibleSeiboBosses(ids?: string[]): Promise<SeiboBossCandidate[]> {
-  const supabase = getSupabaseServerClient();
-  const r2BaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL);
-  let query = supabase
-    .from(getCharactersTableName())
-    .select("id,name,name_kana,icon_path,element")
-    .eq("quest", "爆絶")
-    .or("content.is.null,content.neq.破界の星墓")
-    .order("number", { ascending: true, nullsFirst: false })
-    .order("id", { ascending: true });
-  if (ids) query = query.in("id", ids);
-  const { data, error } = await query;
-  if (error) throw new Error(`ボス候補の取得に失敗しました: ${error.message}`);
-  return ((data ?? []) as GenericRow[]).flatMap((row) => {
-    const character = toCharacterSummary(row, supabase, r2BaseUrl);
-    if (!character) return [];
-    const rawElement = toText(row.element).toLowerCase();
-    const element = SEIBO_3_QUESTS.find(({ bossName, elementAlias }) =>
-      rawElement === bossName || rawElement === elementAlias)?.bossName ?? null;
-    return [{ ...character, element }];
-  });
-}
-
-export async function fetchSeiboBossCandidates(): Promise<SeiboBossCandidate[]> {
-  return [NEW_SEIBO_BOSS, ...await fetchEligibleSeiboBosses()];
 }
 
 export async function searchSeiboCharacters(query: string, limit = 12): Promise<SeiboCharacterSummary[]> {
@@ -348,40 +324,15 @@ export async function insertSeiboSubmission(
   const emptySubmissionMessage = "画像は作成できますが、ランキングに反映される予想はまだありません。";
 
   if (version === "3") {
-    const bossIds = new Set(payload.predictions.flatMap(({ bossId }) => bossId ? [bossId] : []));
-    const characterBossIds = [...bossIds].filter((id) => id !== NEW_SEIBO_BOSS.id);
-    if (characterBossIds.length) {
-      const eligibleBosses = await fetchEligibleSeiboBosses(characterBossIds);
-      const eligibleById = new Map(eligibleBosses.map((boss) => [boss.id, boss]));
-      for (const { questKey, bossId } of payload.predictions) {
-        if (!bossId || bossId === NEW_SEIBO_BOSS.id) continue;
-        const boss = eligibleById.get(bossId);
-        if (!boss || !isSeiboBossForQuest(boss, questKey)) {
-          throw new Error(`${questTitleFromKey(questKey, version)}のボス候補から選び直してください。`);
-        }
-      }
-    }
-
-    const rowsByQuest = new Map(rows.map((row) => [row.quest_key, row]));
-    const rowsWithBosses = payload.predictions.flatMap(({ questKey, bossId }): PredictionRow[] => {
-      const row = rowsByQuest.get(questKey);
-      if (row) return [{ ...row, boss_id: bossId ?? null }];
-      if (!bossId) return [];
-      return [{ quest_key: questKey, shot_type: null, gimmicks: [], character_ids: [], boss_id: bossId }];
-    });
-
     const supabase = getSupabaseServiceRoleClient();
     const submission = {
       p_token_hash: tokenHash,
       p_batch_id: batchId,
-      p_predictions: rowsWithBosses,
+      p_predictions: rows,
     };
     let { error } = await supabase.rpc("replace_seibo_3_submission_with_bosses", submission);
     if (error && isMissingFunctionError(error.message)) {
-      if (bossIds.size) {
-        throw new Error("ボス予想の保存には supabase/seibo_3_boss_predictions.sql の適用が必要です。");
-      }
-      ({ error } = await supabase.rpc("replace_seibo_3_submission", { ...submission, p_predictions: rows }));
+      ({ error } = await supabase.rpc("replace_seibo_3_submission", submission));
     }
     if (error) {
       if (isMissingTableError(error.message) || isMissingFunctionError(error.message)) {
@@ -389,7 +340,7 @@ export async function insertSeiboSubmission(
       }
       throw new Error(`予想の保存に失敗しました: ${error.message}`);
     }
-    return rowsWithBosses.length ? { stored: true } : { stored: true, message: emptySubmissionMessage };
+    return rows.length ? { stored: true } : { stored: true, message: emptySubmissionMessage };
   }
 
   const tableName = getPredictionTableName(version);

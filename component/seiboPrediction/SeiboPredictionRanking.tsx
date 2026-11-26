@@ -121,12 +121,6 @@ export default function SeiboPredictionRanking({
         {activeRanking ? (
           <>
             <div className={styles.rankingBlocks}>
-              {version === "3" ? (
-                <section className={styles.rankingBlock}>
-                  <h2 className={styles.rankingTitle}>ボス予想</h2>
-                  <RankedCharacters key={activeRanking.questKey} items={activeRanking.bossRanking} />
-                </section>
-              ) : null}
               <section className={styles.rankingBlock}>
                 <h2 className={styles.rankingTitle}>ギミック 上位5件</h2>
                 {activeRanking.gimmickRanking.length > 0 ? (

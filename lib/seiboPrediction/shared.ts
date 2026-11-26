@@ -4,12 +4,10 @@ import {
   MAX_GIMMICK_RANKING,
   MAX_GIMMICKS,
   CHARACTER_RANKING_CUTOFF,
-  NEW_SEIBO_BOSS,
   SEIBO_3_QUESTS,
   SEIBO_QUESTS,
   SHOT_TYPE_OPTIONS,
   type Gimmick,
-  type SeiboBossCandidate,
   type SeiboQuestKey,
   type SeiboQuestPrediction,
   type SeiboQuestRanking,
@@ -59,14 +57,8 @@ export function isGimmick(value: string): value is Gimmick {
 export function questTitleFromKey(questKey: SeiboQuestKey, version: SeiboVersion): string {
   const quest = getSeiboQuests(version).find((entry) => entry.key === questKey);
   if (!quest) return "";
-  if (version === "3") return `星墓（${quest.bossName}）`;
   if (quest.key === "ex") return "EX";
   return `${quest.bossName}\u306e\u661f\u5893`;
-}
-
-export function isSeiboBossForQuest(boss: SeiboBossCandidate, questKey: SeiboQuestKey): boolean {
-  const quest = SEIBO_3_QUESTS.find((entry) => entry.key === questKey);
-  return Boolean(quest && (boss.id === NEW_SEIBO_BOSS.id || boss.element === quest.bossName));
 }
 
 export function buildGimmickCombinationLabel(shotType: ShotType, gimmicks: readonly Gimmick[]): string {
@@ -135,7 +127,6 @@ export function normalizeSubmissionPayload(input: unknown, version: SeiboVersion
 
     return {
       questKey,
-      bossId: version === "3" ? normalizeBossId((entry as { bossId?: unknown }).bossId) : null,
       shotType: rawShotType as ShotType | "",
       gimmicks,
       characters,
@@ -143,14 +134,6 @@ export function normalizeSubmissionPayload(input: unknown, version: SeiboVersion
   });
 
   return { predictions };
-}
-
-export function normalizeBossId(value: unknown): string | null {
-  if (value == null || value === "") return null;
-  if (typeof value !== "string" || !value.trim() || value.length > 128) {
-    throw new Error("ボスの選択内容が不正です");
-  }
-  return value.trim();
 }
 
 export function isCountablePrediction(prediction: SeiboQuestPrediction): prediction is SeiboQuestPrediction & { shotType: ShotType } {

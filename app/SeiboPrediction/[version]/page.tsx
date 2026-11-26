@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import SeiboPredictionTool from "@/component/seiboPrediction/SeiboPredictionTool";
-import { fetchSeiboBossCandidates, fetchSeiboBossCards } from "@/lib/seiboPrediction/server";
+import { fetchSeiboBossCards } from "@/lib/seiboPrediction/server";
 import { isSeiboVersion } from "@/lib/seiboPrediction/shared";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +16,7 @@ export default async function SeiboPredictionPage({ params }: { params: Promise<
   if (!isSeiboVersion(version)) notFound();
   noStore();
 
-  const [bossCards, bossCandidates] = await Promise.all([
-    fetchSeiboBossCards(version),
-    version === "3" ? fetchSeiboBossCandidates().catch((error: unknown) => {
-      console.error("Failed to load Seibo boss candidates:", error);
-      return null;
-    }) : null,
-  ]);
+  const bossCards = await fetchSeiboBossCards(version);
 
-  return <SeiboPredictionTool key={version} bossCards={bossCards} bossCandidates={bossCandidates} version={version} />;
+  return <SeiboPredictionTool key={version} bossCards={bossCards} version={version} />;
 }

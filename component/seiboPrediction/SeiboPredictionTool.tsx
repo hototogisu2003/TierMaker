@@ -12,12 +12,10 @@ import {
   MAX_GIMMICKS,
   getSeiboQuests,
   isCountablePrediction,
-  isSeiboBossForQuest,
   SHOT_TYPE_OPTIONS,
   normalizeSubmissionPayload,
 } from "@/lib/seiboPrediction/shared";
-import { NEW_SEIBO_BOSS } from "@/lib/seiboPrediction/types";
-import type { Gimmick, SeiboBossCandidate, SeiboBossCard, SeiboCharacterSummary, SeiboQuestKey, SeiboQuestPrediction, SeiboVersion, ShotType } from "@/lib/seiboPrediction/types";
+import type { Gimmick, SeiboBossCard, SeiboCharacterSummary, SeiboQuestKey, SeiboQuestPrediction, SeiboVersion, ShotType } from "@/lib/seiboPrediction/types";
 
 type DraftPrediction = SeiboQuestPrediction;
 
@@ -63,7 +61,6 @@ function getExportGimmickIconPath(gimmick: Gimmick | ""): string {
 function createInitialPredictions(version: SeiboVersion): DraftPrediction[] {
   return getSeiboQuests(version).map((quest) => ({
     questKey: quest.key,
-    bossId: null,
     shotType: "",
     gimmicks: [],
     characters: [],
@@ -119,10 +116,8 @@ function normalizeStoredPredictions(input: unknown, version: SeiboVersion): Draf
           .slice(0, MAX_CHARACTERS)
       : [];
 
-    const { bossId } = raw as { bossId?: unknown };
     return {
       questKey: basePrediction.questKey,
-      bossId: version === "3" && typeof bossId === "string" && bossId.length <= 128 ? bossId.trim() || null : null,
       shotType: validShotType,
       gimmicks,
       characters,
@@ -245,26 +240,19 @@ async function createPreviewBlob(node: HTMLElement) {
 
 function PredictionEditorCard({
   bossCard,
-  bossCandidates,
-  selectedBoss,
   prediction,
   disabled,
-  onBossChange,
   onShotTypeChange,
   onToggleGimmick,
   onCharactersChange,
 }: {
   bossCard: SeiboBossCard;
-  bossCandidates: SeiboBossCandidate[] | null;
-  selectedBoss?: SeiboCharacterSummary;
   prediction: DraftPrediction;
   disabled: boolean;
-  onBossChange?: (bossId: string | null) => void;
   onShotTypeChange: (value: ShotType | "") => void;
   onToggleGimmick: (gimmick: Gimmick) => void;
   onCharactersChange: (characters: SeiboCharacterSummary[]) => void;
 }) {
-  const [isBossPickerOpen, setIsBossPickerOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SeiboCharacterSummary[]>([]);
@@ -312,8 +300,7 @@ function PredictionEditorCard({
 
   const selectedCharacters = prediction.characters;
   const canSelectMore = selectedCharacters.length < MAX_CHARACTERS;
-  const bossIconUrl = selectedBoss ? selectedBoss.iconUrl : bossCard.iconUrl;
-  const bossIconName = selectedBoss?.name ?? bossCard.bossName;
+  const { iconUrl: bossIconUrl, bossName: bossIconName } = bossCard;
 
   function openPicker() {
     setQuery("");
@@ -347,65 +334,8 @@ function PredictionEditorCard({
             <div className={`${styles.bossIcon} ${styles.bossFallback}`}>{bossIconName}</div>
           )}
         </div>
-        <div className={styles.questTitleCell}>
-          {onBossChange ? (
-            <div className={styles.questBossControls}>
-              <span>{bossCard.title}</span>
-              <Button type="button" className={styles.selectButton} disabled={disabled} onClick={() => setIsBossPickerOpen(true)}>
-                ボスを選択
-              </Button>
-              {selectedBoss ? <span className={styles.selectedBossName}>{selectedBoss.name}</span> : null}
-            </div>
-          ) : bossCard.title}
-        </div>
+        <div className={styles.questTitleCell}>{bossCard.title}</div>
       </div>
-
-      {isBossPickerOpen && onBossChange ? (
-        <div className={`${styles.modalOverlay} ${styles.bossPickerOverlay}`}>
-          <div
-            className={`${styles.modal} ${styles.bossPickerModal}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${bossCard.title}のボスを選択`}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setIsBossPickerOpen(false);
-            }}
-          >
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>ボスを選択</h2>
-              <div className={styles.modalActions}>
-                {prediction.bossId ? (
-                  <Button type="button" onClick={() => {
-                    onBossChange(null);
-                    setIsBossPickerOpen(false);
-                  }}>
-                    未選択に戻す
-                  </Button>
-                ) : null}
-                <Button type="button" className={styles.closeButton} autoFocus onClick={() => setIsBossPickerOpen(false)}>閉じる</Button>
-              </div>
-            </div>
-            {bossCandidates === null ? <p className={styles.helper}>爆絶のボス候補を取得できませんでした。</p> : null}
-            <div className={styles.searchResults}>
-              {(bossCandidates ?? [NEW_SEIBO_BOSS]).filter((boss) => isSeiboBossForQuest(boss, bossCard.questKey)).map((boss) => (
-                <button
-                  key={boss.id}
-                  type="button"
-                  className={styles.bossOption}
-                  aria-pressed={prediction.bossId === boss.id}
-                  onClick={() => {
-                    onBossChange(boss.id);
-                    setIsBossPickerOpen(false);
-                  }}
-                >
-                  {boss.iconUrl ? <img className={styles.searchResultIcon} src={boss.iconUrl} alt="" loading="lazy" /> : null}
-                  <span className={styles.searchResultName}>{boss.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div className={styles.table}>
         <div className={styles.row}>
@@ -558,11 +488,9 @@ function PredictionEditorCard({
 
 export default function SeiboPredictionTool({
   bossCards,
-  bossCandidates,
   version,
 }: {
   bossCards: SeiboBossCard[];
-  bossCandidates: SeiboBossCandidate[] | null;
   version: SeiboVersion;
 }) {
   const autoSubmitRanking = version === "3";
@@ -578,9 +506,6 @@ export default function SeiboPredictionTool({
   const [previewFileName, setPreviewFileName] = useState("");
   const exportRef = useRef<HTMLDivElement>(null);
   const predictionsRef = useRef(predictions);
-  const bossCandidateMap = useMemo(() => new Map(
-    (bossCandidates ?? [NEW_SEIBO_BOSS]).map((boss) => [boss.id, boss]),
-  ), [bossCandidates]);
 
   useEffect(() => {
     return () => {
@@ -595,19 +520,11 @@ export default function SeiboPredictionTool({
     const draft = readStoredPredictions(version);
 
     if (draft) {
-      const storedPredictions = bossCandidates === null ? draft : draft.map((prediction) => {
-        if (!prediction.bossId) return prediction;
-        const boss = bossCandidateMap.get(prediction.bossId);
-        return boss && isSeiboBossForQuest(boss, prediction.questKey) ? prediction : { ...prediction, bossId: null };
-      });
-      if (storedPredictions.some((prediction, index) => prediction !== draft[index])) {
-        writeStoredPredictions(storedPredictions, version);
-      }
-      predictionsRef.current = storedPredictions;
-      setPredictions(storedPredictions);
-      void refreshStoredPredictionCharacters(storedPredictions).then((refreshedPredictions) => {
+      predictionsRef.current = draft;
+      setPredictions(draft);
+      void refreshStoredPredictionCharacters(draft).then((refreshedPredictions) => {
         // Keep edits made while the character request was in flight.
-        if (active && predictionsRef.current === storedPredictions) {
+        if (active && predictionsRef.current === draft) {
           predictionsRef.current = refreshedPredictions;
           setPredictions(refreshedPredictions);
         }
@@ -620,7 +537,7 @@ export default function SeiboPredictionTool({
     return () => {
       active = false;
     };
-  }, [bossCandidateMap, bossCandidates, version]);
+  }, [version]);
 
   const bossCardMap = useMemo(() => new Map(bossCards.map((card) => [card.questKey, card])), [bossCards]);
   const isEditorDisabled = !isDraftReady || isPreviewLoading || isRankingSubmitting;
@@ -714,7 +631,7 @@ export default function SeiboPredictionTool({
 
       setHasSubmittedRanking(true);
       const savedRankedPrediction = autoSubmitRanking &&
-        payload.predictions.some((prediction) => prediction.bossId || isCountablePrediction(prediction));
+        payload.predictions.some(isCountablePrediction);
       setNotice(savedRankedPrediction ? "" : data.message ?? "");
       setNoticeTone("info");
     } catch (error) {
@@ -821,12 +738,8 @@ export default function SeiboPredictionTool({
               <PredictionEditorCard
                 key={prediction.questKey}
                 bossCard={bossCard}
-                bossCandidates={bossCandidates}
-                selectedBoss={bossCandidateMap.get(prediction.bossId ?? "")}
                 prediction={prediction}
                 disabled={isEditorDisabled}
-                onBossChange={autoSubmitRanking ? (bossId) =>
-                  updatePrediction(prediction.questKey, (current) => ({ ...current, bossId })) : undefined}
                 onShotTypeChange={(shotType) => updatePrediction(prediction.questKey, (current) => ({ ...current, shotType }))}
                 onToggleGimmick={(gimmick) =>
                   updatePrediction(prediction.questKey, (current) => ({
@@ -859,9 +772,7 @@ export default function SeiboPredictionTool({
           {predictions.map((prediction) => {
             const bossCard = bossCardMap.get(prediction.questKey);
             if (!bossCard) return null;
-            const selectedBoss = bossCandidateMap.get(prediction.bossId ?? "");
-            const bossIconUrl = selectedBoss ? selectedBoss.iconUrl : bossCard.iconUrl;
-            const bossIconName = selectedBoss?.name ?? bossCard.bossName;
+            const { iconUrl: bossIconUrl, bossName: bossIconName } = bossCard;
             const orderedGimmicks = [...prediction.gimmicks].sort(
               (a, b) => GIMMICK_OPTIONS.indexOf(a) - GIMMICK_OPTIONS.indexOf(b)
             );
